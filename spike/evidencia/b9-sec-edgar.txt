@@ -1,0 +1,139 @@
+# Spike B.9 — SEC EDGAR (2026-09-24). User-Agent con nombre y mail (valor real por variable SEC_USER_AGENT; acá saneado). Pausa 0,2 s entre requests.
+=== 1. CIK de tickers argentinos (company_tickers.json) ===
+tickers en el archivo: 10,413
+  YPF    -> CIK   904851  YPF SOCIEDAD ANONIMA
+  GGAL   -> CIK  1114700  GRUPO FINANCIERO GALICIA SA
+  PAM    -> CIK  1469395  Pampa Energy Inc.
+  BMA    -> CIK  1347426  Macro Bank Inc.
+  TEO    -> CIK   932470  TELECOM ARGENTINA SA
+  TGS    -> CIK   931427  GAS TRANSPORTER OF THE SOUTH INC
+  EDN    -> CIK  1395213  EDENOR
+  CEPU   -> CIK  1717161  CENTRAL PUERTO S.A.
+  SUPV   -> CIK  1517399  Grupo Supervielle S.A.
+  BBAR   -> CIK   913059  Banco BBVA Argentina S.A.
+  CRESY  -> CIK  1034957  CRESUD INC
+  IRS    -> CIK   933267  IRSA INVESTMENTS & REPRESENTATIONS INC
+  LOMA   -> CIK  1711375  Loma Negra Compania Industrial Argentina Sociedad Anonima
+  VIST   -> CIK  1762506  Vista Energy, S.A.B. de C.V.
+  MELI   -> CIK  1099590  MERCADOLIBRE INC
+  GLOB   -> CIK  1557860  Globant S.A.
+  DESP   -> no está
+
+=== 2. submissions de YPF, GGAL, PAM ===
+{
+  "ticker": "YPF",
+  "cik": "0000904851",
+  "nombre": "YPF SOCIEDAD ANONIMA",
+  "entityType": "other",
+  "sic": "2911 Petroleum Refining",
+  "stateOfIncorporation": "C1",
+  "stateOfIncorporationDescription": "Argentina",
+  "domicilio_negocio": "BUENOS AIRES 1364 AR, None",
+  "tickers": [
+    "YPF"
+  ],
+  "exchanges": [
+    "NYSE"
+  ],
+  "lei": null,
+  "ein": "521612271",
+  "formerNames": [],
+  "presentaciones_recientes": 1000,
+  "ultima_presentacion": "2026-09-21",
+  "formularios_top": {
+    "6-K": 883,
+    "3": 38,
+    "4": 28,
+    "20-F": 15,
+    "UPLOAD": 8
+  },
+  "archivos_historicos_extra": 1,
+  "json_kb": 162.2,
+  "segundos": 0.49
+}
+{
+  "ticker": "GGAL",
+  "cik": "0001114700",
+  "nombre": "GRUPO FINANCIERO GALICIA SA",
+  "entityType": "other",
+  "sic": "6029 Commercial Banks, NEC",
+  "stateOfIncorporation": "C1",
+  "stateOfIncorporationDescription": "Argentina",
+  "domicilio_negocio": "BUENOS AIRES, Argentina",
+  "tickers": [
+    "GGAL"
+  ],
+  "exchanges": [
+    "Nasdaq"
+  ],
+  "lei": null,
+  "ein": "000000000",
+  "formerNames": [],
+  "presentaciones_recientes": 782,
+  "ultima_presentacion": "2026-09-14",
+  "formularios_top": {
+    "6-K": 677,
+    "20-F": 25,
+    "3": 15,
+    "UPLOAD": 10,
+    "SC 13G": 9
+  },
+  "archivos_historicos_extra": 0,
+  "json_kb": 128.3,
+  "segundos": 0.27
+}
+{
+  "ticker": "PAM",
+  "cik": "0001469395",
+  "nombre": "Pampa Energy Inc.",
+  "entityType": "other",
+  "sic": "4911 Electric Services",
+  "stateOfIncorporation": "C1",
+  "stateOfIncorporationDescription": "Argentina",
+  "domicilio_negocio": "CITY OF BUENOS AIRES, Argentina",
+  "tickers": [
+    "PAM",
+    "PPENF"
+  ],
+  "exchanges": [
+    "NYSE",
+    "OTC"
+  ],
+  "lei": null,
+  "ein": "000000000",
+  "formerNames": [],
+  "presentaciones_recientes": 1000,
+  "ultima_presentacion": "2026-09-08",
+  "formularios_top": {
+    "6-K": 720,
+    "144": 45,
+    "CORRESP": 31,
+    "SC 13G/A": 25,
+    "4": 24
+  },
+  "archivos_historicos_extra": 1,
+  "json_kb": 163.8,
+  "segundos": 0.22
+}
+
+=== 3. claves de primer nivel del JSON de submissions ===
+['addresses', 'category', 'cik', 'description', 'ein', 'entityType', 'exchanges', 'filings', 'fiscalYearEnd', 'flags', 'formerNames', 'insiderTransactionForIssuerExists', 'insiderTransactionForOwnerExists', 'investorWebsite', 'lei', 'name', 'ownerOrg', 'phone', 'sic', 'sicDescription', 'stateOfIncorporation', 'stateOfIncorporationDescription', 'tickers', 'website']
+
+empresas con LEI en el JSON de la SEC: 0/3
+candidatas argentinas con CIK: 16/17
+
+=== resumen JSON ===
+{"ciks": {"YPF": 904851, "GGAL": 1114700, "PAM": 1469395, "BMA": 1347426, "TEO": 932470, "TGS": 931427, "EDN": 1395213, "CEPU": 1717161, "SUPV": 1517399, "BBAR": 913059, "CRESY": 1034957, "IRS": 933267, "LOMA": 1711375, "VIST": 1762506, "MELI": 1099590, "GLOB": 1557860}, "detalle": [{"ticker": "YPF", "cik": "0000904851", "nombre": "YPF SOCIEDAD ANONIMA", "entityType": "other", "sic": "2911 Petroleum Refining", "stateOfIncorporation": "C1", "stateOfIncorporationDescription": "Argentina", "domicilio_negocio": "BUENOS AIRES 1364 AR, None", "tickers": ["YPF"], "exchanges": ["NYSE"], "lei": null, "ein": "521612271", "formerNames": [], "presentaciones_recientes": 1000, "ultima_presentacion": "2026-09-21", "formularios_top": {"6-K": 883, "3": 38, "4": 28, "20-F": 15, "UPLOAD": 8}, "archivos_historicos_extra": 1, "json_kb": 162.2, "segundos": 0.49}, {"ticker": "GGAL", "cik": "0001114700", "nombre": "GRUPO FINANCIERO GALICIA SA", "entityType": "other", "sic": "6029 Commercial Banks, NEC", "stateOfIncorporation": "C1", "stateOfIncorporationDescription": "Argentina", "domicilio_negocio": "BUENOS AIRES, Argentina", "tickers": ["GGAL"], "exchanges": ["Nasdaq"], "lei": null, "ein": "000000000", "formerNames": [], "presentaciones_recientes": 782, "ultima_presentacion": "2026-09-14", "formularios_top": {"6-K": 677, "20-F": 25, "3": 15, "UPLOAD": 10, "SC 13G": 9}, "archivos_historicos_extra": 0, "json_kb": 128.3, "segundos": 0.27}, {"ticker": "PAM", "cik": "0001469395", "nombre": "Pampa Energy Inc.", "entityType": "other", "sic": "4911 Electric Services", "stateOfIncorporation": "C1", "stateOfIncorporationDescription": "Argentina", "domicilio_negocio": "CITY OF BUENOS AIRES, Argentina", "tickers": ["PAM", "PPENF"], "exchanges": ["NYSE", "OTC"], "lei": null, "ein": "000000000", "formerNames": [], "presentaciones_recientes": 1000, "ultima_presentacion": "2026-09-08", "formularios_top": {"6-K": 720, "144": 45, "CORRESP": 31, "SC 13G/A": 25, "4": 24}, "archivos_historicos_extra": 1, "json_kb": 163.8, "segundos": 0.22}]}
+
+=== 4. cruce SEC -> GLEIF por nombre (API GLEIF, filtro país AR) ===
+SEC: YPF SOCIEDAD ANONIMA                     | GLEIF 'YPF': total 3 -> [('5493003N7447U18U5U53', 'YPF Sociedad Anonima', 'ACTIVE'), ('5493002XN8FRTYQLR778', 'YPF ENERGIA ELECTRICA S.A.', 'ACTIVE'), ('529900T17GG7EIKSKX91', 'TOTAL AUSTRAL SA Wintershall DEA Arg SA PAn American Energy LLC YPF SA Aguada Pichana', 'ACTIVE')]
+SEC: GRUPO FINANCIERO GALICIA SA              | GLEIF 'GRUPO FINANCIERO GALICIA': total 1 -> [('5299008H3AXIXV5G3C23', 'Grupo Financiero Galicia S.A.', 'ACTIVE')]
+SEC: Pampa Energy Inc.                        | GLEIF 'PAMPA ENERGIA': total 1 -> [('254900QNIK0CVURGML24', 'PAMPA ENERGIA S A', 'ACTIVE')]
+SEC: Macro Bank Inc.                          | GLEIF 'BANCO MACRO': total 2 -> [('579100KKDKKIFEBKK058', 'BANCO MACRO SOCIEDAD ANONIMA', 'NULL'), ('579100KKDKKIFEBKK040', 'BANCO MACRO SOCIEDAD ANONIMA', 'ACTIVE')]
+SEC: GAS TRANSPORTER OF THE SOUTH INC         | GLEIF 'TRANSPORTADORA DE GAS DEL SUR': total 1 -> [('5299002TRC7IFQYSW596', 'Transportadora de Gas del Sur S.A.', 'ACTIVE')]
+SEC: Pampa Energy Inc. (búsqueda literal)     | GLEIF 'Pampa Energy': total 0 -> []
+
+Lectura: la SEC no trae LEI (lei=null en los 3) y usa nombres en inglés ("Pampa Energy Inc.",
+"Macro Bank Inc.", "GAS TRANSPORTER OF THE SOUTH INC"). La búsqueda literal falla (0 resultados).
+GLEIF además tiene duplicados (Banco Macro: 2 LEI, uno con estado NULL) y homónimos parciales
+(YPF: la empresa, una filial y un consorcio). Wikidata (P1278 LEI + P5531 CIK) es el puente.
