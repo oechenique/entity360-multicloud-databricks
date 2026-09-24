@@ -30,7 +30,12 @@ Estado: **parte A respondida**. Snowflake (Camino A, catalog integration `ICEBER
 | 6b | Genie space sobre Delta **e Iceberg**, pregunta en español por API | ✅ | `evidencia/a6-consumo.txt`: SQL correcto, 10 LEI, top 3 | Genie funciona sobre Gold en Iceberg: no hace falta duplicar en Delta para consumo. |
 | 6c | Límites de Free Edition | 📄 doc | `evidencia/a6-consumo.txt` | 1 warehouse 2X-Small, máx. 5 tareas concurrentes, cuota diaria de serverless con corte. Dashboards y Genie sin límites publicados. |
 | 7 | SQL Server Developer en Docker con CDC: inserts, updates y deletes leídos con `cdc.fn_cdc_get_all_changes_*` | ✅ | `evidencia/b7-sqlserver-cdc.txt`: SQL Server 2022 CU27, Agent Running, 16 cambios (11 insert, 2+2 update antes/después, 1 delete) con LSN | El extractor de la fase 2 lee por rango de LSN (`fn_cdc_get_min_lsn` / checkpoint → `fn_cdc_get_max_lsn`) y guarda el último LSN procesado. El capture job es asíncrono (~5 s): el extractor tiene que tolerar ese retraso. Net changes disponible (`supports_net_changes=1`). |
-| 8–11 | Parte B (GLEIF, SEC, GDELT, OpenSanctions/Wikidata) | ⏳ | | GDELT (10) pendiente: no existe proyecto GCP. |
+| 8a | GLEIF golden copy completo (LEI2 + RR), tamaño y registros | ✅ | `evidencia/b8-gleif-golden-copy.txt` (publish 2026-09-24 16:00) | LEI2: 482 MB zip / 4,77 GB CSV / 3.441.120 registros / 338 columnas. RR: 23 MB / 488.850. Delta LastDay: 14.0k LEI2 (2 MB) y 2,6k RR. Licencia CC0. |
+| 8b | Universo AR en GLEIF | ✅ | ídem | 965 entidades AR (964 por domicilio legal, 955 por jurisdicción). EntityStatus: 881 ACTIVE, 14 INACTIVE, 70 NULL. RegistrationStatus: 350 ISSUED, **531 LAPSED**, 69 ANNULLED, 14 RETIRED, 1 DUPLICATE. 336 relaciones RR con punta AR (154 consolidación directa, 159 última). Universo chico: entra entero en SQL Server y en Free Edition. |
+| 8c | Tiempo de procesar el archivo entero en streaming (PC local) | ✅ | ídem | Descarga 38 s. Pasada completa: **csv stdlib 66,9 s (51k filas/s)** vs **pyarrow 12,7 s (272k filas/s, 3 columnas)**, mismos conteos. RR: 2 s. La carga inicial de la fase 2 se puede hacer local filtrando en streaming con pyarrow (sin descomprimir a disco) y aplicar después el delta diario. |
+| 9 | SEC EDGAR: submissions de 3 empresas AR, con User-Agent y ≤5 req/s | ✅ | `evidencia/b9-sec-edgar.txt` | 16/17 tickers AR con CIK. JSON de 128–164 KB por empresa, <0,5 s. **Sin LEI** (`lei=null` en los 3) y nombres en inglés ("Pampa Energy Inc.", "Macro Bank Inc."): la búsqueda literal en GLEIF da 0. GLEIF tiene duplicados (Banco Macro: 2 LEI) y homónimos parciales (YPF). El puente es Wikidata (punto 11). |
+| 10 | GDELT | ⏳ | | Pendiente: no existe proyecto GCP. |
+| 11 | OpenSanctions y Wikidata | ⏳ | | |
 
 ## Decisiones
 | ID | Decisión | Motivo |

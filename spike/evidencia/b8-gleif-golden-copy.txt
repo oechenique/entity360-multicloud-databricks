@@ -1,0 +1,64 @@
+=== 1. metadata del publish ===
+publish_date: 2026-09-24 16:00:00
+lei2: full 481.86 MB / 3,441,120 registros | delta LastDay 1.97 MB / 13,978 registros
+rr: full 23.26 MB / 488,850 registros | delta LastDay 113.63 KB / 2,605 registros
+
+=== 2. descarga ===
+  bajado 20260924-1600-gleif-goldencopy-lei2-golden-copy.csv.zip: 481.9 MB en 38.4 s
+  bajado 20260924-1600-gleif-goldencopy-rr-golden-copy.csv.zip: 23.3 MB en 4.4 s
+
+=== 3. LEI2 con csv (stdlib), archivo entero ===
+  miembro 20260924-1600-gleif-goldencopy-lei2-golden-copy.csv: 481.9 MB comprimido, 4,766.8 MB descomprimido
+  columnas: 338
+{
+  "lector": "csv (stdlib)",
+  "total": 3441120,
+  "ar_domicilio_legal": 964,
+  "ar_jurisdiccion": 955,
+  "ar_union": 965,
+  "ar_entity_status": {
+    "ACTIVE": 881,
+    "INACTIVE": 14,
+    "NULL": 70
+  },
+  "ar_registration_status": {
+    "LAPSED": 531,
+    "ISSUED": 350,
+    "RETIRED": 14,
+    "ANNULLED": 69,
+    "DUPLICATE": 1
+  },
+  "segundos": 66.9,
+  "filas_por_segundo": 51431
+}
+
+=== 4. LEI2 con pyarrow.csv, archivo entero ===
+  miembro 20260924-1600-gleif-goldencopy-lei2-golden-copy.csv: 481.9 MB comprimido, 4,766.8 MB descomprimido
+{
+  "lector": "pyarrow.csv (streaming, 3 columnas)",
+  "total": 3441120,
+  "ar_domicilio_legal": 964,
+  "ar_jurisdiccion": 955,
+  "ar_union": 965,
+  "segundos": 12.7,
+  "filas_por_segundo": 271842
+}
+conteos stdlib vs pyarrow coinciden: True
+
+=== 5. RR: relaciones con alguna punta AR ===
+  miembro 20260924-1600-gleif-goldencopy-rr-golden-copy.csv: 23.3 MB comprimido, 232.1 MB descomprimido
+{
+  "total": 488850,
+  "con_punta_ar": 336,
+  "por_tipo": {
+    "IS_DIRECTLY_CONSOLIDATED_BY": 154,
+    "IS_ULTIMATELY_CONSOLIDATED_BY": 159,
+    "IS_FUND-MANAGED_BY": 14,
+    "IS_INTERNATIONAL_BRANCH_OF": 9
+  },
+  "segundos": 2.0
+}
+
+=== resumen JSON ===
+{"publish_date": "2026-09-24 16:00:00", "licencia": "CC0 1.0", "archivos": {"lei2": {"full": {"size": "481.86 MB", "records": 3441120}, "delta_last_day": {"size": "1.97 MB", "records": 13978}, "descarga_segundos": 38.4}, "rr": {"full": {"size": "23.26 MB", "records": 488850}, "delta_last_day": {"size": "113.63 KB", "records": 2605}, "descarga_segundos": 4.4}}, "lei2_stdlib": {"lector": "csv (stdlib)", "total": 3441120, "ar_domicilio_legal": 964, "ar_jurisdiccion": 955, "ar_union": 965, "ar_entity_status": {"ACTIVE": 881, "INACTIVE": 14, "NULL": 70}, "ar_registration_status": {"LAPSED": 531, "ISSUED": 350, "RETIRED": 14, "ANNULLED": 69, "DUPLICATE": 1}, "segundos": 66.9, "filas_por_segundo": 51431}, "lei2_pyarrow": {"lector": "pyarrow.csv (streaming, 3 columnas)", "total": 3441120, "ar_domicilio_legal": 964, "ar_jurisdiccion": 955, "ar_union": 965, "segundos": 12.7, "filas_por_segundo": 271842}, "rr": {"total": 488850, "con_punta_ar": 336, "por_tipo": {"IS_DIRECTLY_CONSOLIDATED_BY": 154, "IS_ULTIMATELY_CONSOLIDATED_BY": 159, "IS_FUND-MANAGED_BY": 14, "IS_INTERNATIONAL_BRANCH_OF": 9}, "segundos": 2.0}, "conteos_coinciden": true}
+exit=0
