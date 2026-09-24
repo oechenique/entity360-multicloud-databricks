@@ -12,7 +12,7 @@
   "privilege_model_version": "1.0",
   "region": "us-east-2",
   "updated_at": 1790289029655,
-  "updated_by": "<MAIL>"
+  "updated_by": "<DATABRICKS_USER_EMAIL>"
 }
 --- estado después:
 external_access_enabled: True

@@ -21,13 +21,13 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 | Grant `EXTERNAL_USE_SCHEMA` en `entity360_ext.spike` | Terraform | creado |
 | Tablas `entity360_ext.spike.gleif_delta` y `gleif_iceberg` | SQL CTAS (+ 1 append externo con PyIceberg) | creadas; se borran con el catálogo |
 | **Flag del metastore `external_access_enabled` = true** | CLI (`databricks metastores update`) | **activo; afecta a todo el metastore** |
-| Carpeta `/Users/<MAIL>/entity360-spike/` con notebook `a5_salida_internet` | CLI (`workspace import`) | creada |
+| Carpeta `/Users/<DATABRICKS_USER_EMAIL>/entity360-spike/` con notebook `a5_salida_internet` | CLI (`workspace import`) | creada |
 | 2 corridas únicas (`jobs submit`, serverless) | CLI | terminadas; no queda job ni schedule |
 | Dashboard AI/BI `entity360 spike – GLEIF` (publicado) | API Lakeview | creado |
 | Genie space `entity360 spike` | API Genie | creado |
 
 ## Paso manual (A.1)
-1. `databricks auth login --host https://<WORKSPACE_HOST> --profile entity360-free`
+1. `databricks auth login --host <WORKSPACE_URL> --profile entity360-free`
 2. Catálogo por SQL + `terraform import`: ver `docs/manual-steps.md`.
 3. Secreto OAuth del SP (fuera de Terraform para que no quede en el state):
    `databricks service-principal-secrets-proxy create <sp_id> --lifetime 3600s -p entity360-free`

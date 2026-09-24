@@ -2,7 +2,7 @@
 metastore_id: <METASTORE_ID>
 owner: System user   region: us-east-2   cloud: aws   privilege_model: 1.0
 
-Privilegios efectivos de <MAIL> sobre el metastore:
+Privilegios efectivos de <DATABRICKS_USER_EMAIL> sobre el metastore:
   account users -> USE_MARKETPLACE_ASSETS   (nada más)
   => sin CREATE_STORAGE_CREDENTIAL ni CREATE_EXTERNAL_LOCATION.
   El owner es "System user": nadie en el workspace puede otorgarlos.

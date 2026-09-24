@@ -2,6 +2,8 @@
 *.tfstate*
 .terraform/
 *.tfplan
+*.tfvars
+!*.tfvars.example
 crash.log
 
 # Secretos y credenciales

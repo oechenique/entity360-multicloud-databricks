@@ -6,7 +6,7 @@ Lo que Terraform no puede crear (o no conviene) se documenta acá, con el motivo
 
 ### 1. Perfil de la CLI (OAuth U2M)
 ```powershell
-databricks auth login --host https://<WORKSPACE_HOST> --profile entity360-free
+databricks auth login --host <WORKSPACE_URL> --profile entity360-free
 ```
 Motivo: la auth interactiva no se automatiza; Terraform usa ese perfil.
 
