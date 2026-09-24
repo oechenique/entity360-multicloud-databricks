@@ -38,6 +38,16 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 Orden: primero Databricks (suelta la external location), después AWS.
 Si el Camino A no sigue en la fase 1, revertir también el flag del metastore:
 `databricks metastores update <METASTORE_ID> --external-access-enabled=false -p entity360-free`
+
+Fuera de Terraform (borrar antes o después, con confirmación):
+- Carpeta del workspace con notebook y dashboard:
+  `databricks workspace delete "/Users/<DATABRICKS_USER_EMAIL>/entity360-spike" --recursive -p entity360-free`
+- Genie space (verificar si quedó dentro de la carpeta; si no):
+  `databricks api delete /api/2.0/genie/spaces/<SPACE_ID> -p entity360-free`
+- SQL Server local (contenedor y volumen con la base):
+  `docker compose -f spike\legacy-sqlserver\docker-compose.yml down -v`
+
+Terraform:
 ```powershell
 cd spike\terraform
 terraform plan -destroy    # revisar

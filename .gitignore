@@ -9,6 +9,7 @@ crash.log
 # Secretos y credenciales
 .env
 .env.*
+!.env.example
 profiles.yml
 *.pem
 
