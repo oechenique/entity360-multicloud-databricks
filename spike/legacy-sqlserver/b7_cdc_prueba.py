@@ -8,8 +8,8 @@ Pasos (cada uno se imprime para la evidencia):
   5. Delete de 1 registro y re-insert con su valor real.
   6. Lectura con cdc.fn_cdc_get_all_changes_dbo_entidad (espera a que el capture job procese).
 
-sqlcmd corre dentro del contenedor con la contraseña de su propio entorno: la contraseña no
-pasa por la línea de comandos ni se imprime.
+sqlcmd corre dentro del contenedor y toma la credencial de SQLCMDPASSWORD (entorno del
+contenedor, cargado desde .env): no pasa por la línea de comandos ni se imprime.
 
 Uso:
     python spike/legacy-sqlserver/b7_cdc_prueba.py                 # pasos 0-6
@@ -31,8 +31,7 @@ GLEIF_URL = "https://api.gleif.org/api/v1/lei-records"
 def sql(texto: str, base: str = "master") -> str:
     cmd = [
         "docker", "exec", "-i", CONTENEDOR, "bash", "-c",
-        f'/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" '
-        f"-d {base} -b -W -i /dev/stdin",
+        f"/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -d {base} -b -W -i /dev/stdin",
     ]
     r = subprocess.run(cmd, input=texto, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
