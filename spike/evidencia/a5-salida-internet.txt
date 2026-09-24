@@ -26,4 +26,5 @@ Con verificación de LinkedIn: "you will get access to: Limited serverless GPU c
 Outbound internet access."
 Medido: salida abierta, incluso a hosts no populares (example.com, httpbin.org, ifconfig.me).
 => O la verificación con LinkedIn ya está activa en esta cuenta, o la restricción no se aplica.
-   Pendiente: confirmarlo en la UI (lo tiene que mirar Gastón).
+   Confirmado por Gastón (2026-09-24): la cuenta NO está verificada (la UI muestra "Verify identity").
+   La restricción documentada no se está aplicando.

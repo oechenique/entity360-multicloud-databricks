@@ -1,12 +1,12 @@
 # Informe del spike (Fase 0)
 
-Estado: **parte A respondida** (pendiente: confirmar la verificación con LinkedIn y probar Snowflake en el Camino A). Parte B sin empezar.
+Estado: **parte A respondida**. Snowflake (Camino A, catalog integration `ICEBERG_REST` + `VENDED_CREDENTIALS`) se valida al inicio de la fase 9, no en el spike. Parte B en curso.
 
 ## Riesgos
 | Riesgo | Evidencia | Mitigación |
 |---|---|---|
 | La doc de Free Edition lista "custom workspace storage locations" como no soportado, pero 4b–4e funcionan. Databricks podría cerrarlo. | 4b–4e vs. free-edition-limitations | Todo por Terraform e idempotente; si se cierra, se cae al Camino B sin rediseñar productores ni medallion. |
-| La salida a internet medida contradice la doc (restringida sin LinkedIn). | 5 | Mantener el push (D9): los productores no dependen de la salida de Databricks. |
+| La salida a internet está abierta **sin** verificación de LinkedIn, contra lo que dice la doc. Databricks puede aplicar la restricción en cualquier momento. | 5 (cuenta sin verificar: botón "Verify identity" en la UI) | D9: push desde los productores; nada del pipeline depende de la salida de Databricks. |
 | Cuota diaria de serverless con corte del workspace. | 6c | Universo acotado, jobs chicos, sin schedules agresivos. |
 
 ## Resultados
@@ -25,7 +25,7 @@ Estado: **parte A respondida** (pendiente: confirmar la verificación con Linked
 | 4c | Credential vending a motores externos sobre S3 propio (flag apagado) | ❌ | `evidencia/a4-iceberg-rest-s3-propio.txt`, `evidencia/a4-vending-diagnostico.txt` | Causa: `external_access_enabled=False` en el metastore. |
 | 4d | Habilitar `external_access_enabled` desde el workspace | ✅ (inesperado) | `evidencia/a4-flag-external-access.txt` | El usuario de Free Edition puede cambiarlo aunque el owner sea "System user". Afecta a todo el metastore; cada schema igual necesita `EXTERNAL_USE_SCHEMA`. |
 | 4e | Credential vending + lectura y escritura con PyIceberg sobre S3 propio | ✅ | `evidencia/a4-iceberg-rest-s3-propio-flag-on.txt`: credenciales S3 temporales emitidas, scan de 10 filas, append externo, Databricks ve 11 filas / 10 LEI | **Camino A viable** para Snowflake (catalog integration `ICEBERG_REST` + `VENDED_CREDENTIALS`), pendiente de probar del lado Snowflake. |
-| 5 | Salida a internet desde serverless | ✅ abierta | `evidencia/a5-salida-internet.txt`: 13/13 hosts (GLEIF, SEC, OpenSanctions, Wikidata, GDELT, PyPI, GitHub, S3 y hosts no populares); IP de salida 3.145.247.171 | La doc dice que la salida está restringida salvo verificación con LinkedIn. Hay que confirmar en la UI si la cuenta está verificada. El modelo push (regla 01) ya no es obligatorio por red, pero se mantiene (D9). |
+| 5 | Salida a internet desde serverless | ✅ abierta **sin** verificación de LinkedIn | `evidencia/a5-salida-internet.txt`: 13/13 hosts (GLEIF, SEC, OpenSanctions, Wikidata, GDELT, PyPI, GitHub, S3 y hosts no populares); IP de salida 3.145.247.171 | La doc dice que la salida está restringida salvo verificación con LinkedIn; la cuenta **no** está verificada (la UI muestra "Verify identity", confirmado por Gastón el 2026-09-24). El modelo push (regla 01) ya no es obligatorio por red, pero se mantiene (D9). |
 | 6a | Dashboard AI/BI sobre tablas del catálogo (creado y publicado por API) | ✅ | `evidencia/a6-consumo.txt` | Se puede versionar como `.lvdash.json` y desplegar por API/Terraform. |
 | 6b | Genie space sobre Delta **e Iceberg**, pregunta en español por API | ✅ | `evidencia/a6-consumo.txt`: SQL correcto, 10 LEI, top 3 | Genie funciona sobre Gold en Iceberg: no hace falta duplicar en Delta para consumo. |
 | 6c | Límites de Free Edition | 📄 doc | `evidencia/a6-consumo.txt` | 1 warehouse 2X-Small, máx. 5 tareas concurrentes, cuota diaria de serverless con corte. Dashboards y Genie sin límites publicados. |
