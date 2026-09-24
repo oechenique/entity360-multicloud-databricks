@@ -1,0 +1,17 @@
+# Spike A.1 — creación del catálogo en Free Edition (2026-09-24)
+
+## Intento 1: Terraform (databricks_catalog, API REST de Unity Catalog)
+Error: cannot create catalog: Metastore storage root URL does not exist. Default Storage is
+enabled in your account. You can use the UI to create a new catalog using Default Storage,
+or please provide a storage location for the catalog (for example 'CREATE CATALOG myCatalog
+MANAGED LOCATION '<location-path>').
+
+## Intento 2: SQL en Serverless Starter Warehouse (Statement Execution API)
+CREATE CATALOG IF NOT EXISTS entity360 COMMENT '...'
+statement_id 01f1b863-14f5-1624-aab7-045fd3594450 -> SUCCEEDED
+storage_root asignado: s3://dbstorage-prod-ibol9/uc/171da3f6-.../9997da73-... (default storage)
+
+## Resolución
+terraform import databricks_catalog.entity360 entity360
++ lifecycle { ignore_changes = [storage_root] } (sin eso, el plan fuerza replace y falla).
+Schema y volume sí se crean por Terraform sin problema.
