@@ -25,6 +25,8 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 | 2 corridas únicas (`jobs submit`, serverless) | CLI | terminadas; no queda job ni schedule |
 | Dashboard AI/BI `entity360 spike – GLEIF` (publicado) | API Lakeview | creado |
 | Genie space `entity360 spike` | API Genie | creado |
+| Contenedor `entity360-spike-mssql` (SQL Server 2022 Developer, `127.0.0.1:1433`) + volumen `entity360-spike-mssql` | `docker compose` (`spike/legacy-sqlserver/`) | corriendo; contraseña en `.env` (fuera de git) |
+| Base `entity360_legacy_spike` con CDC en `dbo.entidad` | SQL (`b7_cdc_prueba.py`) | creada; vive en el volumen |
 
 ## Paso manual (A.1)
 1. `databricks auth login --host <WORKSPACE_URL> --profile entity360-free`

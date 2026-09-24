@@ -1,0 +1,54 @@
+# Spike B.7 — SQL Server legacy con CDC (2026-09-24, ~22:49 UTC)
+Contenedor: mcr.microsoft.com/mssql/server:2022-latest -> SQL Server 2022 RTM-CU27 16.0.4295.3, Developer Edition (64-bit) on Linux
+SQL Server Agent: Running (MSSQL_AGENT_ENABLED=true)
+
+Pasos 0-5 (python spike/legacy-sqlserver/b7_cdc_prueba.py):
+  1. base entity360_legacy_spike + dbo.entidad (lei PK, nombre_legal, pais, estado, actualizado_en)
+  2. sp_cdc_enable_db + sp_cdc_enable_table (supports_net_changes=1): is_cdc_enabled=1,
+     capture_instance dbo_entidad, jobs cdc.entity360_legacy_spike_capture / _cleanup iniciados.
+     Aviso de SQL Server: "Update mask evaluation will be disabled in net_changes_function because
+     the CLR configuration option is disabled." (no afecta get_all_changes)
+  3. insert de 10 entidades reales GLEIF AR -> 10 filas
+  4. update técnico de actualizado_en en 254900NE2B37GOMQIN25 y 213800M5Z9EKZZEWUO31 -> 2 filas
+  5. delete + re-insert de 98450098976AACE49849 -> 10 filas
+
+Nota: en la primera corrida el chequeo automático dio "NO COINCIDE" por un bug del verificador
+(buscaba el separador " | " y sqlcmd separó con espacios). Los conteos eran correctos. Se corrigió
+el parser y se re-verificó en modo --solo-lectura (sin repetir cambios):
+
+
+=== 6. cambios capturados (cdc.fn_cdc_get_all_changes_dbo_entidad) ===
+operacion cambios
+--------- -------
+delete 1
+insert 11
+update (antes) 2
+update (después) 2
+
+(4 rows affected)
+
+start_lsn operacion lei nombre_legal actualizado_en
+--------- --------- --- ------------ --------------
+0x0000002B000007100025 insert 254900NE2B37GOMQIN25 Diorsem SA 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 213800M5Z9EKZZEWUO31 MICHELIN ARGENTINA SA IC Y F 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 98450098976AACE49849 CHEVAL DES ANDES SA S. A. 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 254900K0H3MGKMRPYQ78 FERTIL PAMPA S.A.U. 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 894500H473UOSS403C17 J. J. HINRICHSEN S.A. 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 984500FB4EC607869778 TETRA PAK SRL 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 254900ADVIE19U4Y2R45 INGENIOS DE TUCUMAN S.A. 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 984500A87C7B2E85D768 SAN MATIAS PIPELINE S. A. 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 9845004CFFA9576DC662 TOYOTA ARGENTINA S A 2026-09-24 22:49:41.080
+0x0000002B000007100025 insert 984500D899C841ADC669 PEPSICO DE ARGENTINA SOCIEDAD DE RESPONS 2026-09-24 22:49:41.080
+0x0000002B000007280004 update (antes) 213800M5Z9EKZZEWUO31 MICHELIN ARGENTINA SA IC Y F 2026-09-24 22:49:41.080
+0x0000002B000007280004 update (después) 213800M5Z9EKZZEWUO31 MICHELIN ARGENTINA SA IC Y F 2026-09-24 22:49:41.182
+0x0000002B000007280004 update (antes) 254900NE2B37GOMQIN25 Diorsem SA 2026-09-24 22:49:41.080
+0x0000002B000007280004 update (después) 254900NE2B37GOMQIN25 Diorsem SA 2026-09-24 22:49:41.182
+0x0000002B000007300004 delete 98450098976AACE49849 CHEVAL DES ANDES SA S. A. 2026-09-24 22:49:41.080
+0x0000002B000007380004 insert 98450098976AACE49849 CHEVAL DES ANDES SA S. A. 2026-09-24 22:49:41.285
+
+(16 rows affected)
+
+esperado {'insert': 11, 'update (antes)': 2, 'update (después)': 2, 'delete': 1}
+obtenido {'delete': 1, 'insert': 11, 'update (antes)': 2, 'update (después)': 2}
+=> OK
+exit=0
