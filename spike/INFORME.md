@@ -1,6 +1,6 @@
 # Informe del spike (Fase 0)
 
-Estado: **en curso** (parte A).
+Estado: **en curso** (parte A: 1, 3 y 4 respondidas; faltan 5 y 6).
 
 ## Resultados
 | # | Pregunta | Resultado | Evidencia | Impacto en el diseño |
@@ -15,7 +15,9 @@ Estado: **en curso** (parte A).
 | 3d | Lectura y escritura de datos con PyIceberg | ❌ | `evidencia/a3-iceberg-rest.txt` pasos 4–5: `HeadObject` 400 en `dbstorage-prod-…` | Consecuencia de 3c. Iceberg externo depende del punto 4 (S3 propio). |
 | 4a | ¿Free Edition permite crear una storage credential propia? | ✅ (inesperado) | `evidencia/a4-storage-credential.txt`; `evidencia/a4-privilegios-metastore.txt` (el listado de grants no lo mostraba) | Camino A sigue abierto. Falta probar con S3 real. |
 | 4b | External location + catálogo con `MANAGED LOCATION` en S3 propio, lectura/escritura desde serverless | ✅ | `evidencia/a4-external-location-apply.txt`, `evidencia/a4-serverless-s3-propio.txt` (Delta e Iceberg, 10 filas c/u, 17 objetos en S3) | Se puede salir del default storage. Con S3 propio el catálogo sí se crea por Terraform (no hace falta el paso manual de D1). |
-| 4c | Credential vending a motores externos sobre S3 propio | ❌ | `evidencia/a4-iceberg-rest-s3-propio.txt` (0 credenciales; ACCESS_DENIED con credenciales locales ocultas), `evidencia/a4-vending-diagnostico.txt` | Causa: `external_access_enabled=False` en el metastore (owner "System user"). El bloqueo no es el storage sino el flag. |
+| 4c | Credential vending a motores externos sobre S3 propio (flag apagado) | ❌ | `evidencia/a4-iceberg-rest-s3-propio.txt`, `evidencia/a4-vending-diagnostico.txt` | Causa: `external_access_enabled=False` en el metastore. |
+| 4d | Habilitar `external_access_enabled` desde el workspace | ✅ (inesperado) | `evidencia/a4-flag-external-access.txt` | El usuario de Free Edition puede cambiarlo aunque el owner sea "System user". Afecta a todo el metastore; cada schema igual necesita `EXTERNAL_USE_SCHEMA`. |
+| 4e | Credential vending + lectura y escritura con PyIceberg sobre S3 propio | ✅ | `evidencia/a4-iceberg-rest-s3-propio-flag-on.txt`: credenciales S3 temporales emitidas, scan de 10 filas, append externo, Databricks ve 11 filas / 10 LEI | **Camino A viable** para Snowflake (catalog integration `ICEBERG_REST` + `VENDED_CREDENTIALS`), pendiente de probar del lado Snowflake. |
 | 5 | Salida a internet de Free Edition | ⏳ | | |
 | 6 | Dashboard AI/BI y Genie | ⏳ | | |
 | 7–11 | Parte B | ⏳ | | GDELT (10) pendiente: no existe proyecto GCP. |
@@ -29,3 +31,5 @@ Estado: **en curso** (parte A).
 | D4 | Productores autenticados con service principal + OAuth M2M; secreto en el secret manager de cada nube. PAT solo para pruebas manuales. | Sin claves estáticas de usuario (principio 4); el token M2M dura 1 h. |
 | D5 | El SP productor lleva `workspace_access` y solo `USE_CATALOG`/`USE_SCHEMA`/`READ_VOLUME`/`WRITE_VOLUME` sobre landing. | Mínimo privilegio; el entitlement es obligatorio para la Files API. |
 | D6 | Idempotencia en tres capas: (1) cada productor compara el `sha256` del lote con el del último manifest de su fuente y no empuja si no cambió; (2) Bronze descarta lotes con `sha256` ya ingerido; (3) Silver deduplica por clave natural (LEI, CIK, etc.). | Hallazgo 1c: dos lotes idénticos en landing duplican filas. Cortar en el productor ahorra cuota y ruido; Bronze y Silver cubren reenvíos y solapamientos parciales. |
+| D7 | Camino A para Snowflake: Gold en un catálogo con `MANAGED LOCATION` en S3 propio + `external_access_enabled` + `EXTERNAL_USE_SCHEMA` solo en los schemas que se exponen. | 4b–4e: es la única combinación que da credential vending en Free Edition. |
+| D8 | D1 se revisa: si los catálogos viven en S3 propio, se crean por Terraform; el paso manual queda solo para catálogos en default storage. | 4b: `databricks_catalog` con `storage_root` funciona. |
