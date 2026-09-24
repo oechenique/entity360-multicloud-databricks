@@ -29,7 +29,8 @@ Estado: **parte A respondida**. Snowflake (Camino A, catalog integration `ICEBER
 | 6a | Dashboard AI/BI sobre tablas del catálogo (creado y publicado por API) | ✅ | `evidencia/a6-consumo.txt` | Se puede versionar como `.lvdash.json` y desplegar por API/Terraform. |
 | 6b | Genie space sobre Delta **e Iceberg**, pregunta en español por API | ✅ | `evidencia/a6-consumo.txt`: SQL correcto, 10 LEI, top 3 | Genie funciona sobre Gold en Iceberg: no hace falta duplicar en Delta para consumo. |
 | 6c | Límites de Free Edition | 📄 doc | `evidencia/a6-consumo.txt` | 1 warehouse 2X-Small, máx. 5 tareas concurrentes, cuota diaria de serverless con corte. Dashboards y Genie sin límites publicados. |
-| 7–11 | Parte B | ⏳ | | GDELT (10) pendiente: no existe proyecto GCP. |
+| 7 | SQL Server Developer en Docker con CDC: inserts, updates y deletes leídos con `cdc.fn_cdc_get_all_changes_*` | ✅ | `evidencia/b7-sqlserver-cdc.txt`: SQL Server 2022 CU27, Agent Running, 16 cambios (11 insert, 2+2 update antes/después, 1 delete) con LSN | El extractor de la fase 2 lee por rango de LSN (`fn_cdc_get_min_lsn` / checkpoint → `fn_cdc_get_max_lsn`) y guarda el último LSN procesado. El capture job es asíncrono (~5 s): el extractor tiene que tolerar ese retraso. Net changes disponible (`supports_net_changes=1`). |
+| 8–11 | Parte B (GLEIF, SEC, GDELT, OpenSanctions/Wikidata) | ⏳ | | GDELT (10) pendiente: no existe proyecto GCP. |
 
 ## Decisiones
 | ID | Decisión | Motivo |
