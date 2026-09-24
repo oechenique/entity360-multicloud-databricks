@@ -6,6 +6,8 @@ services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: entity360-spike-mssql
+    # SQL Server necesita más de los 10 s por defecto para cerrar limpio (si no, SIGKILL / 137).
+    stop_grace_period: 30s
     # Credenciales solo en .env (fuera de git): MSSQL_SA_PASSWORD para el motor y
     # SQLCMDPASSWORD (mismo valor) para que sqlcmd no necesite -P.
     env_file: .env

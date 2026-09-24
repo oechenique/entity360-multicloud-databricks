@@ -2,6 +2,38 @@
 
 Estado: **parte A respondida**. Snowflake (Camino A, catalog integration `ICEBERG_REST` + `VENDED_CREDENTIALS`) se valida al inicio de la fase 9, no en el spike. Parte B en curso.
 
+## Estado al cierre de hoy (2026-09-24)
+
+**Hecho**
+- Parte A completa: 1 (push con PAT y con SP + OAuth M2M), 3 (Iceberg gestionado + REST), 4 (S3
+  propio, flag de acceso externo y credential vending: Camino A viable), 5 (salida a internet)
+  y 6 (dashboard AI/BI y Genie).
+- Parte B: 7 (SQL Server Developer con CDC), 8 (GLEIF golden copy completo, universo AR y
+  tiempos) y 9 (SEC EDGAR).
+- Decisiones D1–D9 registradas abajo. Datos identificatorios reemplazados por placeholders.
+  Falso positivo de GitGuardian resuelto (sin contraseñas en el historial).
+
+**Pendiente**
+- B.10 GDELT: espera el proyecto de GCP (con alertas de presupuesto antes de crear nada).
+- B.11 OpenSanctions y Wikidata: próxima sesión. Wikidata es el puente LEI↔CIK que mostró
+  faltar el punto 9.
+- Cerrar el informe (universo recomendado con cantidades y camino para Snowflake) y destruir
+  los recursos del spike, con confirmación, antes de la fase 1.
+- Decidir si se reescribe el historial (mail en el autor de los primeros commits, datos
+  identificatorios en commits viejos) antes de hacer público el repo.
+
+**Recursos activos** (detalle y destroy en `README.md`)
+| Dónde | Recurso | Costo / nota |
+|---|---|---|
+| AWS us-east-2 | Bucket `entity360-spike-uc-<AWS_ACCOUNT_ID>` (~44 KB) y rol IAM `entity360-spike-uc` | centavos; alertas de 50/100 USD activas |
+| Databricks | Catálogos `entity360` y `entity360_ext` (schemas, volume, tablas), SP `entity360-spike-producer`, storage credential + external location, grants | Free Edition |
+| Databricks | **Flag del metastore `external_access_enabled = true`** (afecta a todo el metastore) | revertir si el Camino A no sigue |
+| Databricks | Carpeta `/Users/<DATABRICKS_USER_EMAIL>/entity360-spike/` (notebook, dashboard publicado), Genie space | fuera de Terraform |
+| Local | Contenedor `entity360-spike-mssql` **parado** + volumen `entity360-spike-mssql` con la base CDC | 0 |
+| Local | `spike/data/gleif` (506 MB, ignorado por git), `spike/.venv` | 0 |
+
+Sin jobs ni schedules activos. El PAT y los secretos OAuth del SP ya vencieron (1 h).
+
 ## Riesgos
 | Riesgo | Evidencia | Mitigación |
 |---|---|---|
