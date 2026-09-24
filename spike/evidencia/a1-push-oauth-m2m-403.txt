@@ -1,0 +1,10 @@
+# Spike A.1 (b) — primer intento con OAuth M2M (2026-09-24 ~22:05 UTC)
+auth: oauth-m2m    <- el token M2M se obtuvo bien de /oidc/v1/token
+PUT /Volumes/entity360/landing/raw/gleif/ingest_date=2026-09-24/gleif_20260924T220500Z.jsonl
+-> 403 Client Error: Forbidden
+
+Estado del service principal en ese momento:
+- grants efectivos en entity360.landing.raw: READ_VOLUME, WRITE_VOLUME (+ USE_CATALOG, USE_SCHEMA)
+- entitlements: ninguno (sin workspace-access), grupos: ninguno
+
+Cambio: workspace_access = true en databricks_service_principal (Terraform).
