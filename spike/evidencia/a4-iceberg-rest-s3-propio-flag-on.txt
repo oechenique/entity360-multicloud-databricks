@@ -1,0 +1,54 @@
+﻿credenciales locales de AWS: ocultas (OK)
+
+=== 1. GET /v1/config ===
+OK: HTTP 200 {"defaults":{"snapshot-loading-mode":"refs","rest-page-size":"1000","s3.delete-enabled":"false"},"overrides":{"prefix":"catalogs/entity360_ext"},"endpoints":["GET /v1/{prefix}/namespaces","GET /v1/{prefix}/namespaces/{namespace}","POST /v1/{prefix}/namespaces","POST /v1/{prefix}/namespaces/{namespace}/properties","DELETE /v1/{prefix}/namespaces/{namespace}","HEAD /v1/{prefix}/namespaces/{namespace
+
+=== 2. loadTable crudo (vended-credentials) ===
+OK: HTTP 200; location=s3://entity360-spike-uc-887793660259/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg; claves de config=['client.region', 's3.access-key-id', 's3.secret-access-key', 's3.session-token', 's3.session-token-expires-at-ms']; storage-credentials=0
+
+=== 3. PyIceberg load_table (metadata) ===
+OK: gleif_iceberg(
+  1: lei: optional string,
+  2: nombre_legal: optional string,
+  3: pais: optional string,
+  4: estado: optional string,
+  5: archivo_origen: optional string
+),
+partition by: [],
+sort order: [],
+snapshot: Operation.APPEND: id=4751335567397533901, schema_id=0
+schema:
+table {
+  1: lei: optional string
+  2: nombre_legal: optional string
+  3: pais: optional string
+  4: estado: optional string
+  5: archivo_origen: optional string
+}
+snapshot actual: Operation.APPEND: id=4751335567397533901, schema_id=0
+
+=== 4. PyIceberg scan (lectura de datos) ===
+OK: pyarrow.Table
+lei: string
+nombre_legal: string
+pais: string
+estado: string
+archivo_origen: string
+----
+lei: [["213800M5Z9EKZZEWUO31","254900ADVIE19U4Y2R45","254900K0H3MGKMRPYQ78","254900NE2B37GOMQIN25","894500H473UOSS403C17","9845004CFFA9576DC662","98450098976AACE49849","984500A87C7B2E85D768","984500D899C841ADC669","984500FB4EC607869778"]]
+nombre_legal: [["MICHELIN ARGENTINA SA IC Y F","INGENIOS DE TUCUMAN S.A.","FERTIL PAMPA S.A.U.","Diorsem SA","J. J. HINRICHSEN S.A.","TOYOTA ARGENTINA S A","CHEVAL DES ANDES SA S. A.","SAN MATIAS PIPELINE S. A.","PEPSICO DE ARGENTINA SOCIEDAD DE RESPONSABILIDAD LIMITADA","TETRA PAK SRL"]]
+pais: [["AR","AR","AR","AR","AR","AR","AR","AR","AR","AR"]]
+estado: [["ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE"]]
+archivo_origen: [["gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl","gleif_20260924T215945Z.jsonl"]]
+pyarrow.Table
+lei: string
+nombre_legal: string
+----
+lei: [["213800M5Z9EKZZEWUO31","254900ADVIE19U4Y2R45","254900K0H3MGKMRPYQ78"]]
+nombre_legal: [["MICHELIN ARGENTINA SA IC Y F","INGENIOS DE TUCUMAN S.A.","FERTIL PAMPA S.A.U."]]
+
+=== 5. PyIceberg append (escritura) ===
+OK: append de 1 fila(s)
+[count desde Databricks tras append externo] statement_id: 01f1b867-a062-1064-9732-02c439e6cfe1 state: SUCCEEDED 
+filas | leis
+11 | 10

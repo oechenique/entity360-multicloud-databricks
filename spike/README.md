@@ -19,7 +19,8 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 | Storage credential `entity360-spike-s3` | API (A.4a) + `terraform import` | creada |
 | External location `entity360-spike-s3`, catálogo `entity360_ext` (MANAGED LOCATION S3), schema `spike` | Terraform | creados |
 | Grant `EXTERNAL_USE_SCHEMA` en `entity360_ext.spike` | Terraform | creado |
-| Tablas `entity360_ext.spike.gleif_delta` y `gleif_iceberg` | SQL CTAS | creadas; se borran con el catálogo |
+| Tablas `entity360_ext.spike.gleif_delta` y `gleif_iceberg` | SQL CTAS (+ 1 append externo con PyIceberg) | creadas; se borran con el catálogo |
+| **Flag del metastore `external_access_enabled` = true** | CLI (`databricks metastores update`) | **activo; afecta a todo el metastore** |
 
 ## Paso manual (A.1)
 1. `databricks auth login --host https://dbc-26f27eaf-626f.cloud.databricks.com --profile entity360-free`
@@ -29,6 +30,8 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 
 ## Destroy (con confirmación, antes de la fase 1)
 Orden: primero Databricks (suelta la external location), después AWS.
+Si el Camino A no sigue en la fase 1, revertir también el flag del metastore:
+`databricks metastores update 9997da73-5c41-4468-bbe7-feb64349cca3 --external-access-enabled=false -p entity360-free`
 ```powershell
 cd spike\terraform
 terraform plan -destroy    # revisar
