@@ -1,18 +1,18 @@
-﻿databricks metastores update 9997da73-5c41-4468-bbe7-feb64349cca3 --external-access-enabled
+﻿databricks metastores update <METASTORE_ID> --external-access-enabled
 {
   "cloud": "aws",
   "created_at": 1786890003337,
   "created_by": "System user",
   "delta_sharing_scope": "INTERNAL",
   "external_access_enabled": true,
-  "global_metastore_id": "aws:us-east-2:9997da73-5c41-4468-bbe7-feb64349cca3",
-  "metastore_id": "9997da73-5c41-4468-bbe7-feb64349cca3",
+  "global_metastore_id": "aws:us-east-2:<METASTORE_ID>",
+  "metastore_id": "<METASTORE_ID>",
   "name": "metastore_aws_us_east_2",
   "owner": "System user",
   "privilege_model_version": "1.0",
   "region": "us-east-2",
   "updated_at": 1790289029655,
-  "updated_by": "gastigeo@gmail.com"
+  "updated_by": "<DATABRICKS_USER_EMAIL>"
 }
 --- estado después:
 external_access_enabled: True

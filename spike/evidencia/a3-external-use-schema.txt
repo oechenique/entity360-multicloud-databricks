@@ -1,5 +1,5 @@
 # Spike A.3 — grant EXTERNAL USE SCHEMA sobre schema en default storage (2026-09-24)
-terraform apply (databricks_grant, schema entity360.spike, principal gastigeo@gmail.com):
+terraform apply (databricks_grant, schema entity360.spike, principal <DATABRICKS_USER_EMAIL>):
 
 Error: cannot create grant: Privilege EXTERNAL USE SCHEMA is not applicable to this entity
 [entity360.spike:SCHEMA/SCHEMA_DB_STORAGE]. If this seems unexpected, please check the

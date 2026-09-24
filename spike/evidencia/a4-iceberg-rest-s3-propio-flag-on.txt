@@ -4,7 +4,7 @@
 OK: HTTP 200 {"defaults":{"snapshot-loading-mode":"refs","rest-page-size":"1000","s3.delete-enabled":"false"},"overrides":{"prefix":"catalogs/entity360_ext"},"endpoints":["GET /v1/{prefix}/namespaces","GET /v1/{prefix}/namespaces/{namespace}","POST /v1/{prefix}/namespaces","POST /v1/{prefix}/namespaces/{namespace}/properties","DELETE /v1/{prefix}/namespaces/{namespace}","HEAD /v1/{prefix}/namespaces/{namespace
 
 === 2. loadTable crudo (vended-credentials) ===
-OK: HTTP 200; location=s3://entity360-spike-uc-887793660259/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg; claves de config=['client.region', 's3.access-key-id', 's3.secret-access-key', 's3.session-token', 's3.session-token-expires-at-ms']; storage-credentials=0
+OK: HTTP 200; location=s3://entity360-spike-uc-<AWS_ACCOUNT_ID>/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg; claves de config=['client.region', 's3.access-key-id', 's3.secret-access-key', 's3.session-token', 's3.session-token-expires-at-ms']; storage-credentials=0
 
 === 3. PyIceberg load_table (metadata) ===
 OK: gleif_iceberg(

@@ -1,10 +1,14 @@
 # Spike A.4b: salir del default storage hacia un bucket S3 propio
 # (bucket y rol en spike/terraform-aws/).
 
-variable "spike_bucket" {
-  description = "Bucket creado por spike/terraform-aws."
+variable "aws_account_id" {
+  description = "Cuenta AWS del bucket del spike (en terraform.tfvars, fuera de git)."
   type        = string
-  default     = "entity360-spike-uc-887793660259"
+}
+
+locals {
+  spike_bucket   = "entity360-spike-uc-${var.aws_account_id}"
+  spike_role_arn = "arn:aws:iam::${var.aws_account_id}:role/entity360-spike-uc"
 }
 
 # Creada por API en A.4a (prueba de permiso) e importada: su external_id está en la
@@ -14,13 +18,13 @@ resource "databricks_storage_credential" "spike_s3" {
   comment = "Spike A.4: prueba de permiso"
 
   aws_iam_role {
-    role_arn = "arn:aws:iam::887793660259:role/entity360-spike-uc"
+    role_arn = local.spike_role_arn
   }
 }
 
 resource "databricks_external_location" "spike_s3" {
   name            = "entity360-spike-s3"
-  url             = "s3://${var.spike_bucket}/"
+  url             = "s3://${local.spike_bucket}/"
   credential_name = databricks_storage_credential.spike_s3.name
   comment         = "Bucket propio del spike (fuera del default storage)."
   force_destroy   = true
@@ -28,7 +32,7 @@ resource "databricks_external_location" "spike_s3" {
 
 resource "databricks_catalog" "ext" {
   name          = "entity360_ext"
-  storage_root  = "s3://${var.spike_bucket}/catalogs/entity360_ext"
+  storage_root  = "s3://${local.spike_bucket}/catalogs/entity360_ext"
   comment       = "Spike A.4b: catálogo con MANAGED LOCATION en S3 propio."
   force_destroy = true
 

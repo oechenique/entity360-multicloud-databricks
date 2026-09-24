@@ -16,7 +16,6 @@ variable "uc_master_role_arn" {
 }
 
 variable "uc_external_id" {
-  description = "external_id de la storage credential entity360-spike-s3."
+  description = "external_id de la storage credential entity360-spike-s3 (en terraform.tfvars, fuera de git)."
   type        = string
-  default     = "171da3f6-c865-458c-b614-c71d9267e2cb"
 }

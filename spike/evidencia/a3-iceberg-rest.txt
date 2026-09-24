@@ -3,7 +3,7 @@
 OK: HTTP 200 {"defaults":{"snapshot-loading-mode":"refs","rest-page-size":"1000","s3.delete-enabled":"false"},"overrides":{"prefix":"catalogs/entity360"},"endpoints":["GET /v1/{prefix}/namespaces","GET /v1/{prefix}/namespaces/{namespace}","POST /v1/{prefix}/namespaces","POST /v1/{prefix}/namespaces/{namespace}/properties","DELETE /v1/{prefix}/namespaces/{namespace}","HEAD /v1/{prefix}/namespaces/{namespace}","
 
 === 2. loadTable crudo (vended-credentials) ===
-OK: HTTP 200; location=s3://dbstorage-prod-ibol9/uc/171da3f6-c865-458c-b614-c71d9267e2cb/9997da73-5c41-4468-bbe7-feb64349cca3/__unitystorage/catalogs/77426556-8e28-45c8-a433-2230e02b39ae/tables/1cc80e4d-5fe2-4b5a-a9e4-60b2e294eeb1/_iceberg; claves de config=[]; storage-credentials=0
+OK: HTTP 200; location=s3://dbstorage-prod-ibol9/uc/<DATABRICKS_ACCOUNT_ID>/<METASTORE_ID>/__unitystorage/catalogs/77426556-8e28-45c8-a433-2230e02b39ae/tables/1cc80e4d-5fe2-4b5a-a9e4-60b2e294eeb1/_iceberg; claves de config=[]; storage-credentials=0
 
 === 3. PyIceberg load_table (metadata) ===
 OK: gleif_iceberg(
@@ -27,7 +27,7 @@ table {
 snapshot actual: Operation.APPEND: id=3152332143875080286, schema_id=0
 
 === 4. PyIceberg scan (lectura de datos) ===
-FALLA: OSError: When reading information for key 'uc/171da3f6-c865-458c-b614-c71d9267e2cb/9997da73-5c41-4468-bbe7-feb64349cca3/__unitystorage/catalogs/77426556-8e28-45c8-a433-2230e02b39ae/tables/1cc80e4d-5fe2-4b5a-a9e4-60b2e294eeb1/_iceberg/metadata/snap-3152332143875080286-1-9cfdd2b9-0152-4e78-8df1-47ac39872e38.avro' in bucket 'dbstorage-prod-ibol9': AWS Error UNKNOWN (HTTP status 400) during HeadObject operation: No response body.
+FALLA: OSError: When reading information for key 'uc/<DATABRICKS_ACCOUNT_ID>/<METASTORE_ID>/__unitystorage/catalogs/77426556-8e28-45c8-a433-2230e02b39ae/tables/1cc80e4d-5fe2-4b5a-a9e4-60b2e294eeb1/_iceberg/metadata/snap-3152332143875080286-1-9cfdd2b9-0152-4e78-8df1-47ac39872e38.avro' in bucket 'dbstorage-prod-ibol9': AWS Error UNKNOWN (HTTP status 400) during HeadObject operation: No response body.
 
 === 5. PyIceberg append (escritura) ===
-FALLA: OSError: When reading information for key 'uc/171da3f6-c865-458c-b614-c71d9267e2cb/9997da73-5c41-4468-bbe7-feb64349cca3/__unitystorage/catalogs/77426556-8e28-45c8-a433-2230e02b39ae/tables/1cc80e4d-5fe2-4b5a-a9e4-60b2e294eeb1/_iceberg/metadata/snap-3152332143875080286-1-9cfdd2b9-0152-4e78-8df1-47ac39872e38.avro' in bucket 'dbstorage-prod-ibol9': AWS Error UNKNOWN (HTTP status 400) during HeadObject operation: No response body.
+FALLA: OSError: When reading information for key 'uc/<DATABRICKS_ACCOUNT_ID>/<METASTORE_ID>/__unitystorage/catalogs/77426556-8e28-45c8-a433-2230e02b39ae/tables/1cc80e4d-5fe2-4b5a-a9e4-60b2e294eeb1/_iceberg/metadata/snap-3152332143875080286-1-9cfdd2b9-0152-4e78-8df1-47ac39872e38.avro' in bucket 'dbstorage-prod-ibol9': AWS Error UNKNOWN (HTTP status 400) during HeadObject operation: No response body.

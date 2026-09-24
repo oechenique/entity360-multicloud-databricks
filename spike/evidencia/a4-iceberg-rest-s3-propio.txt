@@ -4,7 +4,7 @@
 OK: HTTP 200 {"defaults":{"snapshot-loading-mode":"refs","rest-page-size":"1000","s3.delete-enabled":"false"},"overrides":{"prefix":"catalogs/entity360_ext"},"endpoints":["GET /v1/{prefix}/namespaces","GET /v1/{prefix}/namespaces/{namespace}","POST /v1/{prefix}/namespaces","POST /v1/{prefix}/namespaces/{namespace}/properties","DELETE /v1/{prefix}/namespaces/{namespace}","HEAD /v1/{prefix}/namespaces/{namespace
 
 === 2. loadTable crudo (vended-credentials) ===
-OK: HTTP 200; location=s3://entity360-spike-uc-887793660259/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg; claves de config=[]; storage-credentials=0
+OK: HTTP 200; location=s3://entity360-spike-uc-<AWS_ACCOUNT_ID>/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg; claves de config=[]; storage-credentials=0
 
 === 3. PyIceberg load_table (metadata) ===
 OK: gleif_iceberg(
@@ -28,7 +28,7 @@ table {
 snapshot actual: Operation.APPEND: id=4751335567397533901, schema_id=0
 
 === 4. PyIceberg scan (lectura de datos) ===
-FALLA: OSError: When reading information for key 'catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg/metadata/snap-4751335567397533901-1-5433eab2-4ed3-4c0b-9cbe-d703f8cc185d.avro' in bucket 'entity360-spike-uc-887793660259': AWS Error ACCESS_DENIED during HeadObject operation: No response body.
+FALLA: OSError: When reading information for key 'catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg/metadata/snap-4751335567397533901-1-5433eab2-4ed3-4c0b-9cbe-d703f8cc185d.avro' in bucket 'entity360-spike-uc-<AWS_ACCOUNT_ID>': AWS Error ACCESS_DENIED during HeadObject operation: No response body.
 
 === 5. PyIceberg append (escritura) ===
-FALLA: OSError: When reading information for key 'catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg/metadata/snap-4751335567397533901-1-5433eab2-4ed3-4c0b-9cbe-d703f8cc185d.avro' in bucket 'entity360-spike-uc-887793660259': AWS Error ACCESS_DENIED during HeadObject operation: No response body.
+FALLA: OSError: When reading information for key 'catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27/_iceberg/metadata/snap-4751335567397533901-1-5433eab2-4ed3-4c0b-9cbe-d703f8cc185d.avro' in bucket 'entity360-spike-uc-<AWS_ACCOUNT_ID>': AWS Error ACCESS_DENIED during HeadObject operation: No response body.

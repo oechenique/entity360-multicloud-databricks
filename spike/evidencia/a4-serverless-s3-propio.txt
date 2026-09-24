@@ -3,8 +3,8 @@
 [a4_ctas_iceberg] statement_id: 01f1b866-9208-1f9b-a70e-098aaa7d0da9  state: SUCCEEDED 
 
 [a4_read] statement_id: 01f1b866-967b-1083-ac39-ff56742536e0  state: SUCCEEDED 
-gleif_delta | DELTA | s3://entity360-spike-uc-887793660259/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/e48014a6-01a1-4c24-ba30-8f7c0f7c956a
-gleif_iceberg | ICEBERG | s3://entity360-spike-uc-887793660259/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27
+gleif_delta | DELTA | s3://entity360-spike-uc-<AWS_ACCOUNT_ID>/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/e48014a6-01a1-4c24-ba30-8f7c0f7c956a
+gleif_iceberg | ICEBERG | s3://entity360-spike-uc-<AWS_ACCOUNT_ID>/catalogs/entity360_ext/__unitystorage/catalogs/0c80aec3-c943-42a2-ae2f-5f172e2c0477/tables/95a4767a-6206-4b1d-82d2-48792891de27
 [a4_count] statement_id: 01f1b866-97f8-1d69-ab09-b56fadd5e72a  state: SUCCEEDED 
 delta | 10
 iceberg | 10

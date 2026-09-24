@@ -1,8 +1,8 @@
 # Spike A.4 — chequeo previo, solo lectura (2026-09-24)
-metastore_id: 9997da73-5c41-4468-bbe7-feb64349cca3
+metastore_id: <METASTORE_ID>
 owner: System user   region: us-east-2   cloud: aws   privilege_model: 1.0
 
-Privilegios efectivos de gastigeo@gmail.com sobre el metastore:
+Privilegios efectivos de <DATABRICKS_USER_EMAIL> sobre el metastore:
   account users -> USE_MARKETPLACE_ASSETS   (nada más)
   => sin CREATE_STORAGE_CREDENTIAL ni CREATE_EXTERNAL_LOCATION.
   El owner es "System user": nadie en el workspace puede otorgarlos.

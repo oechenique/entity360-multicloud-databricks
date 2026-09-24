@@ -6,7 +6,7 @@ Lo que Terraform no puede crear (o no conviene) se documenta acá, con el motivo
 
 ### 1. Perfil de la CLI (OAuth U2M)
 ```powershell
-databricks auth login --host https://dbc-26f27eaf-626f.cloud.databricks.com --profile entity360-free
+databricks auth login --host <WORKSPACE_URL> --profile entity360-free
 ```
 Motivo: la auth interactiva no se automatiza; Terraform usa ese perfil.
 
@@ -33,7 +33,7 @@ Schemas, volumes y grants sí van por Terraform. Si el catálogo vive en un buck
 Habilita credential vending por Iceberg REST para motores externos (Snowflake, PyIceberg).
 El metastore es de cuenta y Free Edition no expone la consola de cuenta; se hace por CLI:
 ```powershell
-databricks metastores update 9997da73-5c41-4468-bbe7-feb64349cca3 --external-access-enabled -p entity360-free
+databricks metastores update <METASTORE_ID> --external-access-enabled -p entity360-free
 ```
 Alcance: todo el metastore. No abre nada solo: cada schema necesita `EXTERNAL_USE_SCHEMA`
 (ese grant sí va por Terraform) y solo aplica a storage propio, no a default storage.

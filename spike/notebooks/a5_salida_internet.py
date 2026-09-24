@@ -9,8 +9,10 @@ from urllib.parse import urlparse
 
 import requests
 
-# SEC exige User-Agent con nombre y mail (regla 02, punto 9).
-UA = "entity360-spike (portfolio) gastonechenique@gmail.com"
+# SEC exige User-Agent con nombre y mail (regla 02, punto 9). Se pasa como parámetro del
+# notebook (sec_user_agent) para no versionar el mail.
+dbutils.widgets.text("sec_user_agent", "entity360-spike (portfolio) <CONTACT_EMAIL>")
+UA = dbutils.widgets.get("sec_user_agent")
 
 DESTINOS = [
     ("GLEIF API", "https://api.gleif.org/api/v1/lei-records?page[size]=1"),

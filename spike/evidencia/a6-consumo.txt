@@ -1,5 +1,5 @@
 ﻿# Spike A.6 — dashboard AI/BI y Genie
-dashboard creado: id=01f1b868362014b6a2f31d8615a249de path=/Users/gastigeo@gmail.com/entity360-spike/entity360 spike – GLEIF.lvdash.json estado=ACTIVE
+dashboard creado: id=01f1b868362014b6a2f31d8615a249de path=/Users/<DATABRICKS_USER_EMAIL>/entity360-spike/entity360 spike – GLEIF.lvdash.json estado=ACTIVE
 publish: {   "display_name": "entity360 spike – GLEIF",   "embed_credentials": true,   "revision_create_time": "2026-09-24T22:35:16.061Z",   "warehouse_id": "4c3b6cf100499c33" }
 genie space creado: space_id=01f1b868375b18399b26acc8257e95b7 title=entity360 spike
 
