@@ -12,6 +12,9 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 | SP `entity360-spike-producer` (+ `workspace_access`) | Terraform | creado |
 | Grants del SP en catálogo, schema y volume | Terraform (`databricks_grant`) | creados |
 | 2 secretos OAuth del SP | CLI, 1 h de vida, solo en memoria | expiran solos; se borran con el SP |
+| Schema `entity360.spike` (`force_destroy`) | Terraform | creado |
+| Tabla `entity360.spike.gleif_iceberg` (Iceberg gestionada) | SQL CTAS | creada; se borra con el schema |
+| venv `spike/.venv` (pyiceberg 0.12.0, pyarrow 25.0.1) | local | ignorado por git |
 
 ## Paso manual (A.1)
 1. `databricks auth login --host https://dbc-26f27eaf-626f.cloud.databricks.com --profile entity360-free`

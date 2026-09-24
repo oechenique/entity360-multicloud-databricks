@@ -1,0 +1,4 @@
+﻿[ctas] statement_id: 01f1b864-a7de-1697-abb7-638b7d654951  state: SUCCEEDED 
+
+[describe] statement_id: 01f1b864-ae71-151d-9dce-28afc0076ca2  state: SUCCEEDED 
+gleif_iceberg | MANAGED | ICEBERG | 10
