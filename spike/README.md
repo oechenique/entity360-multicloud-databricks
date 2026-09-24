@@ -28,11 +28,12 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
    `databricks service-principal-secrets-proxy create <sp_id> --lifetime 3600s -p entity360-free`
 
 ## Destroy (con confirmación, antes de la fase 1)
+Orden: primero Databricks (suelta la external location), después AWS.
 ```powershell
 cd spike\terraform
 terraform plan -destroy    # revisar
-terraform destroy          # borra grants, SP (y sus secretos), volume (con archivos), schema y catálogo
-cd ..	erraform-aws
+terraform destroy          # borra grants, SP (y sus secretos), external location, credential, volume, schemas y catálogos
+cd ..\terraform-aws
 terraform plan -destroy
 terraform destroy          # bucket (force_destroy) y rol IAM
 ```
