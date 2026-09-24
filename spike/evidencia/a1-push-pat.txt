@@ -1,0 +1,12 @@
+﻿PUT /Volumes/entity360/landing/raw/gleif/ingest_date=2026-09-24/gleif_20260924T215945Z.jsonl -> HTTP 204 (25280 bytes)
+PUT /Volumes/entity360/landing/raw/gleif/ingest_date=2026-09-24/_manifest_20260924T215945Z.json -> HTTP 204
+{
+  "fuente": "gleif",
+  "archivo": "gleif_20260924T215945Z.jsonl",
+  "registros": 10,
+  "sha256": "207e0e1dada299d587448ac76e2fbbc16168c99be3dbf0a17f6bab7885bd0b1f",
+  "extraido_utc": "2026-09-24T21:59:45.683449+00:00",
+  "producer_version": "spike-a1-0.1",
+  "origen": "https://api.gleif.org/api/v1/lei-records",
+  "licencia": "CC0 1.0 (GLEIF)"
+}
