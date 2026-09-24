@@ -1,0 +1,29 @@
+﻿# Spike A.5 — salida a internet desde serverless (notebook spike/notebooks/a5_salida_internet.py)
+run_id: 353781456433360  estado: TERMINATED / SUCCESS
+
+destino                    host                       dns             http  seg ip_salida    
+-------                    ----                       ---             ----  --- ---------    
+GLEIF API                  api.gleif.org              193.17.90.130    200 0.91              
+GLEIF golden copy          goldencopy.gleif.org       193.17.90.130    200 0.55              
+SEC EDGAR                  data.sec.gov               23.194.147.250   200 0.49              
+OpenSanctions              data.opensanctions.org     169.150.236.98   200 0.35              
+Wikidata SPARQL            query.wikidata.org         208.80.154.224   200 0.83              
+GDELT                      data.gdeltproject.org      136.69.101.18    200 0.62              
+PyPI                       pypi.org                   151.101.64.223   200 0.27              
+GitHub                     api.github.com             140.82.113.6     200 0.62              
+AWS S3 (us-east-2)         s3.us-east-2.amazonaws.com 52.219.105.41    200 1.48              
+Google                     www.google.com             142.251.156.119  204  0.5              
+example.com                example.com                104.20.23.154    200 0.82              
+httpbin                    httpbin.org                3.208.246.33     200 0.66              
+ifconfig.me (IP de salida) ifconfig.me                34.160.111.145   200 0.78 3.145.247.171
+
+
+
+
+## Contraste con la documentación oficial (free-edition-limitations, 2026-09-24)
+"Outbound internet access is restricted to a limited set of trusted domains."
+Con verificación de LinkedIn: "you will get access to: Limited serverless GPU compute and
+Outbound internet access."
+Medido: salida abierta, incluso a hosts no populares (example.com, httpbin.org, ifconfig.me).
+=> O la verificación con LinkedIn ya está activa en esta cuenta, o la restricción no se aplica.
+   Pendiente: confirmarlo en la UI (lo tiene que mirar Gastón).
