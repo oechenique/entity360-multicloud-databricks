@@ -1,0 +1,137 @@
+{
+  "datasets": [
+    {
+      "name": "gleif",
+      "displayName": "GLEIF (spike)",
+      "queryLines": [
+        "SELECT lei, nombre_legal, pais, estado FROM entity360_ext.spike.gleif_delta"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "vista",
+      "displayName": "Vista GLEIF",
+      "layout": [
+        {
+          "widget": {
+            "name": "total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "gleif",
+                  "fields": [
+                    {
+                      "name": "entidades",
+                      "expression": "COUNT(DISTINCT `lei`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "entidades",
+                  "displayName": "Entidades (LEI distintos)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Entidades argentinas en GLEIF (muestra)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "detalle",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "gleif",
+                  "fields": [
+                    {
+                      "name": "lei",
+                      "expression": "`lei`"
+                    },
+                    {
+                      "name": "nombre_legal",
+                      "expression": "`nombre_legal`"
+                    },
+                    {
+                      "name": "pais",
+                      "expression": "`pais`"
+                    },
+                    {
+                      "name": "estado",
+                      "expression": "`estado`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "lei",
+                    "displayName": "LEI",
+                    "type": "string",
+                    "displayAs": "string",
+                    "order": 0
+                  },
+                  {
+                    "fieldName": "nombre_legal",
+                    "displayName": "Nombre legal",
+                    "type": "string",
+                    "displayAs": "string",
+                    "order": 1
+                  },
+                  {
+                    "fieldName": "pais",
+                    "displayName": "País",
+                    "type": "string",
+                    "displayAs": "string",
+                    "order": 2
+                  },
+                  {
+                    "fieldName": "estado",
+                    "displayName": "Estado",
+                    "type": "string",
+                    "displayAs": "string",
+                    "order": 3
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Detalle"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 4,
+            "height": 6
+          }
+        }
+      ]
+    }
+  ]
+}

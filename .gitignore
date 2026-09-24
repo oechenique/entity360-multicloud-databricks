@@ -20,3 +20,6 @@ referencias/
 
 # Datos descargados en el spike (no se versionan, se re-descargan)
 spike/data/
+
+# Payloads temporales del spike
+spike/consumo/_*.json

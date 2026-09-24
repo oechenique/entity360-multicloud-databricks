@@ -1,0 +1,30 @@
+﻿# Spike A.6 — dashboard AI/BI y Genie
+dashboard creado: id=01f1b868362014b6a2f31d8615a249de path=/Users/gastigeo@gmail.com/entity360-spike/entity360 spike – GLEIF.lvdash.json estado=ACTIVE
+publish: {   "display_name": "entity360 spike – GLEIF",   "embed_credentials": true,   "revision_create_time": "2026-09-24T22:35:16.061Z",   "warehouse_id": "4c3b6cf100499c33" }
+genie space creado: space_id=01f1b868375b18399b26acc8257e95b7 title=entity360 spike
+
+## Genie: pregunta
+¿Cuántas entidades distintas (LEI) hay en la tabla gleif_iceberg y cuáles son las 3 primeras por nombre legal?
+estado: COMPLETED
+SQL generado: WITH ranked_entities AS (SELECT `lei`, `nombre_legal`, RANK() OVER (ORDER BY `nombre_legal` ASC) AS rnk FROM `entity360_ext`.`spike`.`gleif_iceberg` WHERE `lei` IS NOT NULL AND `nombre_legal` IS NOT NULL) SELECT 'entidades_distintas' AS tipo, COUNT(DISTINCT `lei`) AS valor, NULL AS lei, NULL AS nombre_legal FROM `entity360_ext`.`spike`.`gleif_iceberg` WHERE `lei` IS NOT NULL UNION ALL SELECT 'top_3_por_nombre_legal' AS tipo, NULL AS valor, `lei`, `nombre_legal` FROM ranked_entities WHERE rnk <= 3;
+resultado:
+entidades_distintas | 10 |  | 
+top_3_por_nombre_legal |  | 98450098976AACE49849 | CHEVAL DES ANDES SA S. A.
+top_3_por_nombre_legal |  | 254900NE2B37GOMQIN25 | Diorsem SA
+top_3_por_nombre_legal |  | 254900K0H3MGKMRPYQ78 | FERTIL PAMPA S.A.U.
+texto: Hay **10 entidades distintas (LEI)** en la tabla gleif_iceberg. Las **3 primeras entidades por nombre legal** son:
+- **CHEVAL DES ANDES SA S. A.** (LEI: 98450098976AACE49849)
+- **Diorsem SA** (LEI: 254900NE2B37GOMQIN25)
+- **FERTIL PAMPA S.A.U.** (LEI: 254900K0H3MGKMRPYQ78)
+Todas las entidades listadas tienen un nombre legal único y un LEI válido.
+
+## Recursos
+dashboard_id 01f1b868362014b6a2f31d8615a249de (publicado, embed_credentials=true, warehouse Starter)
+genie space_id 01f1b868375b18399b26acc8257e95b7 (tablas: entity360_ext.spike.gleif_delta, gleif_iceberg)
+
+## Límites según la documentación oficial (docs.databricks.com/.../free-edition-limitations, 2026-09-24)
+- "One SQL warehouse, limited to a 2X-Small cluster size."
+- "Max of 5 concurrent job tasks per account."
+- Cuota de serverless: al excederla, "your workspace's compute resources will be shut down and
+  unavailable for the rest of the day (and in extreme cases, the rest of the month)."
+- Dashboards y Genie: la página no lista límites específicos.
