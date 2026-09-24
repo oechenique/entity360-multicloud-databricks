@@ -1,0 +1,7 @@
+﻿
+databricks_external_location.spike_s3: Creation complete after 4s [id=entity360-spike-s3]
+databricks_catalog.ext: Creation complete after 1s [id=entity360_ext]
+databricks_schema.ext_spike: Creation complete after 1s [id=entity360_ext.spike]
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+

@@ -9,9 +9,13 @@ Prueba paso a paso y registra cada resultado sin cortar en el primer error:
   5. PyIceberg: append (escritura).
 
 Auth: DATABRICKS_HOST y DATABRICKS_TOKEN del entorno (token OAuth del usuario).
+Correr con las credenciales locales de AWS ocultas (AWS_CONFIG_FILE y
+AWS_SHARED_CREDENTIALS_FILE a un archivo inexistente): si el bucket es propio, leer con
+las credenciales locales sería un falso positivo del credential vending.
 
 Uso:
-    spike\\.venv\\Scripts\\python.exe spike\\scripts\\a3_iceberg_rest.py
+    spike\\.venv\\Scripts\\python.exe spike\\scripts\\a3_iceberg_rest.py [catalogo]
+    (catalogo por defecto: entity360; en A.4b se usa entity360_ext)
 """
 
 import os
@@ -20,7 +24,7 @@ import traceback
 
 import requests
 
-CATALOGO = "entity360"
+CATALOGO = sys.argv[1] if len(sys.argv) > 1 else "entity360"
 NAMESPACE = "spike"
 TABLA = "gleif_iceberg"
 
@@ -37,7 +41,20 @@ def paso(nombre, fn):
         return False, None
 
 
+def credenciales_locales_aws() -> list[str]:
+    fuga = [k for k in ("AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_PROFILE") if os.environ.get(k)]
+    for var, defecto in (("AWS_CONFIG_FILE", "~/.aws/config"), ("AWS_SHARED_CREDENTIALS_FILE", "~/.aws/credentials")):
+        if os.path.exists(os.path.expanduser(os.environ.get(var, defecto))):
+            fuga.append(var)
+    return fuga
+
+
 def main() -> int:
+    fuga = credenciales_locales_aws()
+    if fuga:
+        print(f"ABORTA: el proceso ve credenciales locales de AWS ({fuga}); el resultado no sería concluyente.")
+        return 2
+    print("credenciales locales de AWS: ocultas (OK)")
     host = os.environ["DATABRICKS_HOST"].rstrip("/")
     token = os.environ["DATABRICKS_TOKEN"]
     uri = f"{host}/api/2.1/unity-catalog/iceberg-rest"
