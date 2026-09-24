@@ -1,0 +1,17 @@
+# Spike A.4 — chequeo previo, solo lectura (2026-09-24)
+metastore_id: 9997da73-5c41-4468-bbe7-feb64349cca3
+owner: System user   region: us-east-2   cloud: aws   privilege_model: 1.0
+
+Privilegios efectivos de gastigeo@gmail.com sobre el metastore:
+  account users -> USE_MARKETPLACE_ASSETS   (nada más)
+  => sin CREATE_STORAGE_CREDENTIAL ni CREATE_EXTERNAL_LOCATION.
+  El owner es "System user": nadie en el workspace puede otorgarlos.
+
+Storage credentials: solo __databricks_managed_storage_credential
+External locations:  solo __databricks_managed_storage_location (s3://dbstorage-prod-ibol9/...)
+
+## Corrección (misma sesión)
+El chequeo de arriba NO es concluyente: `grants get-effective` no muestra el privilegio, pero
+un POST real a /storage-credentials con skip_validation=true fue ACEPTADO (ver
+a4-storage-credential.txt). En Free Edition el usuario (admin del workspace) sí puede crear
+storage credentials. Lección: validar con el intento real, no con el listado de grants.

@@ -1,0 +1,11 @@
+# Spike A.4b — diagnóstico del credential vending (2026-09-24)
+metastore external_access_enabled: False   (metastore_aws_us_east_2, owner "System user")
+table_id: 95a4767a-6206-4b1d-82d2-48792891de27  (entity360_ext.spike.gleif_iceberg, S3 propio)
+
+POST /api/2.1/unity-catalog/temporary-table-credentials {table_id, operation: READ}
+Error: External Data Access from non Databricks Compute environment is disabled for metastore
+metastore_aws_us_east_2. Please contact your metastore admin to enable 'External Data Access'
+configuration on the metastore.
+
+Lectura: el bloqueo no es el default storage sino el flag del metastore. El bucket propio
+resuelve storage (serverless lee/escribe OK), pero no habilita a motores externos.

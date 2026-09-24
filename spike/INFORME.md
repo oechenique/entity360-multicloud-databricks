@@ -13,7 +13,9 @@ Estado: **en curso** (parte A).
 | 3b | Metadata por Iceberg REST (config, loadTable, schema, snapshot) con PyIceberg | ✅ | `evidencia/a3-iceberg-rest.txt` pasos 1–3 | El catálogo REST responde y expone la tabla. |
 | 3c | Credential vending sobre default storage | ❌ (confirmado) | `evidencia/a3-iceberg-rest.txt` paso 2: `config` vacío, 0 `storage-credentials`; `evidencia/a3-external-use-schema.txt`: `EXTERNAL USE SCHEMA` no aplica a `SCHEMA_DB_STORAGE` | Sin credenciales, ningún motor externo (Snowflake incluido) puede leer datos del default storage. |
 | 3d | Lectura y escritura de datos con PyIceberg | ❌ | `evidencia/a3-iceberg-rest.txt` pasos 4–5: `HeadObject` 400 en `dbstorage-prod-…` | Consecuencia de 3c. Iceberg externo depende del punto 4 (S3 propio). |
-| 4 | Salir del default storage (S3 propio) | ⏳ | | |
+| 4a | ¿Free Edition permite crear una storage credential propia? | ✅ (inesperado) | `evidencia/a4-storage-credential.txt`; `evidencia/a4-privilegios-metastore.txt` (el listado de grants no lo mostraba) | Camino A sigue abierto. Falta probar con S3 real. |
+| 4b | External location + catálogo con `MANAGED LOCATION` en S3 propio, lectura/escritura desde serverless | ✅ | `evidencia/a4-external-location-apply.txt`, `evidencia/a4-serverless-s3-propio.txt` (Delta e Iceberg, 10 filas c/u, 17 objetos en S3) | Se puede salir del default storage. Con S3 propio el catálogo sí se crea por Terraform (no hace falta el paso manual de D1). |
+| 4c | Credential vending a motores externos sobre S3 propio | ❌ | `evidencia/a4-iceberg-rest-s3-propio.txt` (0 credenciales; ACCESS_DENIED con credenciales locales ocultas), `evidencia/a4-vending-diagnostico.txt` | Causa: `external_access_enabled=False` en el metastore (owner "System user"). El bloqueo no es el storage sino el flag. |
 | 5 | Salida a internet de Free Edition | ⏳ | | |
 | 6 | Dashboard AI/BI y Genie | ⏳ | | |
 | 7–11 | Parte B | ⏳ | | GDELT (10) pendiente: no existe proyecto GCP. |

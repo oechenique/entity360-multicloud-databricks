@@ -15,6 +15,11 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 | Schema `entity360.spike` (`force_destroy`) | Terraform | creado |
 | Tabla `entity360.spike.gleif_iceberg` (Iceberg gestionada) | SQL CTAS | creada; se borra con el schema |
 | venv `spike/.venv` (pyiceberg 0.12.0, pyarrow 25.0.1) | local | ignorado por git |
+| AWS (us-east-2): bucket `entity360-spike-uc-887793660259`, rol IAM `entity360-spike-uc` + policy | Terraform (`spike/terraform-aws/`) | creado |
+| Storage credential `entity360-spike-s3` | API (A.4a) + `terraform import` | creada |
+| External location `entity360-spike-s3`, catálogo `entity360_ext` (MANAGED LOCATION S3), schema `spike` | Terraform | creados |
+| Grant `EXTERNAL_USE_SCHEMA` en `entity360_ext.spike` | Terraform | creado |
+| Tablas `entity360_ext.spike.gleif_delta` y `gleif_iceberg` | SQL CTAS | creadas; se borran con el catálogo |
 
 ## Paso manual (A.1)
 1. `databricks auth login --host https://dbc-26f27eaf-626f.cloud.databricks.com --profile entity360-free`
@@ -27,4 +32,7 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 cd spike\terraform
 terraform plan -destroy    # revisar
 terraform destroy          # borra grants, SP (y sus secretos), volume (con archivos), schema y catálogo
+cd ..	erraform-aws
+terraform plan -destroy
+terraform destroy          # bucket (force_destroy) y rol IAM
 ```
