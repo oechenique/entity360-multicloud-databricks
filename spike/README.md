@@ -9,15 +9,19 @@ Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 | Schema `entity360.landing` | Terraform | creado |
 | Volume `entity360.landing.raw` | Terraform | creado |
 | PAT `spike-a1-files-api` | CLI, 1 h de vida, solo en memoria | expira solo |
+| SP `entity360-spike-producer` (+ `workspace_access`) | Terraform | creado |
+| Grants del SP en catálogo, schema y volume | Terraform (`databricks_grant`) | creados |
+| 2 secretos OAuth del SP | CLI, 1 h de vida, solo en memoria | expiran solos; se borran con el SP |
 
 ## Paso manual (A.1)
 1. `databricks auth login --host https://dbc-26f27eaf-626f.cloud.databricks.com --profile entity360-free`
-2. Crear el catálogo por SQL en un warehouse (ver `evidencia/a1-catalogo-default-storage.txt`)
-   y después `terraform import databricks_catalog.entity360 entity360`.
+2. Catálogo por SQL + `terraform import`: ver `docs/manual-steps.md`.
+3. Secreto OAuth del SP (fuera de Terraform para que no quede en el state):
+   `databricks service-principal-secrets-proxy create <sp_id> --lifetime 3600s -p entity360-free`
 
 ## Destroy (con confirmación, antes de la fase 1)
 ```powershell
 cd spike\terraform
 terraform plan -destroy    # revisar
-terraform destroy          # borra volume (con archivos), schema y catálogo (force_destroy)
+terraform destroy          # borra grants, SP (y sus secretos), volume (con archivos), schema y catálogo
 ```

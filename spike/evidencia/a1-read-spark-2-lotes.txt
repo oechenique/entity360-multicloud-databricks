@@ -1,0 +1,6 @@
+﻿statement_id: 01f1b864-2351-1ef0-83c0-0fd78b4be672
+state: SUCCEEDED 
+archivo | filas | leis_distintos
+gleif_20260924T220548Z.jsonl | 10 | 10
+gleif_20260924T215945Z.jsonl | 10 | 10
+TOTAL | 20 | 10

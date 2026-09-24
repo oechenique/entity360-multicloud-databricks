@@ -1,10 +1,15 @@
 """Spike A.1: push de un lote real al UC Volume con la Files API de Databricks.
 
 Baja una muestra chica de GLEIF (entidades argentinas, licencia CC0), la sube siguiendo
-el contrato de landing (regla 01) y después sube el _manifest.json del lote.
+el contrato de landing (regla 01) y después sube el _manifest_<ts>.json del lote.
 
-Auth: lee DATABRICKS_HOST y DATABRICKS_TOKEN del entorno. El token nunca se escribe a
-disco ni se imprime.
+Auth (desde el entorno, nunca se escribe a disco ni se imprime):
+- PAT: DATABRICKS_TOKEN.
+- OAuth M2M: DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (service principal); se pide
+  un access token al endpoint /oidc/v1/token del workspace.
+Siempre DATABRICKS_HOST.
+
+Después de subir, relee el archivo de datos con la Files API y compara el sha256.
 
 Uso:
     python spike/scripts/a1_push_files_api.py
@@ -35,6 +40,35 @@ def bajar_muestra_gleif(pais: str = "AR", cantidad: int = 10) -> list[dict]:
     return resp.json()["data"]
 
 
+def obtener_token(host: str) -> tuple[str, str]:
+    """Devuelve (token, modo). Prioriza OAuth M2M si hay credenciales de service principal."""
+    client_id = os.environ.get("DATABRICKS_CLIENT_ID")
+    client_secret = os.environ.get("DATABRICKS_CLIENT_SECRET")
+    if client_id and client_secret:
+        resp = requests.post(
+            f"{host.rstrip('/')}/oidc/v1/token",
+            auth=(client_id, client_secret),
+            data={"grant_type": "client_credentials", "scope": "all-apis"},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["access_token"], "oauth-m2m"
+    return os.environ["DATABRICKS_TOKEN"], "pat"
+
+
+def verificar(resp: requests.Response) -> None:
+    """raise_for_status con el cuerpo del error (sin headers, que llevan el token)."""
+    if not resp.ok:
+        raise RuntimeError(f"HTTP {resp.status_code} {resp.request.method}: {resp.text[:500]}")
+
+
+def get_archivo(host: str, token: str, ruta_volume: str) -> bytes:
+    url = f"{host.rstrip('/')}/api/2.0/fs/files{ruta_volume}"
+    resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=120)
+    verificar(resp)
+    return resp.content
+
+
 def put_archivo(host: str, token: str, ruta_volume: str, contenido: bytes) -> int:
     url = f"{host.rstrip('/')}/api/2.0/fs/files{ruta_volume}"
     resp = requests.put(
@@ -44,13 +78,14 @@ def put_archivo(host: str, token: str, ruta_volume: str, contenido: bytes) -> in
         data=contenido,
         timeout=120,
     )
-    resp.raise_for_status()
+    verificar(resp)
     return resp.status_code
 
 
 def main() -> int:
     host = os.environ["DATABRICKS_HOST"]
-    token = os.environ["DATABRICKS_TOKEN"]
+    token, modo = obtener_token(host)
+    print(f"auth: {modo}")
 
     registros = bajar_muestra_gleif()
     ahora = datetime.now(timezone.utc)
@@ -78,7 +113,11 @@ def main() -> int:
     status = put_archivo(host, token, ruta_manifest, json.dumps(manifest, indent=2).encode("utf-8"))
     print(f"PUT {ruta_manifest} -> HTTP {status}")
     print(json.dumps(manifest, indent=2))
-    return 0
+
+    releido = get_archivo(host, token, ruta_datos)
+    ok = hashlib.sha256(releido).hexdigest() == manifest["sha256"]
+    print(f"GET {ruta_datos} -> {len(releido)} bytes, sha256 coincide: {ok}")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
