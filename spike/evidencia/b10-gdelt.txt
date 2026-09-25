@@ -1,0 +1,55 @@
+# Spike B.10 — GDELT en BigQuery sandbox: SOLO dry runs (2026-09-25)
+Proyecto <GCP_PROJECT_ID>: billingEnabled=False (gcloud billing projects describe), ADC de usuario.
+
+## Dry runs del script (b10_gdelt_bigquery.py --solo-dry-run)
+día de partición: 2026-09-23 | tope por query: 30.00 GiB
+
+=== gkg_organizaciones ===
+dry run: 0.05 GiB estimados
+
+=== events_actores ===
+dry run: 0.00 GiB estimados
+
+=== resumen JSON ===
+{"dia": "2026-09-23", "consultas": {"gkg_organizaciones": {"bytes_estimados": 53508702, "ejecutada": false}, "events_actores": {"bytes_estimados": 5077379, "ejecutada": false}}}
+
+## Dry runs de control (consistencia de estimados)
+GKG (V2Organizations, V2Tone) por día de partición — SOLO dry run:
+  2026-09-23:     0.05 GiB
+  2026-09-01:     0.05 GiB
+  2026-06-01:     0.05 GiB
+  2026-01-15:     0.06 GiB
+  2025-09-23:     0.06 GiB
+  2024-09-23:     0.06 GiB
+  SIN filtro de partición (nunca se ejecuta): 285 GiB
+Events (Actor1Name, Actor2Name, AvgTone):
+  2026-09-23:    0.005 GiB
+  2025-09-23:    0.005 GiB
+metadata gkg_partitioned: modificada 2026-09-25 21:04:44.644000+00:00, filas 1,835,627,246, 19.9 TiB
+metadata events_partitioned: modificada 2026-09-25 21:04:45.755000+00:00, filas 913,097,557, 368.8 GiB
+
+## Ejecución real (2026-09-25), tope 1 GiB (dry run + maximum_bytes_billed)
+día de partición: 2026-09-23 | tope por query: 1.00 GiB
+
+=== gkg_organizaciones ===
+dry run: 0.05 GiB estimados
+procesados 0.05 GiB | facturados 0.05 GiB | 1.7 s
+   {'org': 'mercadolibre', 'menciones': 25, 'tono_promedio': -0.38}
+  total: 25
+
+=== events_actores ===
+dry run: 0.00 GiB estimados
+procesados 0.00 GiB | facturados 0.01 GiB | 1.8 s
+  total: 0
+
+=== resumen JSON ===
+{"dia": "2026-09-23", "consultas": {"gkg_organizaciones": {"bytes_estimados": 53508702, "ejecutada": true, "bytes_procesados": 53508702, "bytes_facturados": 54525952, "segundos": 1.7, "filas": [{"org": "mercadolibre", "menciones": 25, "tono_promedio": -0.38}]}, "events_actores": {"bytes_estimados": 5077379, "ejecutada": true, "bytes_procesados": 5077379, "bytes_facturados": 10485760, "segundos": 1.8, "filas": []}}}
+
+## Lectura
+- Consumo real: GKG 0,05 GiB procesados/facturados; Events 0,00 procesados, 0,01 facturados (mínimo
+  de facturación de BigQuery por query: 10 MB). Total ~60 MB de la cuota sandbox.
+- GKG, 1 día: solo "mercadolibre" (25 menciones, tono -0,38). YPF, Galicia, Macro, Pampa: 0.
+- Events: 0 (Actor1/2Name suelen ser países, roles o gobiernos, no empresas).
+- PRELIMINAR: no se descarta un falso negativo del regex (por ejemplo, GDELT normaliza nombres en
+  inglés: "yacimientos petroliferos fiscales", "pampa energy"). Validar con una query de diagnóstico
+  (dry run + OK) antes de fijar el diseño del productor GCP.
