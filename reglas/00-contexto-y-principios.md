@@ -40,6 +40,12 @@ construye otro agente.
 6. **Idempotencia.** Correr cualquier proceso dos veces no duplica datos.
 7. **Destroy documentado** en `docs/destroy.md`, escrito junto con la infra.
 8. **Licencias respetadas.** Cada fuente con su licencia y atribución en `docs/fuentes.md`.
+9. **Sin datos identificatorios en el repo.** Docs, evidencia y código versionado usan
+   placeholders: `<AWS_ACCOUNT_ID>`, `<WORKSPACE_URL>`, `<METASTORE_ID>`,
+   `<DATABRICKS_ACCOUNT_ID>`, `<GCP_PROJECT_ID>`, `<DATABRICKS_USER_EMAIL>`,
+   `<CONTACT_EMAIL>`. Los valores reales van en archivos ignorados por git (`.env`,
+   `terraform.tfvars`, con su `.example` versionado) o en variables de entorno. La evidencia
+   se sanea antes de guardarla.
 
 ## Forma de trabajo con Claude Code
 - Una fase por vez, en el orden de estas reglas. Al terminar cada fase: resumen, cómo
@@ -50,6 +56,9 @@ construye otro agente.
 - **AWS:** usar SIEMPRE `--profile tesseract` (o `$env:AWS_PROFILE="tesseract"`), nunca el
   perfil default. Si las credenciales vencen, pedirle a Gastón que corra
   `aws login --profile tesseract`.
+- **Región de AWS para storage de Unity Catalog: `us-east-2`**, la del metastore de Free
+  Edition (buckets de `MANAGED LOCATION`, rol IAM de la storage credential). El resto de los
+  recursos de AWS sigue la región de su regla (por ejemplo, la 05).
 - Lo que sea "a validar" se valida con evidencia (salida de comando, query), no con
   suposiciones.
 - Commits chicos y descriptivos por fase. Push solo con OK.
