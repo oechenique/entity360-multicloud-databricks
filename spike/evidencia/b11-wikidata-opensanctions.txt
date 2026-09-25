@@ -1,0 +1,98 @@
+# Spike B.11 — Wikidata (puente CIK/ticker -> LEI) y OpenSanctions (2026-09-25). User-Agent real por variable; acá saneado.
+=== 1. Wikidata: ítem y LEI de los 16 CIK argentinos ===
+  YPF    CIK   904851 -> ['Q2006989'] Yacimientos Petrolíferos Fiscales | LEI: ['5493003N7447U18U5U53']
+  GGAL   CIK  1114700 -> ['Q3118234'] Grupo Financiero Galicia | LEI: ninguno
+  PAM    CIK  1469395 -> sin ítem  | LEI: ninguno
+  BMA    CIK  1347426 -> sin ítem  | LEI: ninguno
+  TEO    CIK   932470 -> sin ítem  | LEI: ninguno
+  TGS    CIK   931427 -> sin ítem  | LEI: ninguno
+  EDN    CIK  1395213 -> ['Q2843192'] Edenor S.A. | LEI: ['254900JU7TV6VS9GRW29']
+  CEPU   CIK  1717161 -> sin ítem  | LEI: ninguno
+  SUPV   CIK  1517399 -> sin ítem  | LEI: ninguno
+  BBAR   CIK   913059 -> sin ítem  | LEI: ninguno
+  CRESY  CIK  1034957 -> sin ítem  | LEI: ninguno
+  IRS    CIK   933267 -> sin ítem  | LEI: ninguno
+  LOMA   CIK  1711375 -> sin ítem  | LEI: ninguno
+  VIST   CIK  1762506 -> sin ítem  | LEI: ninguno
+  MELI   CIK  1099590 -> ['Q950419'] Mercado Libre | LEI: ['549300DKPDN9M5S8GB14']
+  GLOB   CIK  1557860 -> sin ítem  | LEI: ninguno
+
+=== 2. Wikidata: empresas con país Argentina (P17 = Q414) e identificadores ===
+{
+  "items_con_lei": 11,
+  "items_con_cik": 7,
+  "items_con_ambos": 3,
+  "leis_distintos": 11
+}
+
+=== 3. GLEIF local: verificación de LEI de Wikidata y universo AR ===
+  pasada GLEIF: 11.9 s; universo AR: 965 LEI
+
+  --- CIK -> LEI (Wikidata) -> GLEIF ---
+  YPF    5493003N7447U18U5U53 -> YPF Sociedad Anonima | AR/AR | ACTIVE / ISSUED
+  EDN    254900JU7TV6VS9GRW29 -> Empresa Distribuidora Y Comercializadora Norte S.A. | AR/AR | ACTIVE / ISSUED
+  MELI   549300DKPDN9M5S8GB14 -> MERCADOLIBRE, INC. | US/US-DE | ACTIVE / ISSUED
+
+{
+  "ciks_ar": 16,
+  "ciks_con_item_wikidata": 4,
+  "ciks_con_lei_en_wikidata": 3,
+  "ciks_con_lei_verificado_en_gleif": 3,
+  "wikidata_ar_items_con_lei": 11,
+  "wikidata_ar_leis_en_universo_gleif_ar": 10,
+  "universo_gleif_ar": 965,
+  "cobertura_referencia_sobre_universo": "1.0%"
+}
+
+=== 4. OpenSanctions (default, targets.simple.csv) ===
+  bajado 20260925185428-num-targets.simple.csv: 440.8 MB en 8.5 s
+  versión 20260925185428-num, entity_count 4,067,388
+{
+  "version": "20260925185428-num",
+  "total_targets": 1225554,
+  "segundos": 4.6,
+  "ar_por_schema": {
+    "Person": 2162,
+    "LegalEntity": 17,
+    "Company": 13,
+    "Security": 8,
+    "Organization": 6
+  },
+  "cruce_por_lei": 1,
+  "cruce_por_nombre_normalizado": 2
+}
+  LEI    ('NK-PZqHqKG92Ubvt4G5XBwpZ9', 'PlusPetrol SA', '254900QSCHBUBX6J6H71', 'Global Energy Ownership Tracker;Iran UANI Business Registry')
+  nombre ('NK-PZqHqKG92Ubvt4G5XBwpZ9', 'PlusPetrol SA', '254900QSCHBUBX6J6H71', 'Global Energy Ownership Tracker;Iran UANI Business Registry')
+  nombre ('ir-br-co-b793d3d7810d4c3863c1e12266492b5e3c45b081', 'Telecom Argentina', '549300MKPIRSJD8SB782', 'Iran UANI Business Registry')
+
+
+=== 1b. Wikidata por ticker (P414 NYSE/Nasdaq + calificador P249) ===
+  YPF    -> Q2006989 Yacimientos Petrolíferos Fiscales (Bolsa de Nueva York) | LEI: ['5493003N7447U18U5U53'] | CIK: 0000904851
+  GGAL   -> Q3118234 Grupo Financiero Galicia (Nasdaq) | LEI: ninguno | CIK: 0001114700
+  PAM    -> sin ítem por ticker
+  BMA    -> Q2335199 Banco Macro (Bolsa de Nueva York) | LEI: ['579100KKDKKIFEBKK040'] | CIK: ninguno
+  TEO    -> Q1544312 Telecom Argentina (Bolsa de Nueva York) | LEI: ['549300MKPIRSJD8SB782'] | CIK: ninguno
+  TGS    -> Q2449642 Transportadora de Gas del Sur (Bolsa de Nueva York) | LEI: ninguno | CIK: ninguno
+  EDN    -> Q2843192 Edenor S.A. (Bolsa de Nueva York) | LEI: ['254900JU7TV6VS9GRW29'] | CIK: 0001395213
+  CEPU   -> sin ítem por ticker
+  SUPV   -> sin ítem por ticker
+  BBAR   -> sin ítem por ticker
+  CRESY  -> sin ítem por ticker
+  IRS    -> Q6060469 Inversiones y Representaciones Sociedad Anónima (Bolsa de Nueva York) | LEI: ninguno | CIK: ninguno
+  LOMA   -> Q6669086 Loma Negra (Bolsa de Nueva York) | LEI: ninguno | CIK: ninguno
+  VIST   -> Q98525405 Vista Oil & Gas (Bolsa de Nueva York) | LEI: ninguno | CIK: ninguno
+  MELI   -> Q950419 Mercado Libre (Nasdaq) | LEI: ['549300DKPDN9M5S8GB14'] | CIK: 0001099590
+  GLOB   -> Q5570946 Globant (Bolsa de Nueva York) | LEI: ninguno | CIK: ninguno
+
+tickers con ítem: 11/16; con LEI en Wikidata: 5/16
+
+## Lectura
+- Por CIK (P5531): 4/16 con ítem, 3/16 con LEI (YPF, Edenor, MercadoLibre), los 3 verificados en GLEIF.
+- Por ticker (P414 + P249): 11/16 con ítem, 5/16 con LEI (suma Banco Macro -> LEI ACTIVE
+  579100KKDKKIFEBKK040, que desempata el duplicado de B.9, y Telecom Argentina).
+- Pampa Energía: sin ítem por CIK ni por ticker. Solo se resuelve por nombre en castellano en GLEIF (B.9).
+- Verdad de referencia AR en Wikidata: 11 ítems con LEI, 10 dentro del universo GLEIF AR (965) = 1,0 %.
+- OpenSanctions: 46 entidades no-persona con país AR (17 LegalEntity, 13 Company, 6 Organization,
+  8 Security) y 2.162 personas. Cruce con el universo: 1 por LEI (PlusPetrol SA) y 2 por nombre
+  normalizado (PlusPetrol SA, Telecom Argentina), en datasets de riesgo (Iran UANI Business Registry,
+  Global Energy Ownership Tracker).
