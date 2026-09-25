@@ -68,3 +68,18 @@ terraform destroy              # bucket (ya vacío) y rol IAM entity360-uc
 - `aws s3api head-bucket --bucket <bucket> --profile tesseract` → 404.
 - `aws iam get-role --role-name entity360-uc --profile tesseract` → `NoSuchEntity`.
 - `terraform state list` vacío en los dos stacks.
+
+## Legacy (fase 2)
+Independiente de la nube; con confirmación.
+```powershell
+# SQL Server: contenedor, red y volumen con la base (incluido el historial del CDC)
+docker compose -f legacy\docker-compose.yml down -v
+
+# Credenciales del extractor en el Administrador de credenciales de Windows
+.venv\Scripts\python.exe -c "import keyring; [keyring.delete_password('entity360-cdc-extractor', k) for k in ('databricks_host','databricks_client_id','databricks_secret','sql_password')]"
+
+# Checkpoint local del extractor
+Remove-Item producers\cdc_extractor\state\checkpoint.json
+```
+Los secretos OAuth del SP se borran con el SP (destroy de `infra/databricks`) o vencen solos.
+Los archivos ya empujados al volume se borran con el catálogo.
