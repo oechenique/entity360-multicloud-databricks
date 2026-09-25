@@ -1,7 +1,7 @@
 # Informe del spike (Fase 0)
 
 Estado: **spike cerrado (2026-09-25)**. Las 11 preguntas tienen respuesta con evidencia; B.10 (GDELT)
-queda con un resultado preliminar a validar. Pendiente: destroy de los recursos del spike (con
+quedó validado con un diagnóstico (alias traducidos). Pendiente: destroy de los recursos del spike (con
 confirmación) antes de la fase 1.
 
 ## Resumen ejecutivo
@@ -29,7 +29,7 @@ confirmación) antes de la fase 1.
 | SEC EDGAR | Emisores AR con CIK (ADRs en NYSE/Nasdaq) | 16 | 9 |
 | Wikidata | Ítems AR con LEI + ítems de los 16 emisores por CIK/ticker | 11 + 11 | 11a |
 | OpenSanctions | No-personas con país AR (bandera de riesgo) | 46 (3 cruzan con el universo) | 11c |
-| GDELT | Menciones diarias de las organizaciones del universo (GKG) | preliminar: 25/día, solo MercadoLibre | 10 |
+| GDELT | Menciones diarias en GKG con alias traducidos por entidad | decenas de documentos/día (1 día: Banco Galicia ~20, MercadoLibre 6) | 10 |
 
 Se amplía más adelante si el costo y la cuota lo permiten (regla 01); con estos volúmenes, el
 límite es la cuota diaria de serverless, no el almacenamiento.
@@ -56,8 +56,9 @@ límite es la cuota diaria de serverless, no el almacenamiento.
    el ticker bursátil como señales extra, no como verdad de referencia (D11). Wikidata cubre 3–5 de
    16 emisores y el 1 % del universo (11a, 11b).
 6. OpenSanctions aporta pocas coincidencias (3) pero de alto valor para "riesgo" (11c).
-7. GDELT es barato con filtro de partición, pero la señal para empresas AR parece escasa; antes de
-   construir el productor GCP (fase 4) hay que confirmar que no es un falso negativo (10).
+7. GDELT es barato con filtro de partición. La señal para empresas AR es de decenas de documentos
+   por día y aparece con nombres traducidos palabra por palabra ("bank galicia"): el productor GCP
+   (fase 4) necesita un diccionario de alias traducidos por entidad y match de forma completa (10).
 
 ## Recomendaciones para la fase 1 (regla 03)
 1. **Catálogo `entity360` con `MANAGED LOCATION` en un bucket S3 propio (us-east-2)**, creado por
@@ -79,7 +80,6 @@ límite es la cuota diaria de serverless, no el almacenamiento.
 ## Pendientes y decisiones abiertas
 - **Destroy del spike** (con confirmación): orden y comandos en `README.md`. Decidir si el flag
   `external_access_enabled` se mantiene (recomendado, Camino A) o se revierte.
-- **B.10:** query de diagnóstico de GDELT (dry run + OK) para descartar falso negativo del regex.
 - **Regla 08, punto 6** ("evaluación contra Wikidata como verdad de referencia") contradice D11:
   actualizarla con OK de Gastón.
 - **Regla 11, Camino A:** agregar la validación del vending con el service principal (hoy probado
@@ -132,7 +132,7 @@ Sin jobs ni schedules activos. PAT y secretos OAuth del SP vencidos.
 | 8b | Universo AR en GLEIF | ✅ | ídem | 965 entidades AR (964 por domicilio legal, 955 por jurisdicción). EntityStatus: 881 ACTIVE, 14 INACTIVE, 70 NULL. RegistrationStatus: 350 ISSUED, **531 LAPSED**, 69 ANNULLED, 14 RETIRED, 1 DUPLICATE. 336 relaciones RR con punta AR (154 consolidación directa, 159 última). Universo chico: entra entero en SQL Server y en Free Edition. |
 | 8c | Tiempo de procesar el archivo entero en streaming (PC local) | ✅ | ídem | Descarga 38 s. Pasada completa: **csv stdlib 66,9 s (51k filas/s)** vs **pyarrow 12,7 s (272k filas/s, 3 columnas)**, mismos conteos. RR: 2 s. La carga inicial de la fase 2 se puede hacer local filtrando en streaming con pyarrow (sin descomprimir a disco) y aplicar después el delta diario. |
 | 9 | SEC EDGAR: submissions de 3 empresas AR, con User-Agent y ≤5 req/s | ✅ | `evidencia/b9-sec-edgar.txt` | 16/17 tickers AR con CIK. JSON de 128–164 KB por empresa, <0,5 s. **Sin LEI** (`lei=null` en los 3) y nombres en inglés ("Pampa Energy Inc.", "Macro Bank Inc."): la búsqueda literal en GLEIF da 0. GLEIF tiene duplicados (Banco Macro: 2 LEI) y homónimos parciales (YPF). Wikidata resultó un puente parcial (11a). |
-| 10 | GDELT en BigQuery (sandbox), con filtro de partición y dry run | ⚠️ preliminar | `evidencia/b10-gdelt.txt` | Costo: por día GKG (`V2Organizations`, `V2Tone`) **0,05 GiB**, Events **0,005 GiB**; sin filtro de partición serían **285 GiB**. Consumo real ~60 MB con tope de 1 GiB (D12). Menciones en 1 día: **solo MercadoLibre (25, tono −0,38)**; Events: 0. Señal muy escasa para el universo AR; no se descarta falso negativo del regex (nombres normalizados en inglés): validar antes de diseñar el productor GCP (fase 4). |
+| 10 | GDELT en BigQuery (sandbox), con filtro de partición y dry run | ✅ con reservas | `evidencia/b10-gdelt.txt` | Costo: por día GKG (`V2Organizations`, `V2Tone`) **0,05 GiB**, Events **0,005 GiB**; sin filtro de partición, **285 GiB**. Consumo total ~90 MB con tope de 1 GiB (D12). El diagnóstico (b10b, 28 MiB) confirmó **falso negativo**: GDELT traduce los nombres palabra por palabra ("bank galicia", "group financial galicia"). Señal de 1 día: decenas de documentos (Banco Galicia ~20, MercadoLibre 6); YPF/Pampa/Macro 0. Nombres cortos traen mucho ruido (Galicia España, Macron). El productor GCP necesita **alias traducidos por entidad** con match de forma completa; Events no sirve para empresas. |
 | 11a | Wikidata une SEC (CIK) con GLEIF (LEI) en los 16 emisores AR | ⚠️ parcial | `evidencia/b11-wikidata-opensanctions.txt` | Por CIK (P5531): **3/16 con LEI** (YPF, Edenor, MercadoLibre), los 3 verificados en GLEIF. Por ticker (P414+P249): **5/16** (suma Banco Macro, con el LEI ACTIVE que desempata el duplicado de B.9, y Telecom). Pampa Energía: sin ítem; solo se resuelve por nombre en castellano en GLEIF. Wikidata es **una señal más**, no el puente principal. |
 | 11b | Wikidata como verdad de referencia del matching | ❌ insuficiente | ídem | Solo 11 ítems AR con LEI; 10 caen en el universo GLEIF AR (965) = **1,0 %**. No alcanza para medir calidad: hace falta un conjunto de validación curado (ver recomendaciones). |
 | 11c | OpenSanctions: descarga, licencia y cruce con el universo | ✅ | ídem | `targets.simple.csv` 441 MB (1,23 M targets, 4,07 M entidades en total), lectura 4,6 s. AR: 46 no-personas y 2.162 personas. Cruce con el universo: 1 por LEI (PlusPetrol) y 2 por nombre normalizado (PlusPetrol, Telecom Argentina), en registros de riesgo. Licencia **CC BY-NC 4.0**, uso no comercial válido (`docs/fuentes.md`). La señal de riesgo es rara: sirve como bandera, no como volumen. |
