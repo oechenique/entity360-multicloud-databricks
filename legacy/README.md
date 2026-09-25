@@ -26,9 +26,11 @@ Más 2.324 direcciones (legal y sede), 146 nombres alternativos y 393 relaciones
 ```powershell
 cd legacy
 docker compose up -d --wait
-# modelo y CDC (idempotentes)
-Get-Content sql\001_modelo.sql -Raw | docker exec -i entity360-legacy-mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -b
-Get-Content sql\002_cdc.sql -Raw   | docker exec -i entity360-legacy-mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -b
+# modelo y CDC (idempotentes). Sin pipe: PowerShell 5.1 le agrega un BOM y sqlcmd falla.
+foreach ($f in '001_modelo.sql','002_cdc.sql') {
+  docker cp "sql\$f" "entity360-legacy-mssql:/tmp/$f"
+  docker exec entity360-legacy-mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -b -i "/tmp/$f"
+}
 cd ..
 .venv\Scripts\python.exe legacy\gleif_erp.py carga-inicial   # una vez
 .venv\Scripts\python.exe legacy\gleif_erp.py delta           # diario (LastDay, o LastWeek si pasó más de un día)
