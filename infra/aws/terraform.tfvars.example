@@ -1,0 +1,4 @@
+# Copiar a terraform.tfvars (ignorado por git) y completar.
+# external_id: el de cualquier storage credential de la cuenta de Databricks
+# (`databricks storage-credentials get <nombre>`), es el ID de la cuenta.
+uc_external_id = "<DATABRICKS_ACCOUNT_ID>"
