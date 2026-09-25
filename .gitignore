@@ -26,3 +26,7 @@ spike/data/
 
 # Payloads temporales del spike
 spike/consumo/_*.json
+
+# Fase 2: datos descargados del legacy y estado local del extractor CDC
+legacy/data/
+producers/cdc_extractor/state/

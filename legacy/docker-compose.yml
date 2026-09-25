@@ -1,0 +1,31 @@
+# Fase 2 (regla 04): el ERP "on-prem" de la organización. SQL Server en un container local.
+# Developer (no Express): el CDC necesita el SQL Server Agent.
+name: entity360-legacy
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: entity360-legacy-mssql
+    # SQL Server necesita más de los 10 s por defecto para cerrar limpio (si no, SIGKILL / 137).
+    stop_grace_period: 30s
+    # Credenciales solo en .env (fuera de git): MSSQL_SA_PASSWORD para el motor y
+    # SQLCMDPASSWORD (mismo valor) para que sqlcmd no necesite -P.
+    env_file: .env
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_AGENT_ENABLED: "true"
+    ports:
+      - "127.0.0.1:1433:1433" # solo localhost
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  mssql-data:
+    name: entity360-legacy-mssql
