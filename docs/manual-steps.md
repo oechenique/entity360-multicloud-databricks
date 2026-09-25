@@ -2,39 +2,62 @@
 
 Lo que Terraform no puede crear (o no conviene) se documenta acá, con el motivo.
 
-## Databricks
+## Antes del primer `terraform apply`
 
-### 1. Perfil de la CLI (OAuth U2M)
+### 1. Perfil de la CLI de Databricks (OAuth U2M)
 ```powershell
 databricks auth login --host <WORKSPACE_URL> --profile entity360-free
 ```
-Motivo: la auth interactiva no se automatiza; Terraform usa ese perfil.
+Motivo: la auth interactiva no se automatiza; Terraform usa ese perfil (`infra/databricks`).
 
-### 2. Catálogo `entity360` sobre default storage
-En Free Edition la API de Unity Catalog (y por eso `databricks_catalog` de Terraform) no
-crea catálogos sobre default storage: responde `Metastore storage root URL does not exist`
-(evidencia: `spike/evidencia/a1-catalogo-default-storage.txt`). Por SQL sí funciona.
-
-1. En un SQL warehouse (o el SQL editor):
-   ```sql
-   CREATE CATALOG IF NOT EXISTS entity360 COMMENT '...';
-   ```
-2. Traerlo al state de Terraform:
-   ```powershell
-   terraform import databricks_catalog.entity360 entity360
-   ```
-3. El recurso lleva `lifecycle { ignore_changes = [storage_root] }`; sin eso el plan fuerza
-   un replace que vuelve a fallar.
-
-Schemas, volumes y grants sí van por Terraform. Si el catálogo vive en un bucket S3 propio
-(`storage_root`), Terraform lo crea sin este paso (spike 4b).
-
-### 3. Acceso externo del metastore (Camino A)
-Habilita credential vending por Iceberg REST para motores externos (Snowflake, PyIceberg).
-El metastore es de cuenta y Free Edition no expone la consola de cuenta; se hace por CLI:
+### 2. Credenciales de AWS
 ```powershell
-databricks metastores update <METASTORE_ID> --external-access-enabled -p entity360-free
+aws login --profile tesseract
 ```
-Alcance: todo el metastore. No abre nada solo: cada schema necesita `EXTERNAL_USE_SCHEMA`
-(ese grant sí va por Terraform) y solo aplica a storage propio, no a default storage.
-Revertir: el mismo comando con `--external-access-enabled=false`.
+Siempre el perfil `tesseract` (regla 00). Las alertas de presupuesto (50 y 100 USD, al 85 % y
+100 %) tienen que existir antes de crear recursos (principio 5):
+`aws budgets describe-budgets --account-id <AWS_ACCOUNT_ID> --profile tesseract`.
+
+### 3. Variables fuera de git
+Copiar cada `terraform.tfvars.example` a `terraform.tfvars` y completar:
+- `infra/aws/terraform.tfvars`: `uc_external_id` = ID de la cuenta de Databricks (es el
+  `external_id` de cualquier storage credential de la cuenta).
+- `infra/databricks/terraform.tfvars`: `aws_account_id`.
+
+## Databricks
+
+### 4. Acceso externo del metastore (Camino A)
+Habilita el credential vending por Iceberg REST para motores externos (Snowflake, PyIceberg).
+El metastore es de cuenta y Free Edition no expone la consola de cuenta, así que va por CLI.
+**Estado: activo desde el spike (2026-09-24).**
+```powershell
+# Verificar (debe dar True)
+databricks metastores summary -p entity360-free -o json   # campo external_access_enabled
+# Habilitar
+databricks metastores update <METASTORE_ID> --external-access-enabled -p entity360-free
+# Revertir (solo si se abandona el Camino A)
+databricks metastores update <METASTORE_ID> --external-access-enabled=false -p entity360-free
+```
+Alcance: todo el metastore. No abre nada solo: cada schema necesita `EXTERNAL_USE_SCHEMA` (ese
+grant va por Terraform, solo sobre `gold`, en la fase 9) y solo aplica a storage propio.
+
+### 5. Secreto OAuth del SP de productores
+El SP `entity360-producer` lo crea Terraform; su secreto no, para que no quede en el state.
+Se crea cuando un productor lo necesita y se guarda **solo** en el secret manager de la nube
+que lo usa (Secrets Manager en AWS, Secret Manager en GCP, GitHub Secrets para Actions).
+```powershell
+# producer_sp_id: output de infra/databricks
+databricks service-principal-secrets-proxy create <producer_sp_id> --lifetime <segundos>s -p entity360-free
+```
+Nunca se imprime ni se escribe a disco. Para pruebas, `--lifetime 3600s` (vence solo); para
+productores, definir la vida útil y la rotación en su fase.
+
+Verificación: `python tests/smoke_producer_push.py` con `DATABRICKS_HOST`,
+`DATABRICKS_CLIENT_ID` y `DATABRICKS_CLIENT_SECRET` en el entorno.
+
+### Histórico: catálogo sobre default storage (ya no se usa)
+En Free Edition la API de Unity Catalog no crea catálogos sobre default storage
+(`Metastore storage root URL does not exist`, spike 1a'). Desde la fase 1 el catálogo vive en
+un bucket propio y lo crea Terraform (D8), así que este paso ya no aplica. Si alguna vez hiciera
+falta un catálogo en default storage: `CREATE CATALOG` por SQL + `terraform import` +
+`lifecycle { ignore_changes = [storage_root] }`.
