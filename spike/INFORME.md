@@ -80,10 +80,6 @@ límite es la cuota diaria de serverless, no el almacenamiento.
 ## Pendientes y decisiones abiertas
 - **Destroy del spike** (con confirmación): orden y comandos en `README.md`. Decidir si el flag
   `external_access_enabled` se mantiene (recomendado, Camino A) o se revierte.
-- **Regla 08, punto 6** ("evaluación contra Wikidata como verdad de referencia") contradice D11:
-  actualizarla con OK de Gastón.
-- **Regla 11, Camino A:** agregar la validación del vending con el service principal (hoy probado
-  con el usuario).
 - **Historial de git** (mail en el autor de los primeros commits, datos identificatorios en commits
   viejos): decidir antes de hacer público el repo.
 
