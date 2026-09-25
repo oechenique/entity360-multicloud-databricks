@@ -61,3 +61,21 @@ En Free Edition la API de Unity Catalog no crea catálogos sobre default storage
 un bucket propio y lo crea Terraform (D8), así que este paso ya no aplica. Si alguna vez hiciera
 falta un catálogo en default storage: `CREATE CATALOG` por SQL + `terraform import` +
 `lifecycle { ignore_changes = [storage_root] }`.
+
+## Legacy (fase 2)
+
+### 6. SQL Server local y credenciales del extractor CDC
+```powershell
+cd legacy
+Copy-Item .env.example .env      # y poner una contraseña de sa (no se versiona)
+docker compose up -d --wait
+# modelo y CDC: ver legacy/README.md
+cd ..
+.venv\Scripts\python.exe legacy\gleif_erp.py carga-inicial
+.venv\Scripts\python.exe producers\cdc_extractor\credenciales.py configurar --dias 90
+```
+`credenciales.py` crea el secreto OAuth del SP y el login de solo lectura `cdc_extractor`, y
+guarda todo en el Administrador de credenciales de Windows (`keyring`, servicio
+`entity360-cdc-extractor`). Motivo de la excepción al principio 4: un sistema on-prem no tiene
+secret manager de nube; el almacén de credenciales del sistema operativo cumple ese rol. Rotar
+antes del vencimiento (el primero vence el 2026-12-24).
