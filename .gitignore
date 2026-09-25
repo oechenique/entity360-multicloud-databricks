@@ -30,3 +30,6 @@ spike/consumo/_*.json
 # Fase 2: datos descargados del legacy y estado local del extractor CDC
 legacy/data/
 producers/cdc_extractor/state/
+
+# Fase 3: zips de las Lambdas (los genera Terraform)
+infra/aws/sec_edgar/build/

@@ -41,18 +41,32 @@ databricks metastores update <METASTORE_ID> --external-access-enabled=false -p e
 Alcance: todo el metastore. No abre nada solo: cada schema necesita `EXTERNAL_USE_SCHEMA` (ese
 grant va por Terraform, solo sobre `gold`, en la fase 9) y solo aplica a storage propio.
 
-### 5. Secreto OAuth del SP de productores
-El SP `entity360-producer` lo crea Terraform; su secreto no, para que no quede en el state.
-Se crea cuando un productor lo necesita y se guarda **solo** en el secret manager de la nube
-que lo usa (Secrets Manager en AWS, Secret Manager en GCP, GitHub Secrets para Actions).
-```powershell
-# producer_sp_id: output de infra/databricks
-databricks service-principal-secrets-proxy create <producer_sp_id> --lifetime <segundos>s -p entity360-free
-```
-Nunca se imprime ni se escribe a disco. Para pruebas, `--lifetime 3600s` (vence solo); para
-productores, definir la vida útil y la rotación en su fase.
+### 5. Secretos OAuth de los SP de productores
+Un SP por productor (ADR 0002), creados por Terraform. Sus secretos **no** (no quedan en el
+state): los crea el script de credenciales de cada productor y los guarda **solo** en el almacén
+de secretos de donde corre ese productor. Nunca se imprimen ni se escriben a disco.
 
-Verificación: `python tests/smoke_producer_push.py` con `DATABRICKS_HOST`,
+**Límite de Databricks: 5 secretos por SP**, y los vencidos cuentan hasta que se borran. Al rotar,
+borrar el secreto viejo cuando el nuevo esté en uso.
+
+#### Tabla de secretos vigentes
+| SP | Productor | Secreto (id) | Dónde se guarda | Creado (UTC) | **Vence (UTC)** | Cómo se rota |
+|---|---|---|---|---|---|---|
+| `entity360-producer` (pendiente: `entity360-producer-cdc`) | Extractor CDC (fase 2) | `66ebd68b…` | Administrador de credenciales de Windows, servicio `entity360-cdc-extractor` | 2026-09-25 21:56 | **2026-12-24 21:56** | `producers\cdc_extractor\credenciales.py configurar --dias 90` |
+| `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | `871133f2…` | AWS Secrets Manager `entity360/databricks/producer-sec-edgar` (us-east-1) | 2026-09-25 22:14 | **2026-12-24 22:14** | `producers\aws_sec_edgar\credenciales.py cargar --dias 90` |
+
+Mantener esta tabla al día en cada creación, rotación o borrado. Para listar los secretos reales
+de un SP (ids y vencimientos, nunca los valores):
+```powershell
+databricks service-principal-secrets-proxy list <sp_id> -p entity360-free
+```
+
+Historial (borrados el 2026-09-25, con OK): `3b3068ef…`, `ba8564c5…`, `a4be27bd…` (smoke tests de
+1 h de la fase 1) y `9d1615cb…` (huérfano de un intento fallido de la fase 3: el script creaba el
+secreto antes de validar el acceso a AWS; corregido).
+
+Secretos de prueba: `--lifetime 3600s` y borrarlos después del test (ocupan lugar en el límite).
+Verificación del SP de productores: `python tests/smoke_producer_push.py` con `DATABRICKS_HOST`,
 `DATABRICKS_CLIENT_ID` y `DATABRICKS_CLIENT_SECRET` en el entorno.
 
 ### Histórico: catálogo sobre default storage (ya no se usa)
@@ -79,3 +93,23 @@ guarda todo en el Administrador de credenciales de Windows (`keyring`, servicio
 `entity360-cdc-extractor`). Motivo de la excepción al principio 4: un sistema on-prem no tiene
 secret manager de nube; el almacén de credenciales del sistema operativo cumple ese rol. Rotar
 antes del vencimiento (el primero vence el 2026-12-24).
+
+## Productor SEC EDGAR (fase 3)
+
+### 7. Variables, secreto y suscripción a la alarma
+1. `infra/aws/sec_edgar/terraform.tfvars` (fuera de git, ver `.example`): `sec_user_agent` (la SEC
+   exige nombre y mail) y `alert_email`.
+2. `terraform apply` en `infra/aws/sec_edgar` (antes, `infra/databricks` con el SP
+   `entity360-producer-sec-edgar`).
+3. Cargar el secreto del SP en Secrets Manager (valida el acceso a AWS antes de crear el secreto):
+   ```powershell
+   .venv\Scripts\python.exe producers\aws_sec_edgar\credenciales.py cargar --dias 90
+   ```
+   Requiere `boto3` y `botocore[crt]` en el venv (el `aws login` usa el proveedor de credenciales
+   que necesita CRT).
+4. **Confirmar la suscripción al tópico SNS** desde el mail "AWS Notification - Subscription
+   Confirmation". Hasta entonces la alarma de la DLQ no avisa. Verificar:
+   ```powershell
+   aws sns list-subscriptions-by-topic --topic-arn arn:aws:sns:us-east-1:<AWS_ACCOUNT_ID>:entity360-sec-edgar-alertas --profile tesseract --region us-east-1
+   ```
+   (`SubscriptionArn` deja de decir `PendingConfirmation`).

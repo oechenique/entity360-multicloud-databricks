@@ -1,0 +1,21 @@
+{
+  "_descripcion": "Emisores argentinos ante la SEC (spike B.9, company_tickers.json de la SEC). CIK sin ceros a la izquierda.",
+  "emisores": [
+    {"ticker": "YPF",   "cik": 904851},
+    {"ticker": "GGAL",  "cik": 1114700},
+    {"ticker": "PAM",   "cik": 1469395},
+    {"ticker": "BMA",   "cik": 1347426},
+    {"ticker": "TEO",   "cik": 932470},
+    {"ticker": "TGS",   "cik": 931427},
+    {"ticker": "EDN",   "cik": 1395213},
+    {"ticker": "CEPU",  "cik": 1717161},
+    {"ticker": "SUPV",  "cik": 1517399},
+    {"ticker": "BBAR",  "cik": 913059},
+    {"ticker": "CRESY", "cik": 1034957},
+    {"ticker": "IRS",   "cik": 933267},
+    {"ticker": "LOMA",  "cik": 1711375},
+    {"ticker": "VIST",  "cik": 1762506},
+    {"ticker": "MELI",  "cik": 1099590},
+    {"ticker": "GLOB",  "cik": 1557860}
+  ]
+}

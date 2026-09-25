@@ -4,6 +4,7 @@ Principio 7: el destroy se escribe junto con la infra. **Todo con confirmación 
 (regla 00): nada de esto se corre sin OK de Gastón.
 
 ## Orden
+0. Productores que usan los SP (por ejemplo `infra/aws/sec_edgar`, ver su sección).
 1. Databricks (`infra/databricks`): suelta la external location, que depende del bucket.
 2. Vaciar el bucket del catálogo a propósito (ver abajo).
 3. AWS (`infra/aws`): bucket y rol IAM.
@@ -83,3 +84,27 @@ Remove-Item producers\cdc_extractor\state\checkpoint.json
 ```
 Los secretos OAuth del SP se borran con el SP (destroy de `infra/databricks`) o vencen solos.
 Los archivos ya empujados al volume se borran con el catálogo.
+
+## Productor SEC EDGAR (fase 3, us-east-1)
+Antes que `infra/databricks` (la Lambda de entrega usa el SP `entity360-producer-sec-edgar`).
+```powershell
+$acc = aws sts get-caller-identity --profile tesseract --query Account --output text
+$bucket = "entity360-sec-edgar-$acc"
+
+# 1) Vaciar el respaldo crudo a propósito (el bucket no tiene force_destroy): listar, simular, borrar, confirmar.
+aws s3 ls "s3://$bucket/" --recursive --summarize --profile tesseract
+aws s3 rm "s3://$bucket/" --recursive --dryrun --profile tesseract
+aws s3 rm "s3://$bucket/" --recursive --profile tesseract          # con OK
+aws s3 ls "s3://$bucket/" --recursive --summarize --profile tesseract   # Total Objects: 0
+
+# 2) Destroy (borra también el schedule diario, las Lambdas, la DLQ y la alarma)
+cd infra\aws\sec_edgar
+terraform plan -destroy
+terraform destroy
+```
+- El secreto de Secrets Manager queda **7 días** en recuperación (`recovery_window_in_days`) y
+  después se borra solo. Para borrarlo ya: `aws secretsmanager delete-secret --secret-id
+  entity360/databricks/producer-sec-edgar --force-delete-without-recovery` (con OK).
+- La suscripción de SNS se borra con el tópico.
+- El secreto OAuth del SP se borra con el SP (destroy de `infra/databricks`) o vence solo.
+- Los lotes ya entregados al volume se borran con el catálogo.
