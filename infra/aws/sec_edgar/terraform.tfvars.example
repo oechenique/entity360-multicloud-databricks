@@ -1,0 +1,6 @@
+# Copiar a terraform.tfvars (ignorado por git) y completar.
+# La SEC exige un User-Agent con nombre y mail.
+sec_user_agent = "entity360 (portfolio) Nombre Apellido <CONTACT_EMAIL>"
+
+# Mail para la alarma de la DLQ (la suscripción se confirma desde el mail).
+alert_email = "<CONTACT_EMAIL>"
