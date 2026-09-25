@@ -1,8 +1,7 @@
 # Informe del spike (Fase 0)
 
 Estado: **spike cerrado (2026-09-25)**. Las 11 preguntas tienen respuesta con evidencia; B.10 (GDELT)
-quedó validado con un diagnóstico (alias traducidos). Pendiente: destroy de los recursos del spike (con
-confirmación) antes de la fase 1.
+quedó validado con un diagnóstico (alias traducidos). Recursos del spike destruidos: ver "Estado final".
 
 ## Resumen ejecutivo
 - **La arquitectura de la regla 01 se sostiene.** El push a un UC Volume funciona desde afuera con
@@ -76,25 +75,37 @@ límite es la cuota diaria de serverless, no el almacenamiento.
    resueltos a mano y su evidencia, que alimenta la evaluación de la fase 6.
 7. Terraform con variables en `terraform.tfvars` (fuera de git) y `.tfvars.example` versionado;
    placeholders en toda la documentación.
+8. `force_destroy` en la external location solo si se quiere borrar con force (pasa por encima de
+   tablas retenidas para UNDROP); decidirlo y documentarlo explícitamente.
 
 ## Pendientes y decisiones abiertas
-- **Destroy del spike** (con confirmación): orden y comandos en `README.md`. Decidir si el flag
-  `external_access_enabled` se mantiene (recomendado, Camino A) o se revierte.
 - **Historial de git** (mail en el autor de los primeros commits, datos identificatorios en commits
   viejos): decidir antes de hacer público el repo.
 
-## Recursos activos al cierre (a destruir antes de la fase 1; detalle en `README.md`)
-| Dónde | Recurso | Costo / nota |
-|---|---|---|
-| AWS us-east-2 | Bucket `entity360-spike-uc-<AWS_ACCOUNT_ID>` (~44 KB) y rol IAM `entity360-spike-uc` | centavos; alertas de 50/100 USD activas |
-| Databricks | Catálogos `entity360` y `entity360_ext` (schemas, volume, tablas), SP `entity360-spike-producer`, storage credential + external location, grants | Free Edition |
-| Databricks | **Flag del metastore `external_access_enabled = true`** (afecta a todo el metastore) | mantener para el Camino A o revertir |
-| Databricks | Carpeta `/Users/<DATABRICKS_USER_EMAIL>/entity360-spike/` (notebook, dashboard publicado), Genie space | fuera de Terraform |
-| GCP | Proyecto `<GCP_PROJECT_ID>` en sandbox de BigQuery, sin billing; sin datasets creados | 0 (no se destruye: lo usa la fase 4) |
-| Local | Contenedor `entity360-spike-mssql` **parado** + volumen `entity360-spike-mssql` | 0 |
-| Local | `spike/data/` (GLEIF 506 MB, OpenSanctions 441 MB, ignorado por git), `spike/.venv` | 0 |
+## Estado final: spike destruido (2026-09-25)
 
-Sin jobs ni schedules activos. PAT y secretos OAuth del SP vencidos.
+Destroy ejecutado con OK de Gastón, en este orden y verificado después de cada paso:
+
+| # | Qué | Resultado | Verificación |
+|---|---|---|---|
+| 1 | Genie space `entity360 spike` | borrado (API) | ya no figura en el listado de spaces; queda en la papelera del workspace hasta que se purga |
+| 2 | Carpeta `/Users/<DATABRICKS_USER_EMAIL>/entity360-spike` (notebook + dashboard) | borrada (`workspace delete --recursive`) | la ruta no existe; el dashboard no existe |
+| 3 | Databricks por Terraform (`spike/terraform`) | 13 destruidos | catálogos `entity360` y `entity360_ext`, schemas, volume, SP, storage credential, external location y grants: ninguno figura; state vacío |
+| 4 | AWS por Terraform (`spike/terraform-aws`) | 6 destruidos | bucket: 404; rol IAM: `NoSuchEntity`; state vacío |
+| 5 | SQL Server local | `docker compose down -v` | 0 contenedores, 0 volúmenes, red borrada |
+
+**Se mantiene (a propósito):**
+- Flag del metastore `external_access_enabled = true` (Camino A); verificado después del destroy.
+- `spike/data/gleif` (506 MB), `spike/data/opensanctions` (441 MB) y `spike/.venv`: locales, ignorados por git.
+- Proyecto de GCP `<GCP_PROJECT_ID>` (sandbox, sin billing, sin datasets): lo usa la fase 4.
+- Archivos de state de Terraform vacíos y `.env`/`terraform.tfvars` locales (ignorados por git).
+
+**Aprendizajes del destroy:**
+- `force_destroy = true` en `databricks_external_location` hace que el provider borre **con
+  force**: pasa por encima de dependencias (por ejemplo, tablas retenidas para UNDROP) sin avisar.
+  En la fase 1, ponerlo solo si se quiere ese comportamiento, y documentarlo.
+- El borrado de un Genie space por API lo manda a la papelera: desaparece del listado pero el GET
+  por ID lo sigue devolviendo hasta la purga.
 
 ## Riesgos
 | Riesgo | Evidencia | Mitigación |

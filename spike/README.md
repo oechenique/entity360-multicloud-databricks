@@ -2,7 +2,32 @@
 
 Todo lo de esta carpeta es efímero salvo `INFORME.md` y `evidencia/`.
 
-## Recursos creados
+## Estado final: spike destruido (2026-09-25)
+
+Destroy ejecutado con OK de Gastón, en este orden y verificado después de cada paso:
+
+| # | Qué | Resultado | Verificación |
+|---|---|---|---|
+| 1 | Genie space `entity360 spike` | borrado (API) | ya no figura en el listado de spaces; queda en la papelera del workspace hasta que se purga |
+| 2 | Carpeta `/Users/<DATABRICKS_USER_EMAIL>/entity360-spike` (notebook + dashboard) | borrada (`workspace delete --recursive`) | la ruta no existe; el dashboard no existe |
+| 3 | Databricks por Terraform (`spike/terraform`) | 13 destruidos | catálogos `entity360` y `entity360_ext`, schemas, volume, SP, storage credential, external location y grants: ninguno figura; state vacío |
+| 4 | AWS por Terraform (`spike/terraform-aws`) | 6 destruidos | bucket: 404; rol IAM: `NoSuchEntity`; state vacío |
+| 5 | SQL Server local | `docker compose down -v` | 0 contenedores, 0 volúmenes, red borrada |
+
+**Se mantiene (a propósito):**
+- Flag del metastore `external_access_enabled = true` (Camino A); verificado después del destroy.
+- `spike/data/gleif` (506 MB), `spike/data/opensanctions` (441 MB) y `spike/.venv`: locales, ignorados por git.
+- Proyecto de GCP `<GCP_PROJECT_ID>` (sandbox, sin billing, sin datasets): lo usa la fase 4.
+- Archivos de state de Terraform vacíos y `.env`/`terraform.tfvars` locales (ignorados por git).
+
+**Aprendizajes del destroy:**
+- `force_destroy = true` en `databricks_external_location` hace que el provider borre **con
+  force**: pasa por encima de dependencias (por ejemplo, tablas retenidas para UNDROP) sin avisar.
+  En la fase 1, ponerlo solo si se quiere ese comportamiento, y documentarlo.
+- El borrado de un Genie space por API lo manda a la papelera: desaparece del listado pero el GET
+  por ID lo sigue devolviendo hasta la purga.
+
+## Recursos creados durante el spike (todos destruidos salvo lo indicado arriba)
 | Recurso | Cómo | Estado |
 |---|---|---|
 | Catálogo `entity360` | SQL `CREATE CATALOG` + `terraform import` (la API no acepta default storage) | creado |
