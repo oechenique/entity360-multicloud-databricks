@@ -53,3 +53,82 @@ procesados 0.00 GiB | facturados 0.01 GiB | 1.8 s
 - PRELIMINAR: no se descarta un falso negativo del regex (por ejemplo, GDELT normaliza nombres en
   inglés: "yacimientos petroliferos fiscales", "pampa energy"). Validar con una query de diagnóstico
   (dry run + OK) antes de fijar el diseño del productor GCP.
+
+## Diagnóstico de falso negativo (b10b_gdelt_diagnostico.py, 2026-09-25)
+día 2026-09-23 | patrones: 22 (sin \b: subcadena)
+dry run: 28.1 MiB estimados (se ejecuta si <= 100 MiB)
+procesados 28.1 MiB | facturados 29.0 MiB | 1.8 s
+60 formas distintas de organización:
+      9  bank galicia
+      7  parliament of galicia
+      6  mercadolibre
+      6  branch bank galicia
+      2  parliament galician
+      2  advice school of galicia
+      2  administration galician
+      2  assembly a un macros
+      2  parliament to galicia
+      2  museum macro instruction
+      2  school galician
+      2  emmanuel macron european political community
+      2  institution galician
+      2  group financial galicia
+      2  bank galicia to hills viewpoint
+      2  a branch bank galicia
+      2  macroeconomic overview in center point
+      2  macroinvertebrate community index
+      1  branch galicia
+      1  pampa union
+      1  galicia division
+      1  lok virsa heritage museum
+      1  branch bank galicia to hills viewpoint
+      1  bh macro limited the company
+      1  a center agricultural to galicia
+      1  hotel galicia
+      1  federation buenos pampas
+      1  macron assembly
+      1  a party folk to galicia
+      1  bank galician
+      1  center style macron
+      1  school galician beech
+      1  university galician
+      1  university name daniel galician start
+      1  consello school to galicia
+      1  regal academy galician
+      1  branch hills viewpoint bank galicia
+      1  canary macro income fund
+      1  seconds a school galician
+      1  school technology to galicia
+      1  a center top to hotel to galicia
+      1  birsa agricultural university
+      1  branch to bank galicia
+      1  system university to galicia
+      1  institute for analysis macroeconomic
+      1  center galicia university
+      1  emmanuel macron to european commission
+      1  french an post macron assembly
+      1  court administrative of recruitment public of galicia
+      1  lviv national medical university name daniel galician
+      1  deutsche bank global head of macro
+      1  center galicia
+      1  center galician to art
+      1  a group financial galicia
+      1  agency galicia quality food
+      1  league galician
+      1  court to xustiza to galicia
+      1  galician district court
+      1  center galician
+      1  head of global macro research at nomura
+
+
+Lectura del diagnóstico:
+- SÍ había falso negativo: GDELT traduce palabra por palabra los nombres de artículos no ingleses.
+  Banco Galicia -> "bank galicia" (9 docs), "branch bank galicia" (6), "a branch bank galicia" (2),
+  "bank galician" (1); Grupo Financiero Galicia -> "group financial galicia" (2 + 1).
+  El regex de B.10 buscaba "banco galicia" / "grupo financiero galicia" y no los encontró.
+- MercadoLibre: 6 docs con la forma exacta. YPF, Pampa, Macro (banco), Telecom, Edenor: 0 ese día.
+- Ruido alto con nombres cortos: "galicia" = región de España (parlamento, escuelas, cortes);
+  "macro" = Macron, macroeconomía; "pampa" = "pampa union", "federation buenos pampas".
+- Consecuencia: el productor GDELT necesita un diccionario de alias traducidos por entidad
+  ("bank galicia", "group financial galicia", ...) con match exacto de la forma completa, no
+  nombres cortos. La señal diaria del universo AR es de decenas de documentos, no miles.
