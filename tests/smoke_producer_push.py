@@ -6,13 +6,16 @@
 3. GET del mismo archivo y comparación del sha256.
 4. Control negativo de escritura: el SP no puede crear otro volume (regla 03: solo escribe
    en landing.raw).
-5. Informativo: lectura de gold, heredada de "account users" (docs/adr/0001).
+5. Control negativo de lectura: el SP no puede leer el schema gold (docs/adr/0001).
 
 Credenciales solo en el entorno (nunca a disco): DATABRICKS_HOST, DATABRICKS_CLIENT_ID,
 DATABRICKS_CLIENT_SECRET.
 
 Uso:
     python tests/smoke_producer_push.py
+
+Cada corrida deja un archivo en _smoke/. Limpieza (con el perfil del usuario):
+    databricks fs rm -r dbfs:/Volumes/entity360/landing/raw/_smoke -p entity360-free
 """
 
 import hashlib
@@ -62,11 +65,12 @@ def main() -> int:
     print(f"4. control negativo de escritura (crear volume) -> HTTP {neg.status_code}: "
           f"{'denegado, OK' if neg_ok else 'PERMITIDO, revisar grants'}")
 
-    # Informativo (docs/adr/0001): el SP es miembro de "account users" y hereda la lectura de gold.
-    info = requests.get(f"{host}/api/2.1/unity-catalog/schemas/entity360.gold", headers=auth, timeout=60)
-    print(f"5. info: lectura de metadata de gold -> HTTP {info.status_code} "
-          f"({'hereda de account users, ver ADR 0001' if info.ok else 'sin acceso'})")
-    return 0 if ok and neg_ok else 1
+    # El SP no puede leer gold (ADR 0001: sin grants de consumo a "account users").
+    lectura = requests.get(f"{host}/api/2.1/unity-catalog/schemas/entity360.gold", headers=auth, timeout=60)
+    lectura_ok = lectura.status_code in (401, 403, 404)
+    print(f"5. control negativo de lectura (schema gold) -> HTTP {lectura.status_code}: "
+          f"{'denegado, OK' if lectura_ok else 'PERMITIDO, revisar grants'}")
+    return 0 if ok and neg_ok and lectura_ok else 1
 
 
 if __name__ == "__main__":
