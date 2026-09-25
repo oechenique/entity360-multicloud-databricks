@@ -1,38 +1,104 @@
 # Informe del spike (Fase 0)
 
-Estado: **parte A respondida**. Snowflake (Camino A, catalog integration `ICEBERG_REST` + `VENDED_CREDENTIALS`) se valida al inicio de la fase 9, no en el spike. Parte B en curso.
+Estado: **spike cerrado (2026-09-25)**. Las 11 preguntas tienen respuesta con evidencia; B.10 (GDELT)
+queda con un resultado preliminar a validar. Pendiente: destroy de los recursos del spike (con
+confirmación) antes de la fase 1.
 
-## Estado al cierre de hoy (2026-09-24)
+## Resumen ejecutivo
+- **La arquitectura de la regla 01 se sostiene.** El push a un UC Volume funciona desde afuera con
+  service principal + OAuth M2M (1b), y Free Edition alcanza para medallion, Iceberg, dashboard y
+  Genie (3a, 6a, 6b).
+- **Snowflake: Camino A viable** (4e). Hace falta sacar Gold del default storage hacia un S3 propio
+  y habilitar el acceso externo del metastore; con eso, PyIceberg lee y escribe con credential
+  vending. Se valida del lado Snowflake al inicio de la fase 9 (regla 11).
+- **El problema de identidad es real y más duro de lo previsto.** La SEC no trae LEI y usa nombres
+  en inglés; GLEIF tiene duplicados y homónimos; Wikidata une solo 3–5 de 16 emisores. La
+  resolución se apoya en matching por nombre/domicilio dentro de GLEIF AR, con Wikidata y ticker
+  como señales extra, y se mide contra un set curado a mano (D11).
+- **Los volúmenes son chicos y baratos.** Universo AR de GLEIF: 965 entidades; carga inicial local
+  en <1 min con pyarrow; GDELT cuesta ~50 MB por día-consulta con filtro de partición.
+- **Dos riesgos de plataforma** dependen de comportamientos de Free Edition que contradicen su
+  documentación (storage propio y salida a internet): ver Riesgos.
 
-**Hecho**
-- Parte A completa: 1 (push con PAT y con SP + OAuth M2M), 3 (Iceberg gestionado + REST), 4 (S3
-  propio, flag de acceso externo y credential vending: Camino A viable), 5 (salida a internet)
-  y 6 (dashboard AI/BI y Genie).
-- Parte B: 7 (SQL Server Developer con CDC), 8 (GLEIF golden copy completo, universo AR y
-  tiempos) y 9 (SEC EDGAR).
-- Decisiones D1–D9 registradas abajo. Datos identificatorios reemplazados por placeholders.
-  Falso positivo de GitGuardian resuelto (sin contraseñas en el historial).
+## Universo recomendado (con cantidades medidas)
+| Fuente | Alcance para la fase 2+ | Cantidad | Evidencia |
+|---|---|---|---|
+| GLEIF LEI2 | Todas las entidades con domicilio legal o jurisdicción AR, **cualquier estado** (el golden record marca vigencia; 531 están LAPSED) | 965 | 8b |
+| GLEIF RR | Relaciones con alguna punta AR (matriz/filial, fondos, sucursales) | 336 | 8b |
+| GLEIF, conjunto de control | Contrapartes no-AR de esas relaciones (matrices extranjeras): control natural de otros países | a medir en la fase 2 | 8b |
+| SEC EDGAR | Emisores AR con CIK (ADRs en NYSE/Nasdaq) | 16 | 9 |
+| Wikidata | Ítems AR con LEI + ítems de los 16 emisores por CIK/ticker | 11 + 11 | 11a |
+| OpenSanctions | No-personas con país AR (bandera de riesgo) | 46 (3 cruzan con el universo) | 11c |
+| GDELT | Menciones diarias de las organizaciones del universo (GKG) | preliminar: 25/día, solo MercadoLibre | 10 |
 
-**Pendiente**
-- B.10 GDELT: espera el proyecto de GCP (con alertas de presupuesto antes de crear nada).
-- B.11 OpenSanctions y Wikidata: próxima sesión. Wikidata es el puente LEI↔CIK que mostró
-  faltar el punto 9.
-- Cerrar el informe (universo recomendado con cantidades y camino para Snowflake) y destruir
-  los recursos del spike, con confirmación, antes de la fase 1.
-- Decidir si se reescribe el historial (mail en el autor de los primeros commits, datos
-  identificatorios en commits viejos) antes de hacer público el repo.
+Se amplía más adelante si el costo y la cuota lo permiten (regla 01); con estos volúmenes, el
+límite es la cuota diaria de serverless, no el almacenamiento.
 
-**Recursos activos** (detalle y destroy en `README.md`)
+## Camino para Snowflake
+**Camino A** (zero-copy con Iceberg REST + `VENDED_CREDENTIALS`), condicionado a:
+1. Gold en un catálogo con `MANAGED LOCATION` en un bucket S3 propio **en us-east-2** (la región del
+   metastore).
+2. `external_access_enabled = true` en el metastore (paso manual, `docs/manual-steps.md` §3).
+3. `EXTERNAL_USE_SCHEMA` solo sobre el schema `gold`, otorgado al principal que use Snowflake.
+4. Validar al inicio de la fase 9 que el vending funcione con **OAuth del service principal** (el
+   spike lo probó con el token del usuario) y del lado Snowflake. Si falla, Camino B sin cambios en
+   las fases anteriores.
+
+## Conclusiones
+1. Push + manifest + idempotencia en tres capas (D2, D6) es el contrato correcto: el landing solo
+   no es idempotente (1c).
+2. En Free Edition, lo que vive en default storage no se puede crear por Terraform (catálogos) ni
+   exponer a motores externos (3c). El storage propio resuelve las dos cosas (4b, 4e, D7, D8).
+3. El CDC de SQL Server Developer funciona como lo pide la regla 04; el extractor tiene que leer por
+   rango de LSN y tolerar el retraso asíncrono del capture job (7).
+4. GLEIF es la columna vertebral del universo: completo, CC0, con deltas diarios de 2 MB (8).
+5. **La calidad del matching se mide contra un set de validación curado a mano**, con Wikidata y
+   el ticker bursátil como señales extra, no como verdad de referencia (D11). Wikidata cubre 3–5 de
+   16 emisores y el 1 % del universo (11a, 11b).
+6. OpenSanctions aporta pocas coincidencias (3) pero de alto valor para "riesgo" (11c).
+7. GDELT es barato con filtro de partición, pero la señal para empresas AR parece escasa; antes de
+   construir el productor GCP (fase 4) hay que confirmar que no es un falso negativo (10).
+
+## Recomendaciones para la fase 1 (regla 03)
+1. **Catálogo `entity360` con `MANAGED LOCATION` en un bucket S3 propio (us-east-2)**, creado por
+   Terraform (D8). El bucket y el rol IAM van en `infra/aws/` (tomar como base `spike/terraform-aws`),
+   con la storage credential y la external location en `infra/databricks/`.
+2. Mantener `external_access_enabled` (Camino A) y documentarlo como paso manual; otorgar
+   `EXTERNAL_USE_SCHEMA` solo sobre `gold`.
+3. SP de productores como en el spike: `workspace_access` + `USE_CATALOG`/`USE_SCHEMA`/`READ_VOLUME`/
+   `WRITE_VOLUME` sobre `landing.raw` (D4, D5). Secretos OAuth fuera del state de Terraform.
+4. Contrato de landing con `_manifest_<ts>.json` (D2) y `ops.ingestion_log` con el `sha256` del
+   manifest, que es la base del dedup de Bronze (D6).
+5. Crear el dashboard y el Genie space por API a partir de archivos versionados (`.lvdash.json`),
+   no a mano (6a).
+6. Separar desde el inicio el set de validación curado (D11): un archivo versionado con pares
+   resueltos a mano y su evidencia, que alimenta la evaluación de la fase 6.
+7. Terraform con variables en `terraform.tfvars` (fuera de git) y `.tfvars.example` versionado;
+   placeholders en toda la documentación.
+
+## Pendientes y decisiones abiertas
+- **Destroy del spike** (con confirmación): orden y comandos en `README.md`. Decidir si el flag
+  `external_access_enabled` se mantiene (recomendado, Camino A) o se revierte.
+- **B.10:** query de diagnóstico de GDELT (dry run + OK) para descartar falso negativo del regex.
+- **Regla 08, punto 6** ("evaluación contra Wikidata como verdad de referencia") contradice D11:
+  actualizarla con OK de Gastón.
+- **Regla 11, Camino A:** agregar la validación del vending con el service principal (hoy probado
+  con el usuario).
+- **Historial de git** (mail en el autor de los primeros commits, datos identificatorios en commits
+  viejos): decidir antes de hacer público el repo.
+
+## Recursos activos al cierre (a destruir antes de la fase 1; detalle en `README.md`)
 | Dónde | Recurso | Costo / nota |
 |---|---|---|
 | AWS us-east-2 | Bucket `entity360-spike-uc-<AWS_ACCOUNT_ID>` (~44 KB) y rol IAM `entity360-spike-uc` | centavos; alertas de 50/100 USD activas |
 | Databricks | Catálogos `entity360` y `entity360_ext` (schemas, volume, tablas), SP `entity360-spike-producer`, storage credential + external location, grants | Free Edition |
-| Databricks | **Flag del metastore `external_access_enabled = true`** (afecta a todo el metastore) | revertir si el Camino A no sigue |
+| Databricks | **Flag del metastore `external_access_enabled = true`** (afecta a todo el metastore) | mantener para el Camino A o revertir |
 | Databricks | Carpeta `/Users/<DATABRICKS_USER_EMAIL>/entity360-spike/` (notebook, dashboard publicado), Genie space | fuera de Terraform |
-| Local | Contenedor `entity360-spike-mssql` **parado** + volumen `entity360-spike-mssql` con la base CDC | 0 |
-| Local | `spike/data/gleif` (506 MB, ignorado por git), `spike/.venv` | 0 |
+| GCP | Proyecto `<GCP_PROJECT_ID>` en sandbox de BigQuery, sin billing; sin datasets creados | 0 (no se destruye: lo usa la fase 4) |
+| Local | Contenedor `entity360-spike-mssql` **parado** + volumen `entity360-spike-mssql` | 0 |
+| Local | `spike/data/` (GLEIF 506 MB, OpenSanctions 441 MB, ignorado por git), `spike/.venv` | 0 |
 
-Sin jobs ni schedules activos. El PAT y los secretos OAuth del SP ya vencieron (1 h).
+Sin jobs ni schedules activos. PAT y secretos OAuth del SP vencidos.
 
 ## Riesgos
 | Riesgo | Evidencia | Mitigación |
@@ -65,7 +131,7 @@ Sin jobs ni schedules activos. El PAT y los secretos OAuth del SP ya vencieron (
 | 8a | GLEIF golden copy completo (LEI2 + RR), tamaño y registros | ✅ | `evidencia/b8-gleif-golden-copy.txt` (publish 2026-09-24 16:00) | LEI2: 482 MB zip / 4,77 GB CSV / 3.441.120 registros / 338 columnas. RR: 23 MB / 488.850. Delta LastDay: 14.0k LEI2 (2 MB) y 2,6k RR. Licencia CC0. |
 | 8b | Universo AR en GLEIF | ✅ | ídem | 965 entidades AR (964 por domicilio legal, 955 por jurisdicción). EntityStatus: 881 ACTIVE, 14 INACTIVE, 70 NULL. RegistrationStatus: 350 ISSUED, **531 LAPSED**, 69 ANNULLED, 14 RETIRED, 1 DUPLICATE. 336 relaciones RR con punta AR (154 consolidación directa, 159 última). Universo chico: entra entero en SQL Server y en Free Edition. |
 | 8c | Tiempo de procesar el archivo entero en streaming (PC local) | ✅ | ídem | Descarga 38 s. Pasada completa: **csv stdlib 66,9 s (51k filas/s)** vs **pyarrow 12,7 s (272k filas/s, 3 columnas)**, mismos conteos. RR: 2 s. La carga inicial de la fase 2 se puede hacer local filtrando en streaming con pyarrow (sin descomprimir a disco) y aplicar después el delta diario. |
-| 9 | SEC EDGAR: submissions de 3 empresas AR, con User-Agent y ≤5 req/s | ✅ | `evidencia/b9-sec-edgar.txt` | 16/17 tickers AR con CIK. JSON de 128–164 KB por empresa, <0,5 s. **Sin LEI** (`lei=null` en los 3) y nombres en inglés ("Pampa Energy Inc.", "Macro Bank Inc."): la búsqueda literal en GLEIF da 0. GLEIF tiene duplicados (Banco Macro: 2 LEI) y homónimos parciales (YPF). El puente es Wikidata (punto 11). |
+| 9 | SEC EDGAR: submissions de 3 empresas AR, con User-Agent y ≤5 req/s | ✅ | `evidencia/b9-sec-edgar.txt` | 16/17 tickers AR con CIK. JSON de 128–164 KB por empresa, <0,5 s. **Sin LEI** (`lei=null` en los 3) y nombres en inglés ("Pampa Energy Inc.", "Macro Bank Inc."): la búsqueda literal en GLEIF da 0. GLEIF tiene duplicados (Banco Macro: 2 LEI) y homónimos parciales (YPF). Wikidata resultó un puente parcial (11a). |
 | 10 | GDELT en BigQuery (sandbox), con filtro de partición y dry run | ⚠️ preliminar | `evidencia/b10-gdelt.txt` | Costo: por día GKG (`V2Organizations`, `V2Tone`) **0,05 GiB**, Events **0,005 GiB**; sin filtro de partición serían **285 GiB**. Consumo real ~60 MB con tope de 1 GiB (D12). Menciones en 1 día: **solo MercadoLibre (25, tono −0,38)**; Events: 0. Señal muy escasa para el universo AR; no se descarta falso negativo del regex (nombres normalizados en inglés): validar antes de diseñar el productor GCP (fase 4). |
 | 11a | Wikidata une SEC (CIK) con GLEIF (LEI) en los 16 emisores AR | ⚠️ parcial | `evidencia/b11-wikidata-opensanctions.txt` | Por CIK (P5531): **3/16 con LEI** (YPF, Edenor, MercadoLibre), los 3 verificados en GLEIF. Por ticker (P414+P249): **5/16** (suma Banco Macro, con el LEI ACTIVE que desempata el duplicado de B.9, y Telecom). Pampa Energía: sin ítem; solo se resuelve por nombre en castellano en GLEIF. Wikidata es **una señal más**, no el puente principal. |
 | 11b | Wikidata como verdad de referencia del matching | ❌ insuficiente | ídem | Solo 11 ítems AR con LEI; 10 caen en el universo GLEIF AR (965) = **1,0 %**. No alcanza para medir calidad: hace falta un conjunto de validación curado (ver recomendaciones). |
