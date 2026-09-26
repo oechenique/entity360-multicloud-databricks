@@ -69,10 +69,14 @@ SELECT GKGRECORDID AS gkg_record_id,
        ARRAY_AGG(DISTINCT org ORDER BY org) AS formas,
        SAFE_CAST(SPLIT(V2Tone, ',')[SAFE_OFFSET(0)] AS FLOAT64) AS tono
 FROM orgs, UNNEST(@alias) AS a
-WHERE REGEXP_CONTAINS(org, a.regex) AND (a.excluir = '' OR NOT REGEXP_CONTAINS(org, a.excluir))
+WHERE {match}
   {filtro_respaldo}
 GROUP BY gkg_record_id, fecha_gdelt, medio, url, entidad, tono
 """
+
+# Una forma de organización (org, en minúsculas) es de la entidad `a` si contiene uno de sus alias
+# y ninguna de sus exclusiones. Los tests la corren tal cual en BigQuery (tests/gcp_gdelt).
+MATCH = "REGEXP_CONTAINS(org, a.regex) AND (a.excluir = '' OR NOT REGEXP_CONTAINS(org, a.excluir))"
 
 FILTRO_RESPALDO = ("AND GKGRECORDID NOT IN (SELECT gkg_record_id FROM `{tabla}` "
                    "WHERE lote_utc >= TIMESTAMP_SUB(@desde, INTERVAL 1 DAY))")
@@ -82,20 +86,26 @@ def frase(forma: str) -> str:
     return r"\b" + r"\s+".join(forma.split()) + r"\b"
 
 
-def patrones() -> tuple[list, str]:
-    """Un STRUCT(clave, regex, excluir) por entidad, y la unión de todos los alias (prefiltro)."""
+def reglas() -> tuple[list[tuple[str, str, str]], str]:
+    """(clave, regex, excluir) por entidad, y la unión de todos los alias (prefiltro)."""
     ents = json.loads(ALIAS.read_text(encoding="utf-8"))["entidades"]
     filas, todas = [], []
     for e in ents:
         formas = [frase(a["forma"]) for a in e["alias"]]
         todas += formas
         excluir = "(" + "|".join(frase(x) for x in e["excluir"]) + ")" if e.get("excluir") else ""
-        filas.append(bigquery.StructQueryParameter(
-            None,
-            bigquery.ScalarQueryParameter("clave", "STRING", e["clave"]),
-            bigquery.ScalarQueryParameter("regex", "STRING", "(" + "|".join(formas) + ")"),
-            bigquery.ScalarQueryParameter("excluir", "STRING", excluir)))
+        filas.append((e["clave"], "(" + "|".join(formas) + ")", excluir))
     return filas, "(" + "|".join(todas) + ")"
+
+
+def patrones() -> tuple[list, str]:
+    """reglas() como parámetros de la consulta: un STRUCT(clave, regex, excluir) por entidad."""
+    filas, regex_any = reglas()
+    return [bigquery.StructQueryParameter(
+        None,
+        bigquery.ScalarQueryParameter("clave", "STRING", clave),
+        bigquery.ScalarQueryParameter("regex", "STRING", regex),
+        bigquery.ScalarQueryParameter("excluir", "STRING", excluir)) for clave, regex, excluir in filas], regex_any
 
 
 def iso(v):
@@ -104,7 +114,7 @@ def iso(v):
 
 def extraer(c: bigquery.Client, tabla: str, desde: datetime, hay_respaldo: bool) -> tuple[list[dict], dict]:
     alias, regex_any = patrones()
-    sql = SQL.format(filtro_respaldo=FILTRO_RESPALDO.format(tabla=tabla) if hay_respaldo else "")
+    sql = SQL.format(match=MATCH, filtro_respaldo=FILTRO_RESPALDO.format(tabla=tabla) if hay_respaldo else "")
     params = [bigquery.ScalarQueryParameter("desde", "TIMESTAMP", desde),
               bigquery.ScalarQueryParameter("regex_any", "STRING", regex_any),
               bigquery.ArrayQueryParameter("alias", "STRUCT", alias)]
