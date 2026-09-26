@@ -37,7 +37,9 @@ OpenSanctions además `version_fuente` y `filas_leidas_fuente`.
 Antes de empujar, lee el último manifest de la fuente en el volume y compara el `sha256`: si no
 cambió, no sube nada. Para que eso funcione, el JSONL es determinístico (filas ordenadas, claves
 ordenadas) y se descarta `last_seen` de OpenSanctions, que cambia en cada export aunque la entidad
-no cambie. Verificado: dos corridas seguidas, la segunda no empujó ninguna de las dos fuentes.
+no cambie. Verificado: dos corridas seguidas, la segunda no empujó ninguna de las dos fuentes. En
+GitHub Actions (primera corrida manual, 2026-09-26, 34 s): el SP se autenticó con los secretos del
+repo, leyó el último manifest de cada fuente y no empujó nada porque no había cambios.
 
 ## Credenciales (ADR 0002)
 SP propio `entity360-producer-enrichment` (`infra/databricks/producers.tf`), con los mismos grants
