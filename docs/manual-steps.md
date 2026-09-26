@@ -52,7 +52,7 @@ borrar el secreto viejo cuando el nuevo esté en uso.
 #### Tabla de secretos vigentes
 | SP | Productor | Secreto (id) | Dónde se guarda | Creado (UTC) | **Vence (UTC)** | Cómo se rota |
 |---|---|---|---|---|---|---|
-| `entity360-producer` (recurso `producer_cdc`; nombre pendiente, ADR 0002) | Extractor CDC (fase 2) | `66ebd68b…` | Administrador de credenciales de Windows, servicio `entity360-cdc-extractor` | 2026-09-25 21:56 | **2026-12-24 21:56** | `producers\cdc_extractor\credenciales.py configurar --dias 90` |
+| `entity360-producer` (recurso `producer_cdc`; nombre heredado, ADR 0002) | Extractor CDC (fase 2) | `66ebd68b…` | Administrador de credenciales de Windows, servicio `entity360-cdc-extractor` | 2026-09-25 21:56 | **2026-12-24 21:56** | `producers\cdc_extractor\credenciales.py configurar --dias 90` |
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | `871133f2…` | AWS Secrets Manager `entity360/databricks/producer-sec-edgar` (us-east-1) | 2026-09-25 22:14 | **2026-12-24 22:14** | `producers\aws_sec_edgar\credenciales.py cargar --dias 90` |
 | `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | pendiente: `credenciales.py cargar` (requiere `gh`) | — | — | `producers\container_enrichment\credenciales.py cargar --dias 90` |
 
@@ -67,8 +67,8 @@ Historial (borrados el 2026-09-25, con OK): `3b3068ef…`, `ba8564c5…`, `a4be2
 secreto antes de validar el acceso a AWS; corregido).
 
 Secretos de prueba: `--lifetime 3600s` y borrarlos después del test (ocupan lugar en el límite).
-Pendiente de borrar (con OK): `f94cb459…` de `entity360-producer-enrichment`, prueba de push de la fase 5
-(2026-09-26 22:25 UTC, venció a la hora).
+Historial: `f94cb459…` de `entity360-producer-enrichment` (prueba de push de la fase 5, 1 h), borrado el
+2026-09-26 con OK.
 Verificación del SP de productores: `python tests/smoke_producer_push.py` con `DATABRICKS_HOST`,
 `DATABRICKS_CLIENT_ID` y `DATABRICKS_CLIENT_SECRET` en el entorno.
 
@@ -133,4 +133,4 @@ antes del vencimiento (el primero vence el 2026-12-24).
 5. Anotar el secreto en la tabla de secretos vigentes (§5).
 
 Hasta que existan los secretos, el workflow diario falla con "Falta el secreto …" (y GitHub avisa
-por mail). Los workflows programados se desactivan tras 60 días sin actividad en el repo.
+por mail).

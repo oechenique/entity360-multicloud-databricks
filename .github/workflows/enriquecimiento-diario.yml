@@ -1,6 +1,7 @@
 # Fase 5 (regla 07): corre una vez por día el container de enriquecimiento publicado en GHCR.
 # Credenciales en GitHub Secrets (ADR 0002): se cargan con producers/container_enrichment/credenciales.py.
-# Los logs de este repo son públicos: el host del workspace se enmascara y el container no lo imprime.
+# Principio 9: el host del workspace se enmascara en los logs y el container no lo imprime (el repo
+# se piensa publicar al cierre del portfolio).
 name: enriquecimiento-diario
 
 on:

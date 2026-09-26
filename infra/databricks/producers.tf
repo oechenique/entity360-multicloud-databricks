@@ -5,7 +5,7 @@
 # SP del extractor CDC (fase 2). Conserva el nombre de la fase 1 (un SP para todos): en Free Edition
 # el SP es de cuenta y la API SCIM del workspace ignora el cambio de displayName sin dar error (el
 # provider reporta "Modifications complete" y el plan siguiente vuelve a proponerlo). Renombrarlo
-# implica reemplazarlo: ver ADR 0002, "Pendiente".
+# implicaba reemplazarlo; se decidió dejar el nombre heredado (ADR 0002).
 resource "databricks_service_principal" "producer_cdc" {
   display_name = "entity360-producer"
   # Sin este entitlement la Files API responde 403 aunque los grants de UC estén bien (spike 1b).
