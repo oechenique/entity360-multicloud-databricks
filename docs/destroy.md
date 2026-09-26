@@ -4,7 +4,8 @@ Principio 7: el destroy se escribe junto con la infra. **Todo con confirmación 
 (regla 00): nada de esto se corre sin OK de Gastón.
 
 ## Orden
-0. Productores que usan los SP (`infra/aws/sec_edgar` y el container de enriquecimiento, ver sus secciones).
+0. Productores que usan los SP (`infra/aws/sec_edgar`, el container de enriquecimiento y el productor
+   GDELT con `infra/gcp`, ver sus secciones).
 1. Databricks (`infra/databricks`): suelta la external location, que depende del bucket.
 2. Vaciar el bucket del catálogo a propósito (ver abajo).
 3. AWS (`infra/aws`): bucket y rol IAM.
@@ -124,3 +125,46 @@ docker image rm entity360-enrichment:local
 - El borrado del paquete necesita el scope `delete:packages` (`gh auth refresh -s delete:packages`).
 - El secreto OAuth del SP se borra con el SP (destroy de `infra/databricks`) o vence solo.
 - Los lotes ya empujados al volume se borran con el catálogo.
+
+## Productor GDELT (fase 4, `infra/gcp`)
+Antes que `infra/databricks` (el workflow usa el SP `entity360-producer-gdelt`). Independiente de
+AWS. Sin cuenta de facturación no hay nada que cueste mientras exista (ADR 0003). Con OK:
+```powershell
+# 1) Cortar la corrida horaria (o borrar .github/workflows/gdelt-*.yml y pushear)
+gh workflow disable gdelt-horario.yml
+
+# 2) Secretos del repo propios de GDELT (DATABRICKS_HOST es compartido con enriquecimiento: se borra ahí)
+foreach ($s in 'GDELT_DATABRICKS_CLIENT_ID','GDELT_DATABRICKS_CLIENT_SECRET','GCP_WIF_PROVIDER','GCP_SERVICE_ACCOUNT','GCP_PROJECT_ID') { gh secret delete $s }
+
+# 3) Paquete de GHCR (todas sus versiones) e imagen local, si se construyó
+gh api -X DELETE /user/packages/container/entity360-gdelt
+docker image rm entity360-gdelt
+
+# 4) Vaciar el respaldo a propósito: el dataset tiene delete_contents_on_destroy = false y el
+#    destroy falla si quedan tablas. Ver qué hay, y recién ahí borrar la tabla.
+$proyecto = (Select-String -Path infra\gcp\terraform.tfvars -Pattern 'project_id\s*=\s*"(.+)"').Matches.Groups[1].Value
+bq ls --project_id=$proyecto entity360_gdelt
+bq show --format=prettyjson "${proyecto}:entity360_gdelt.menciones"   # numRows, numBytes
+bq rm -t -f "${proyecto}:entity360_gdelt.menciones"                   # con OK
+
+# 5) Destroy: dataset, bindings, SA, provider y pool de WIF
+cd infra\gcp
+terraform plan -destroy
+terraform destroy
+```
+- **WIF queda 30 días en borrado lógico.** El pool y el provider pasan a `DELETED` y su ID no se
+  puede reusar hasta que se purgan. Un `apply` dentro de esos 30 días falla con "already exists":
+  restaurarlos (`gcloud iam workload-identity-pools undelete entity360-github --location=global`,
+  y lo mismo con `providers undelete github-oidc`) e importarlos, o cambiar los IDs.
+- **La SA** también se puede recuperar durante 30 días (`gcloud iam service-accounts undelete
+  <unique_id>`). No tiene claves que revocar.
+- **Las APIs quedan habilitadas** (`disable_on_destroy = false`: BigQuery lo usa también el spike, y
+  habilitadas sin facturación no cuestan). Para deshabilitar las de WIF a mano, con OK:
+  `gcloud services disable sts.googleapis.com iamcredentials.googleapis.com --project $proyecto`.
+- El secreto OAuth del SP se borra con el SP (destroy de `infra/databricks`) o vence solo.
+- Los lotes ya empujados al volume se borran con el catálogo.
+
+Verificación: `gcloud iam workload-identity-pools list --location=global --project $proyecto` sin
+pools activos (`--show-deleted` los muestra en `DELETED`), `gcloud iam service-accounts list
+--project $proyecto` sin `entity360-gdelt`, `bq ls --project_id=$proyecto` sin `entity360_gdelt` y
+`terraform state list` vacío en `infra/gcp`.

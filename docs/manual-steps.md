@@ -23,6 +23,16 @@ Copiar cada `terraform.tfvars.example` a `terraform.tfvars` y completar:
 - `infra/aws/terraform.tfvars`: `uc_external_id` = ID de la cuenta de Databricks (es el
   `external_id` de cualquier storage credential de la cuenta).
 - `infra/databricks/terraform.tfvars`: `aws_account_id`.
+- `infra/gcp/terraform.tfvars`: `project_id` (proyecto de GCP en sandbox) y `github_repository`
+  (`owner/nombre`, el único repo que acepta el provider de WIF).
+
+### 3b. Credenciales de GCP (ADC del usuario)
+```powershell
+gcloud auth application-default login
+```
+Terraform (`infra/gcp`) usa las credenciales por defecto de la aplicación: nunca claves de service
+account. El proyecto corre **sin cuenta de facturación** (ADR 0003); verificar antes de cada apply:
+`gcloud billing projects describe <GCP_PROJECT_ID> --format="value(billingEnabled)"` → `False`.
 
 ## Databricks
 
@@ -55,6 +65,7 @@ borrar el secreto viejo cuando el nuevo esté en uso.
 | `entity360-producer` (recurso `producer_cdc`; nombre heredado, ADR 0002) | Extractor CDC (fase 2) | `66ebd68b…` | Administrador de credenciales de Windows, servicio `entity360-cdc-extractor` | 2026-09-25 21:56 | **2026-12-24 21:56** | `producers\cdc_extractor\credenciales.py configurar --dias 90` |
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | `871133f2…` | AWS Secrets Manager `entity360/databricks/producer-sec-edgar` (us-east-1) | 2026-09-25 22:14 | **2026-12-24 22:14** | `producers\aws_sec_edgar\credenciales.py cargar --dias 90` |
 | `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | `88a521b9…` | GitHub Secrets del repo (`DATABRICKS_CLIENT_SECRET`, junto con `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` y `USER_AGENT`) | 2026-09-26 22:57 | **2026-12-25 22:57** | `producers\container_enrichment\credenciales.py cargar --dias 90` |
+| `entity360-producer-gdelt` | Productor GDELT en GitHub Actions (fase 4) | `88a530ee…` | GitHub Secrets del repo (`GDELT_DATABRICKS_CLIENT_SECRET`, junto con `GDELT_DATABRICKS_CLIENT_ID`; `DATABRICKS_HOST` es compartido) | 2026-09-26 23:33 | **2026-12-25 23:33** | `producers\gcp_gdelt\credenciales.py cargar --dias 90` |
 
 Mantener esta tabla al día en cada creación, rotación o borrado. Para listar los secretos reales
 de un SP (ids y vencimientos, nunca los valores):
@@ -134,3 +145,38 @@ antes del vencimiento (el primero vence el 2026-12-24).
 
 Hasta que existan los secretos, el workflow diario falla con "Falta el secreto …" (y GitHub avisa
 por mail).
+
+## Productor GDELT (fase 4, sin facturación en GCP)
+
+### 9. WIF, secretos del repo y primera corrida
+Todo en el proyecto de GCP en sandbox (ADR 0003). Si algún paso pide una cuenta de facturación, se
+frena (regla 06).
+1. `terraform apply` en `infra/gcp` (APIs de WIF, pool `entity360-github`, provider `github-oidc`,
+   SA `entity360-gdelt` sin claves, dataset `entity360_gdelt`). Requiere §3 y §3b.
+2. Secretos de WIF en el repo, directo de los outputs a `gh` por stdin (identifican el proyecto:
+   principio 9, no se imprimen ni van al código del workflow):
+   ```powershell
+   cd infra\gcp
+   terraform output -raw wif_provider          | gh secret set GCP_WIF_PROVIDER
+   terraform output -raw service_account_email | gh secret set GCP_SERVICE_ACCOUNT
+   (Select-String -Path terraform.tfvars -Pattern 'project_id\s*=\s*"(.+)"').Matches.Groups[1].Value | gh secret set GCP_PROJECT_ID
+   cd ..\..
+   ```
+3. `terraform apply` en `infra/databricks` (SP `entity360-producer-gdelt` y sus grants).
+4. Secreto OAuth del SP (valida `gh` y que exista `DATABRICKS_HOST`, que carga el §8, antes de
+   crear el secreto):
+   ```powershell
+   .venv\Scripts\python.exe producers\gcp_gdelt\credenciales.py cargar --dias 90
+   ```
+5. La imagen se publica sola con el push a `main` (`gdelt-imagen.yml`). Primera corrida a mano,
+   con una ventana más larga si hace falta recuperar horas (máx. 24):
+   `gh workflow run gdelt-horario.yml -f ventana_horas=3`. Después corre sola con el cron (minuto 23
+   de cada hora).
+6. Anotar el secreto en la tabla de secretos vigentes (§5).
+
+Hasta que existan los secretos, el workflow horario falla con "Falta el secreto …" (y GitHub avisa
+por mail). Si falla el paso de auth a GCP, revisar que el workflow corra desde `main` y se llame
+`gdelt-*`: el provider rechaza cualquier otro token.
+
+Tests del productor (sin nube; los de BigQuery se saltean sin credenciales):
+`.venv\Scripts\python.exe -m pytest tests\gcp_gdelt`.
