@@ -1,0 +1,46 @@
+# Fase 5 (regla 07): construye la imagen del container de enriquecimiento y la publica en GHCR.
+# Corre cuando cambia el código del container (o a mano). La ejecución diaria está en
+# enriquecimiento-diario.yml y usa la etiqueta latest.
+name: enriquecimiento-imagen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - producers/container_enrichment/**
+      - producers/aws_sec_edgar/universo.json
+      - .github/workflows/enriquecimiento-imagen.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  imagen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Login a GHCR (token efímero del workflow)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build
+        run: |
+          IMAGEN="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/entity360-enrichment"
+          echo "IMAGEN=$IMAGEN" >> "$GITHUB_ENV"
+          # El label source vincula el paquete al repo (permisos y página del paquete).
+          docker build -f producers/container_enrichment/Dockerfile \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.description=entity360: OpenSanctions + Wikidata -> UC Volume" \
+            -t "$IMAGEN:$GITHUB_SHA" -t "$IMAGEN:latest" producers
+
+      - name: Chequeo de la imagen (importa los módulos, sin red)
+        run: docker run --rm --entrypoint python "$IMAGEN:$GITHUB_SHA" -c "import main, landing, opensanctions, wikidata"
+
+      - name: Push
+        run: |
+          docker push "$IMAGEN:$GITHUB_SHA"
+          docker push "$IMAGEN:latest"

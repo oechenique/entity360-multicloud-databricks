@@ -25,7 +25,7 @@ grants mínimos: entitlement `workspace_access`, `USE_CATALOG` sobre `entity360`
 | `entity360-producer` (recurso `producer_cdc`; el nombre no se puede cambiar in-place, ver Pendiente) | Extractor CDC (fase 2) | Administrador de credenciales de Windows (`keyring`) |
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | AWS Secrets Manager |
 | (fase 4) | GDELT | GCP Secret Manager |
-| (fase 5) | Enriquecimiento | GitHub Secrets |
+| `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | GitHub Secrets |
 
 ## Consecuencias
 - **Límite de secretos:** cada SP usa 1 o 2 (durante la rotación). El límite de 5 deja de ser un

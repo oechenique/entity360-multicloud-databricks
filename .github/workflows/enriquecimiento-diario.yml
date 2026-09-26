@@ -1,0 +1,46 @@
+# Fase 5 (regla 07): corre una vez por día el container de enriquecimiento publicado en GHCR.
+# Credenciales en GitHub Secrets (ADR 0002): se cargan con producers/container_enrichment/credenciales.py.
+# Los logs de este repo son públicos: el host del workspace se enmascara y el container no lo imprime.
+name: enriquecimiento-diario
+
+on:
+  schedule:
+    - cron: "17 9 * * *" # 06:17 en Buenos Aires; fuera de la hora en punto (menos carga en Actions)
+  workflow_dispatch:
+
+permissions:
+  packages: read
+
+concurrency:
+  group: enriquecimiento
+  cancel-in-progress: false
+
+jobs:
+  ejecutar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      USER_AGENT: ${{ secrets.USER_AGENT }}
+    steps:
+      - name: Secretos presentes y host enmascarado
+        run: |
+          for v in DATABRICKS_HOST DATABRICKS_CLIENT_ID DATABRICKS_CLIENT_SECRET USER_AGENT; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto $v (ver docs/manual-steps.md)"; exit 1; fi
+          done
+          HOST="${DATABRICKS_HOST#https://}"; echo "::add-mask::${HOST%/}"
+
+      - name: Login a GHCR y pull
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          IMAGEN="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/entity360-enrichment:latest"
+          echo "IMAGEN=$IMAGEN" >> "$GITHUB_ENV"
+          docker pull -q "$IMAGEN"
+
+      - name: OpenSanctions + Wikidata -> volume
+        run: >-
+          docker run --rm
+          -e DATABRICKS_HOST -e DATABRICKS_CLIENT_ID -e DATABRICKS_CLIENT_SECRET -e USER_AGENT
+          "$IMAGEN"

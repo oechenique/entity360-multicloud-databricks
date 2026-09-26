@@ -75,3 +75,28 @@ resource "databricks_grant" "sec_edgar_raw" {
   principal  = databricks_service_principal.producer_sec_edgar.application_id
   privileges = ["READ_VOLUME", "WRITE_VOLUME"]
 }
+
+# SP del container de enriquecimiento (fase 5): lo usa el workflow de GitHub Actions (secreto en
+# GitHub Secrets). Mismos grants mínimos.
+resource "databricks_service_principal" "producer_enrichment" {
+  display_name     = "entity360-producer-enrichment"
+  workspace_access = true
+}
+
+resource "databricks_grant" "enrichment_catalog" {
+  catalog    = databricks_catalog.entity360.name
+  principal  = databricks_service_principal.producer_enrichment.application_id
+  privileges = ["USE_CATALOG"]
+}
+
+resource "databricks_grant" "enrichment_landing" {
+  schema     = databricks_schema.capa["landing"].id
+  principal  = databricks_service_principal.producer_enrichment.application_id
+  privileges = ["USE_SCHEMA"]
+}
+
+resource "databricks_grant" "enrichment_raw" {
+  volume     = databricks_volume.raw.id
+  principal  = databricks_service_principal.producer_enrichment.application_id
+  privileges = ["READ_VOLUME", "WRITE_VOLUME"]
+}

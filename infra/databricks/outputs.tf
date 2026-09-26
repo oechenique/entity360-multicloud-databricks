@@ -21,3 +21,11 @@ output "producer_sec_edgar_sp_id" {
 output "producer_sec_edgar_sp_application_id" {
   value = databricks_service_principal.producer_sec_edgar.application_id
 }
+
+output "producer_enrichment_sp_id" {
+  value = databricks_service_principal.producer_enrichment.id
+}
+
+output "producer_enrichment_sp_application_id" {
+  value = databricks_service_principal.producer_enrichment.application_id
+}
