@@ -10,8 +10,8 @@
         │ CDC                                           ──push──┐
  AWS                                                             │
    EventBridge Scheduler → Lambda → S3 (SEC EDGAR)     ──push──┤   Databricks (Free Edition)
- GCP                                                             ├─► UC Volume landing
-   Cloud Scheduler → Cloud Run Job → BigQuery (GDELT) → GCS ─push┤        │
+ GCP (sandbox, sin facturación: ADR 0003)                        ├─► UC Volume landing
+   Actions (cron, WIF) → BigQuery GDELT → respaldo BQ    ──push┤        │
  CONTAINER de enriquecimiento                                    │   Bronze → Silver → Resolución
    OpenSanctions + Wikidata                             ──push──┘   de identidades → Gold (dbt)
                                                                           │
@@ -29,7 +29,7 @@
 |---|---|
 | SQL Server + CDC | El sistema legacy on-prem. Muestra el patrón más pedido: sacar cambios de una base transaccional sin romperla. |
 | AWS | Otro sistema de la organización: la extracción de presentaciones SEC EDGAR, programada, con respaldo en S3. |
-| GCP | Las señales casi en tiempo real: GDELT (eventos de noticias cada 15 minutos) vive como dataset público en BigQuery. |
+| GCP | Las señales de noticias: GDELT (publica cada 15 minutos) vive como dataset público en BigQuery. Se consulta cada hora desde GitHub Actions con Workload Identity Federation, sin facturación en GCP (ADR 0003). |
 | Container de enriquecimiento | Fuentes de riesgo y de vínculos (OpenSanctions, Wikidata). Corre igual en cualquier lado. |
 | Databricks | Convergencia, trabajo pesado en Spark, resolución de identidades, gobierno con Unity Catalog, consumo con dashboard y Genie. |
 | Soda Core + dbt | El "Data Contract Enforcer": contratos en la llegada (Soda) y en los modelos (dbt), cuarentena y alertas. |

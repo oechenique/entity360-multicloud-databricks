@@ -24,7 +24,7 @@ grants mínimos: entitlement `workspace_access`, `USE_CATALOG` sobre `entity360`
 |---|---|---|
 | `entity360-producer` (recurso `producer_cdc`; nombre heredado de la fase 1, ver abajo) | Extractor CDC (fase 2) | Administrador de credenciales de Windows (`keyring`) |
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | AWS Secrets Manager |
-| (fase 4) | GDELT | GCP Secret Manager |
+| `entity360-producer-gdelt` | Productor GDELT en GitHub Actions (fase 4) | GitHub Secrets (sin facturación en GCP no hay Secret Manager: ADR 0003) |
 | `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | GitHub Secrets |
 
 ## Consecuencias
