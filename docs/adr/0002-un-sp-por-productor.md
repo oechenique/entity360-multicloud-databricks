@@ -1,6 +1,6 @@
 # ADR 0002 — Un service principal por productor
 
-- **Estado:** aceptado (fase 3, 2026-09-25).
+- **Estado:** aceptado (fase 3, 2026-09-25). Nombre del SP del CDC cerrado el 2026-09-26 (ver abajo).
 - **Reemplaza:** el diseño de la fase 1, con un único SP (`entity360-producer`) para todos los
   productores.
 
@@ -22,7 +22,7 @@ grants mínimos: entitlement `workspace_access`, `USE_CATALOG` sobre `entity360`
 
 | SP | Productor | Dónde vive su secreto |
 |---|---|---|
-| `entity360-producer` (recurso `producer_cdc`; el nombre no se puede cambiar in-place, ver Pendiente) | Extractor CDC (fase 2) | Administrador de credenciales de Windows (`keyring`) |
+| `entity360-producer` (recurso `producer_cdc`; nombre heredado de la fase 1, ver abajo) | Extractor CDC (fase 2) | Administrador de credenciales de Windows (`keyring`) |
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | AWS Secrets Manager |
 | (fase 4) | GDELT | GCP Secret Manager |
 | `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | GitHub Secrets |
@@ -37,10 +37,10 @@ grants mínimos: entitlement `workspace_access`, `USE_CATALOG` sobre `entity360`
 - **Costo:** más recursos en Terraform (1 SP + 3 grants por productor). Sin costo monetario.
 - Los grants siguen sin dar lectura a ningún schema fuera de `landing.raw` (ADR 0001).
 
-## Pendiente: el nombre del SP del CDC
-El objetivo era renombrar `entity360-producer` a `entity360-producer-cdc`. Resultado (2026-09-26):
+## El nombre del SP del CDC (cerrado: se deja el nombre heredado)
+El objetivo era renombrar `entity360-producer` a `entity360-producer-cdc`. Lo que se probó (2026-09-26):
 
-- El recurso de Terraform ya se llama `producer_cdc` (grants `cdc_*`, outputs `producer_cdc_sp_*`),
+- El recurso de Terraform se llama `producer_cdc` (grants `cdc_*`, outputs `producer_cdc_sp_*`),
   movido con bloques `moved`: sin destruir nada, mismo `application_id`, mismo secreto.
 - **El `display_name` no se puede cambiar.** El plan lo muestra como update in-place y el apply
   reporta "Modifications complete", pero el nombre queda igual y el plan siguiente lo vuelve a
@@ -48,11 +48,12 @@ El objetivo era renombrar `entity360-producer` a `entity360-producer-cdc`. Resul
   tampoco lo cambia. Causa: en Free Edition el SP es un principal de **cuenta** (identity
   federation) y la API del workspace ignora en silencio los cambios de sus atributos de cuenta; la
   consola de cuenta no está disponible.
-- El código quedó con el nombre real para que el plan no tenga cambios permanentes.
 
-Queda por decidir (con OK, porque borra un SP):
-1. **Reemplazo:** SP nuevo `entity360-producer-cdc` con los mismos grants, secreto nuevo en el
-   keyring (`credenciales.py configurar`), extractor y smoke test contra el nuevo, y después borrar
-   `entity360-producer` (se lleva su secreto).
-2. **Dejar el nombre:** el aislamiento, la auditoría y el límite de secretos ya se cumplen (cada
-   productor tiene su SP); solo queda el nombre heredado de la fase 1.
+**Decisión (Gastón, 2026-09-26): se deja `entity360-producer`.** Lo que busca este ADR (límite de
+secretos, auditoría y aislamiento por productor) ya se cumple: el SP es exclusivo del extractor CDC.
+Reemplazarlo solo por el nombre implicaba un SP nuevo, rotar el secreto del keyring y borrar el
+viejo, sin ganancia de seguridad. El código declara el nombre real para que el plan no tenga cambios
+permanentes, y el recurso (`producer_cdc`) deja claro de qué productor es.
+
+En un workspace pago (con consola de cuenta) el renombre sería un cambio de `display_name` a nivel de
+cuenta, sin reemplazo.

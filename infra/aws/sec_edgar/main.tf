@@ -52,7 +52,7 @@ resource "aws_sqs_queue" "dlq" {
 # producers/aws_sec_edgar/credenciales.py, para que no quede en el state.
 resource "aws_secretsmanager_secret" "databricks" {
   name                    = "entity360/databricks/producer-sec-edgar"
-  description             = "OAuth M2M del SP entity360-producer para la Lambda de entrega (SEC EDGAR)."
+  description             = "OAuth M2M del SP entity360-producer-sec-edgar para la Lambda de entrega (SEC EDGAR)."
   recovery_window_in_days = 7
 }
 

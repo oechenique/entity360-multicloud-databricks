@@ -4,7 +4,7 @@ Disparada por la creación de un _manifest_<ts>.json en lotes/ (notificación de
 extracción y entrega hace que cada una se pueda reintentar sola.
 
 1. Lee el manifest y el archivo de datos del bucket; verifica el sha256.
-2. Pide un token OAuth M2M del SP entity360-producer (credenciales en Secrets Manager).
+2. Pide un token OAuth M2M del SP entity360-producer-sec-edgar (credenciales en Secrets Manager).
 3. PUT del archivo de datos y DESPUÉS del manifest al volume, con el contrato de landing.
    Si el archivo ya existe en el volume (reintento), lo relee y compara el sha256: si coincide,
    sigue (idempotente); si no, falla.

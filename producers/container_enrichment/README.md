@@ -50,9 +50,10 @@ $env:ENRIQUECIMIENTO_USER_AGENT = "entity360 (portfolio) <CONTACT_EMAIL>"
 Carga `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` y `USER_AGENT`. Valida
 `gh` antes de crear el secreto del SP. Rotar antes del vencimiento (volver a correr `cargar`).
 
-**Logs públicos:** el repo es público y los logs de Actions también. GitHub enmascara los secretos;
-el workflow además enmascara el hostname del workspace (sin `https://`) y el container lo reemplaza
-por `<WORKSPACE_HOST>` en los tracebacks.
+**Logs sin datos identificatorios (principio 9):** el repo es privado, pero se piensa publicar al
+cerrar el portfolio y los logs de Actions quedan visibles para quien lea el repo. GitHub enmascara
+los secretos; el workflow además enmascara el hostname del workspace (sin `https://`) y el container
+lo reemplaza por `<WORKSPACE_HOST>` en los tracebacks.
 
 ## Correr local
 ```powershell
@@ -64,11 +65,12 @@ docker run --rm -e USER_AGENT -e DATABRICKS_HOST -e DATABRICKS_TOKEN entity360-e
 `--fuentes opensanctions` o `--fuentes wikidata` corre una sola.
 
 ## Costo y límites
-- Repo público: minutos de Actions y GHCR sin costo. Si el paquete de GHCR queda privado, entra en
-  los 500 MB gratis; cada push deja una versión nueva, así que conviene borrar las viejas sin
-  etiqueta de vez en cuando.
-- GitHub **desactiva los workflows programados** de un repo público después de 60 días sin
-  actividad en el repo. Se reactivan desde la pestaña Actions.
+- Repo privado (GitHub Free): 2.000 minutos de Actions por mes y 500 MB de GHCR sin costo. Una
+  corrida diaria usa ~1-2 minutos (~60 por mes) y la imagen pesa decenas de MB; cada push deja una
+  versión nueva, así que conviene borrar las viejas sin etiqueta de vez en cuando. Sin medio de pago
+  cargado, pasarse del cupo bloquea los workflows, no cobra.
+- Si el repo vuelve a ser público: Actions y GHCR pasan a ser gratis sin cupo, pero GitHub
+  **desactiva los workflows programados** tras 60 días sin actividad en el repo.
 - El cron de Actions no es exacto (puede atrasarse en horas de carga). Para una fuente diaria alcanza.
 
 ## Licencias

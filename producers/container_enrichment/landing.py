@@ -4,7 +4,7 @@ Auth (D4): OAuth M2M del SP entity360-producer-enrichment con DATABRICKS_HOST,
 DATABRICKS_CLIENT_ID y DATABRICKS_CLIENT_SECRET (GitHub Secrets). Para pruebas manuales,
 DATABRICKS_TOKEN (token de usuario de vida corta) en lugar del par client_id/secret.
 
-Nada de esto imprime el host: los logs de GitHub Actions de este repo son públicos (principio 9).
+Nada de esto imprime el host: los logs de GitHub Actions quedan visibles para quien lea el repo (principio 9).
 """
 
 import hashlib

@@ -56,7 +56,7 @@ def main() -> int:
         except Exception:
             fallas += 1
             print(f"{fuente}: FALLÓ ({time.perf_counter() - t0:,.1f} s)")
-            # Los errores de conexión traen el hostname del workspace: los logs son públicos.
+            # Los errores de conexión traen el hostname del workspace: no va a los logs (principio 9).
             host = urlparse(os.environ.get("DATABRICKS_HOST", "")).netloc
             detalle = traceback.format_exc()
             print(detalle.replace(host, "<WORKSPACE_HOST>") if host else detalle, file=sys.stderr)
