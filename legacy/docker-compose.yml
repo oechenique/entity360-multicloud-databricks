@@ -6,7 +6,15 @@ services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: entity360-legacy-mssql
-    # SQL Server necesita más de los 10 s por defecto para cerrar limpio (si no, SIGKILL / 137).
+    # Apagado limpio. El entrypoint de la imagen (launch_sqlservr.sh) deja a bash como PID 1 y
+    # lanza sqlservr en segundo plano: el SIGTERM de `docker stop` nunca llega a sqlservr y a los
+    # 30 s Docker manda SIGKILL (exit 137). Se saltea el wrapper (solo hace el chequeo de permisos
+    # y el setup de MSSQL_DB / scripts de init, que no se usan) y tini (init: true) le reenvía la
+    # señal a sqlservr y cosecha zombies. `init: true` solo no alcanza: tini mata a bash, sqlservr
+    # cae con el contenedor y el exit 143 esconde un cierre sucio. Evidencia: legacy/README.md.
+    init: true
+    entrypoint: ["/opt/mssql/bin/sqlservr"]
+    # Margen para el checkpoint final con la base cargada (el cierre real tarda ~1-2 s).
     stop_grace_period: 30s
     # Credenciales solo en .env (fuera de git): MSSQL_SA_PASSWORD para el motor y
     # SQLCMDPASSWORD (mismo valor) para que sqlcmd no necesite -P.
