@@ -100,3 +100,28 @@ resource "databricks_grant" "enrichment_raw" {
   principal  = databricks_service_principal.producer_enrichment.application_id
   privileges = ["READ_VOLUME", "WRITE_VOLUME"]
 }
+
+# SP del productor GDELT (fase 4): lo usa el workflow horario de GitHub Actions (secreto en GitHub
+# Secrets, ADR 0003). Mismos grants mínimos.
+resource "databricks_service_principal" "producer_gdelt" {
+  display_name     = "entity360-producer-gdelt"
+  workspace_access = true
+}
+
+resource "databricks_grant" "gdelt_catalog" {
+  catalog    = databricks_catalog.entity360.name
+  principal  = databricks_service_principal.producer_gdelt.application_id
+  privileges = ["USE_CATALOG"]
+}
+
+resource "databricks_grant" "gdelt_landing" {
+  schema     = databricks_schema.capa["landing"].id
+  principal  = databricks_service_principal.producer_gdelt.application_id
+  privileges = ["USE_SCHEMA"]
+}
+
+resource "databricks_grant" "gdelt_raw" {
+  volume     = databricks_volume.raw.id
+  principal  = databricks_service_principal.producer_gdelt.application_id
+  privileges = ["READ_VOLUME", "WRITE_VOLUME"]
+}

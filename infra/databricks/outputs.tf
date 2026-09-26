@@ -29,3 +29,11 @@ output "producer_enrichment_sp_id" {
 output "producer_enrichment_sp_application_id" {
   value = databricks_service_principal.producer_enrichment.application_id
 }
+
+output "producer_gdelt_sp_id" {
+  value = databricks_service_principal.producer_gdelt.id
+}
+
+output "producer_gdelt_sp_application_id" {
+  value = databricks_service_principal.producer_gdelt.application_id
+}

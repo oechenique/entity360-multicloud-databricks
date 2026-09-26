@@ -1,0 +1,44 @@
+# Fase 4 (regla 06, ADR 0003): construye la imagen del productor GDELT y la publica en GHCR.
+# Corre cuando cambia su código o el cliente del volume compartido (o a mano).
+name: gdelt-imagen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - producers/gcp_gdelt/**
+      - producers/container_enrichment/landing.py
+      - .github/workflows/gdelt-imagen.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  imagen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Login a GHCR (token efímero del workflow)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build
+        run: |
+          IMAGEN="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/entity360-gdelt"
+          echo "IMAGEN=$IMAGEN" >> "$GITHUB_ENV"
+          docker build -f producers/gcp_gdelt/Dockerfile \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.description=entity360: GDELT (BigQuery sandbox) -> UC Volume" \
+            -t "$IMAGEN:$GITHUB_SHA" -t "$IMAGEN:latest" producers
+
+      - name: Chequeo de la imagen (importa los módulos, sin red)
+        run: docker run --rm --entrypoint python "$IMAGEN:$GITHUB_SHA" -c "import extractor, landing; extractor.patrones()"
+
+      - name: Push
+        run: |
+          docker push "$IMAGEN:$GITHUB_SHA"
+          docker push "$IMAGEN:latest"

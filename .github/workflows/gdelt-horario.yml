@@ -1,34 +1,57 @@
-# Fase 4 (regla 06, ADR 0003): productor GDELT en GitHub Actions, sin facturación en GCP.
-# Paso 0: solo verificación de Workload Identity Federation (auth OIDC -> SA por impersonación ->
-# dry run en BigQuery sandbox). El extractor completo y el cron llegan en la etapa siguiente.
+# Fase 4 (regla 06, ADR 0003): productor GDELT, una vez por hora, sin facturación en GCP.
+# Auth a GCP por Workload Identity Federation (OIDC -> SA entity360-gdelt por impersonación, sin
+# claves). El provider solo acepta este repo, la rama main y los workflows gdelt-*.
+# Principio 9: el proyecto y el host del workspace se enmascaran y el container no los imprime.
 name: gdelt-horario
 
 on:
+  schedule:
+    - cron: "23 * * * *" # fuera de la hora en punto (menos carga en Actions)
   workflow_dispatch:
 
 permissions:
-  contents: read
-  id-token: write # token OIDC de GitHub para el intercambio con GCP (sin claves de SA)
+  packages: read
+  id-token: write # token OIDC de GitHub para el intercambio con GCP
+
+concurrency:
+  group: gdelt
+  cancel-in-progress: false
 
 jobs:
-  verificar-wif:
+  ejecutar:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.GDELT_DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.GDELT_DATABRICKS_CLIENT_SECRET }}
     steps:
-      - name: Enmascarar el proyecto
-        run: echo "::add-mask::${{ secrets.GCP_PROJECT_ID }}"
+      - name: Secretos presentes y valores enmascarados
+        run: |
+          for v in GOOGLE_CLOUD_PROJECT DATABRICKS_HOST DATABRICKS_CLIENT_ID DATABRICKS_CLIENT_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto de $v (ver docs/manual-steps.md)"; exit 1; fi
+          done
+          HOST="${DATABRICKS_HOST#https://}"; echo "::add-mask::${HOST%/}"
 
-      - uses: google-github-actions/auth@v3
+      - id: gcp
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Identidad y dry run de GKG con filtro de partición
-        env:
-          PROYECTO: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Login a GHCR y pull
         run: |
-          gcloud config set project "$PROYECTO" --quiet
-          gcloud auth list --filter=status:ACTIVE --format="value(account)" | sed 's/@.*/@<SA>/'
-          bq --location=US query --dry_run --use_legacy_sql=false \
-            "SELECT GKGRECORDID, V2Organizations FROM \`gdelt-bq.gdeltv2.gkg_partitioned\`
-             WHERE _PARTITIONTIME = TIMESTAMP(CURRENT_DATE())"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          IMAGEN="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/entity360-gdelt:latest"
+          echo "IMAGEN=$IMAGEN" >> "$GITHUB_ENV"
+          docker pull -q "$IMAGEN"
+
+      - name: GKG -> respaldo en BigQuery -> volume
+        # --user del runner: el archivo de credenciales de WIF es 0600 y no lo lee `nobody`.
+        run: >-
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp
+          -v "${{ steps.gcp.outputs.credentials_file_path }}:/creds.json:ro"
+          -e GOOGLE_APPLICATION_CREDENTIALS=/creds.json -e GOOGLE_CLOUD_PROJECT
+          -e DATABRICKS_HOST -e DATABRICKS_CLIENT_ID -e DATABRICKS_CLIENT_SECRET
+          "$IMAGEN"
