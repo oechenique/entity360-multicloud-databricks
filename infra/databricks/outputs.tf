@@ -2,12 +2,12 @@ output "catalog_storage_root" {
   value = databricks_catalog.entity360.storage_root
 }
 
-output "producer_sp_id" {
-  value = databricks_service_principal.producer.id
+output "producer_cdc_sp_id" {
+  value = databricks_service_principal.producer_cdc.id
 }
 
-output "producer_sp_application_id" {
-  value = databricks_service_principal.producer.application_id
+output "producer_cdc_sp_application_id" {
+  value = databricks_service_principal.producer_cdc.application_id
 }
 
 output "volume_path" {

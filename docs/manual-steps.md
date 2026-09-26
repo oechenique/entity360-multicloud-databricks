@@ -52,7 +52,7 @@ borrar el secreto viejo cuando el nuevo esté en uso.
 #### Tabla de secretos vigentes
 | SP | Productor | Secreto (id) | Dónde se guarda | Creado (UTC) | **Vence (UTC)** | Cómo se rota |
 |---|---|---|---|---|---|---|
-| `entity360-producer` (pendiente: `entity360-producer-cdc`) | Extractor CDC (fase 2) | `66ebd68b…` | Administrador de credenciales de Windows, servicio `entity360-cdc-extractor` | 2026-09-25 21:56 | **2026-12-24 21:56** | `producers\cdc_extractor\credenciales.py configurar --dias 90` |
+| `entity360-producer` (recurso `producer_cdc`; nombre pendiente, ADR 0002) | Extractor CDC (fase 2) | `66ebd68b…` | Administrador de credenciales de Windows, servicio `entity360-cdc-extractor` | 2026-09-25 21:56 | **2026-12-24 21:56** | `producers\cdc_extractor\credenciales.py configurar --dias 90` |
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | `871133f2…` | AWS Secrets Manager `entity360/databricks/producer-sec-edgar` (us-east-1) | 2026-09-25 22:14 | **2026-12-24 22:14** | `producers\aws_sec_edgar\credenciales.py cargar --dias 90` |
 
 Mantener esta tabla al día en cada creación, rotación o borrado. Para listar los secretos reales

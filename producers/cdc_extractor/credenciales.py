@@ -3,7 +3,7 @@
 Nada de esto va a disco ni se imprime. Servicio de keyring: "entity360-cdc-extractor".
 
     databricks_host       URL del workspace (no es secreto, pero viaja junto con el resto)
-    databricks_client_id  application_id del SP entity360-producer
+    databricks_client_id  application_id del SP del extractor CDC (output producer_cdc_sp_application_id)
     databricks_secret     secreto OAuth del SP (vida útil acotada, ver --dias)
     sql_password          contraseña del login de SQL Server cdc_extractor (solo lectura)
 
@@ -66,11 +66,11 @@ def configurar(dias: int) -> int:
     salidas = {o: v["value"] for o, v in json.loads(
         (RAIZ / "infra" / "databricks" / "terraform.tfstate").read_text(encoding="utf-8"))["outputs"].items()}
     host = cli("auth", "describe")["details"]["host"]
-    secreto = cli("service-principal-secrets-proxy", "create", str(salidas["producer_sp_id"]),
+    secreto = cli("service-principal-secrets-proxy", "create", str(salidas["producer_cdc_sp_id"]),
                   "--lifetime", f"{dias * 86400}s")
     pw = contrasena()
     crear_login_sql(pw)
-    valores = {"databricks_host": host, "databricks_client_id": salidas["producer_sp_application_id"],
+    valores = {"databricks_host": host, "databricks_client_id": salidas["producer_cdc_sp_application_id"],
                "databricks_secret": secreto["secret"], "sql_password": pw}
     for k, v in valores.items():
         keyring.set_password(SERVICIO, k, v)
