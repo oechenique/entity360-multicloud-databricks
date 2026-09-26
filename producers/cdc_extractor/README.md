@@ -1,7 +1,7 @@
 # Extractor CDC (SQL Server legacy → UC Volume)
 
 Regla 04. Lee los cambios del CDC del ERP (`legacy/`) desde el último LSN procesado y los empuja al
-volume con el contrato de landing (regla 01), autenticado como el SP `entity360-producer` (OAuth M2M).
+volume con el contrato de landing (regla 01), autenticado como el SP `entity360-producer` (recurso `producer_cdc`, ADR 0002) con OAuth M2M.
 
 ## Salida
 `/Volumes/entity360/landing/raw/sqlserver_cdc/ingest_date=YYYY-MM-DD/`
