@@ -22,6 +22,12 @@ legacy es una **decisión de arquitectura, no de datos** (principio 1): no hay n
 
 Más 2.324 direcciones (legal y sede), 146 nombres alternativos y 393 relaciones.
 
+Primer delta real (2026-09-26, `LastWeek` de la publicación 16:00, porque habían pasado más de 24 h):
+19 registros del universo, **1 alta** (Provincia de San Juan, LEI registrado el 2026-09-25, con sus 2
+direcciones y un nombre alternativo) y **7 updates** (renovaciones de 4 entidades, una dirección y 2
+relaciones). El extractor los llevó al volume como un lote de 11 cambios; la segunda corrida no empujó
+nada.
+
 ## Cómo corre
 ```powershell
 cd legacy
@@ -59,6 +65,39 @@ Por eso el CDC ve:
   entidad. Es raro, pero real.
 
 Bronze (fase 6) conserva la operación y el LSN de cada cambio; Silver arma el historial (SCD2).
+
+## Apagado limpio (el exit 137)
+El contenedor salía con **137** (SIGKILL) en cada `docker compose stop`, aun con
+`stop_grace_period: 30s`, y sin ningún mensaje de cierre de SQL Server en el log. No era memoria
+(`OOMKilled=false`).
+
+**Causa:** el entrypoint de la imagen (`/opt/mssql/bin/launch_sqlservr.sh`) deja a **bash como
+PID 1**, lanza `sqlservr` en segundo plano (`"$@" &`) y hace `wait`. Bash como PID 1 no tiene handler
+de SIGTERM (el kernel no le entrega señales sin handler al PID 1) y tampoco se la reenvía al hijo:
+`docker stop` espera el grace period entero y termina con SIGKILL. Subir el grace period solo demora
+el SIGKILL; cambiar `stop_signal` no sirve porque ninguna señal atrapable llega a `sqlservr`.
+
+**Solución:** `init: true` + `entrypoint: ["/opt/mssql/bin/sqlservr"]`. Tini queda como PID 1, le
+reenvía el SIGTERM a `sqlservr` y cosecha zombies. El wrapper que se saltea solo imprime un aviso de
+permisos y corre el setup de `MSSQL_DB` / `/mssql-server-setup-scripts.d`, que acá no se usan.
+
+Prueba (2026-09-26, contenedores descartables sin volumen, imagen `2022-latest`, Agent habilitado):
+
+| Variante | `docker stop` | Exit | Cierre de SQL Server en el log |
+|---|---|---|---|
+| Imagen tal cual (bash PID 1) | 30,5 s | 137 | no |
+| `init: true` | 0,5 s | 143 | **no**: tini mata a bash y `sqlservr` cae con el contenedor |
+| `init: true` + `TINI_KILL_PROCESS_GROUP=1` | 0,4 s | 143 | no |
+| `entrypoint: sqlservr` | 0,6 s | 0 | sí ("terminating in response to a 'stop' request") |
+| **`init: true` + `entrypoint: sqlservr`** (elegida) | 1,4 s | 0 | sí |
+
+`init: true` solo es la trampa: el 143 parece un cierre ordenado y no lo es. Con la base real, después
+del cambio: `stop` en 0,9 s, exit 0, cierre completo en el log.
+
+**Después del 137 del 2026-09-25 la base quedó intacta** (verificado el 2026-09-26): `DBCC CHECKDB`
+sin errores, conteos iguales a la carga, CDC habilitado en las 4 tablas, Agent y capture job
+corriendo. SQL Server recupera por el log de transacciones; el riesgo del SIGKILL era un recovery
+más largo o una transacción a medias, no pérdida de lo commiteado.
 
 ## Limitación asumida
 Corre **cuando la PC está prendida**. Es coherente con la historia (un sistema on-prem) y está
