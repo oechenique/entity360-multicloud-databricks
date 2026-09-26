@@ -1,0 +1,270 @@
+{
+ "_descripcion": "Alias con que GDELT (GKG, V2Organizations) nombra a las entidades del universo. GDELT traduce palabra por palabra los nombres de artículos no ingleses. Cada alias es una frase completa que se busca entre límites de palabra en la forma de organización en minúsculas; 'excluir' descarta formas que la contienen pero son otra cosa. Nunca nombres cortos ambiguos ('galicia', 'macro', 'pampa', 'irsa'). 'docs_muestra' = suma de documentos por forma de organización que matchea el alias en la muestra del diagnóstico (evidencia/alias-2026-09-19_25.txt); 0 = forma canónica inequívoca sin menciones en la muestra.",
+ "muestra": "2026-09-19 a 2026-09-25 (7 particiones de GKG)",
+ "descartados": {
+  "bank french": "34 docs en la muestra, todos de bancos franceses (BNP Paribas, Société Générale): no es Banco Francés / BBVA Argentina",
+  "bank galician": "7 docs, ambiguo con bancos de Galicia (España)",
+  "galicia, macro, pampa, irsa, free market": "nombres cortos o frases comunes: región de España, Macron, macroeconomía, Birsa/Sirsa, 'mercado libre' traducido"
+ },
+ "entidades": [
+  {
+   "clave": "GGAL",
+   "cik": 1114700,
+   "nombre": "Grupo Financiero Galicia",
+   "alias": [
+    {
+     "forma": "group financial galicia",
+     "docs_muestra": 10
+    },
+    {
+     "forma": "grupo financiero galicia",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "financial group galicia",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "BANCO_GALICIA",
+   "cik": null,
+   "nombre": "Banco de Galicia y Buenos Aires (subsidiaria de GGAL, no emisor SEC)",
+   "alias": [
+    {
+     "forma": "bank galicia",
+     "docs_muestra": 88
+    },
+    {
+     "forma": "banco galicia",
+     "docs_muestra": 0
+    }
+   ],
+   "excluir": [
+    "group financial galicia"
+   ]
+  },
+  {
+   "clave": "BMA",
+   "cik": 1347426,
+   "nombre": "Banco Macro",
+   "lei": "579100KKDKKIFEBKK040",
+   "alias": [
+    {
+     "forma": "banco macro",
+     "docs_muestra": 5
+    },
+    {
+     "forma": "bank macro",
+     "docs_muestra": 0
+    }
+   ],
+   "excluir": [
+    "macro poverty",
+    "macroeconomic"
+   ]
+  },
+  {
+   "clave": "MELI",
+   "cik": 1099590,
+   "nombre": "MercadoLibre",
+   "lei": "549300DKPDN9M5S8GB14",
+   "alias": [
+    {
+     "forma": "mercadolibre",
+     "docs_muestra": 24
+    },
+    {
+     "forma": "mercado libre",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "VIST",
+   "cik": 1762506,
+   "nombre": "Vista Energy",
+   "alias": [
+    {
+     "forma": "vista energy",
+     "docs_muestra": 6
+    },
+    {
+     "forma": "vista oil gas",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "CEPU",
+   "cik": 1717161,
+   "nombre": "Central Puerto",
+   "alias": [
+    {
+     "forma": "central puerto",
+     "docs_muestra": 1
+    }
+   ]
+  },
+  {
+   "clave": "YPF",
+   "cik": 904851,
+   "nombre": "YPF",
+   "lei": "5493003N7447U18U5U53",
+   "alias": [
+    {
+     "forma": "ypf",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "yacimientos petroliferos fiscales",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "PAM",
+   "cik": 1469395,
+   "nombre": "Pampa Energía",
+   "alias": [
+    {
+     "forma": "pampa energy",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "pampa energia",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "TEO",
+   "cik": 932470,
+   "nombre": "Telecom Argentina",
+   "lei": "549300MKPIRSJD8SB782",
+   "alias": [
+    {
+     "forma": "telecom argentina",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "telecom of argentina",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "TGS",
+   "cik": 931427,
+   "nombre": "Transportadora de Gas del Sur",
+   "alias": [
+    {
+     "forma": "transportadora de gas del sur",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "transporter of gas of the south",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "EDN",
+   "cik": 1395213,
+   "nombre": "Edenor",
+   "lei": "254900JU7TV6VS9GRW29",
+   "alias": [
+    {
+     "forma": "edenor",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "SUPV",
+   "cik": 1517399,
+   "nombre": "Grupo Supervielle",
+   "alias": [
+    {
+     "forma": "group supervielle",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "grupo supervielle",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "bank supervielle",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "banco supervielle",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "BBAR",
+   "cik": 913059,
+   "nombre": "BBVA Argentina",
+   "alias": [
+    {
+     "forma": "bbva argentina",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "bbva frances",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "CRESY",
+   "cik": 1034957,
+   "nombre": "Cresud",
+   "alias": [
+    {
+     "forma": "cresud",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "IRS",
+   "cik": 933267,
+   "nombre": "IRSA Inversiones y Representaciones",
+   "alias": [
+    {
+     "forma": "irsa inversiones y representaciones",
+     "docs_muestra": 0
+    },
+    {
+     "forma": "irsa properties",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "LOMA",
+   "cik": 1711375,
+   "nombre": "Loma Negra",
+   "alias": [
+    {
+     "forma": "loma negra",
+     "docs_muestra": 0
+    }
+   ]
+  },
+  {
+   "clave": "GLOB",
+   "cik": 1557860,
+   "nombre": "Globant",
+   "alias": [
+    {
+     "forma": "globant",
+     "docs_muestra": 0
+    }
+   ]
+  }
+ ]
+}

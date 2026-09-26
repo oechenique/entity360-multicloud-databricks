@@ -1,0 +1,234 @@
+# Diagnóstico de alias de GDELT (fase 4, 2026-09-26). Proyecto <GCP_PROJECT_ID> (sandbox, sin facturación).
+## 1. Patrones amplios (diagnostico_alias.py --desde 2026-09-19 --hasta 2026-09-25), top 130 de 400
+días 2026-09-19 a 2026-09-25 | 32 patrones (subcadena)
+dry run: 163.7 MiB estimados (se ejecuta si <= 500 MiB)
+procesados 163.7 MiB | facturados 164.0 MiB | 1.6 s
+400 formas distintas (documentos | días | forma):
+     53 | 7 | bank galicia
+     34 | 7 | bank french
+     26 | 4 | institution for macroeconomics
+     24 | 6 | mercadolibre
+     21 | 7 | parliament galician
+     19 | 7 | parliament of galicia
+     18 | 7 | school galician
+     14 | 6 | court to xustiza to galicia
+     14 | 3 | branch bank galicia
+     12 | 5 | academy galicia
+     11 | 5 | center galician
+     11 | 3 | a bank french
+     11 | 2 | agency tax in galicia
+     10 | 1 | central port authority thessaloniki
+     10 | 3 | television to galicia
+     10 | 1 | pointer trustworthy macroeconomic association
+     10 | 4 | regal academy galician
+      9 | 6 | parliament to galicia
+      8 | 3 | bank to galicia
+      8 | 2 | central port authority chania
+      8 | 1 | central port authority corfu
+      8 | 5 | group financial galicia
+      7 | 6 | group galicia
+      7 | 5 | agency galicia
+      7 | 3 | bank galician
+      7 | 3 | school to forensic science to galicia
+      6 | 2 | federation galician
+      6 | 4 | court galician
+      6 | 3 | school investigative health galicia
+      6 | 4 | administration galician
+      6 | 3 | central port authority symbol
+      6 | 1 | division macro
+      5 | 3 | central port authority heraklion
+      5 | 4 | league galician
+      5 | 3 | association galicia
+      5 | 3 | program galician
+      5 | 3 | federation alzheimers galicia
+      5 | 3 | banco macro
+      5 | 5 | bh macro limited the company
+      4 | 1 | roubini macro associates
+      4 | 2 | court top of justice of galicia
+      4 | 3 | galician district court
+      4 | 1 | birsa munda tribal university
+      4 | 1 | central port authority kavala
+      4 | 3 | school galicia
+      4 | 4 | center galicia
+      4 | 4 | association to journalists to galicia
+      4 | 3 | school galician to promotion economic
+      3 | 2 | business institutional the macro instruction area center
+      3 | 2 | federation soccer buenos pampas
+      3 | 2 | agency to tourism to galicia
+      3 | 2 | a school galician
+      3 | 2 | federation to associations galician
+      3 | 1 | free market institute
+      3 | 3 | lviv national medical university name daniel galician
+      3 | 2 | a branch bank galicia
+      3 | 1 | italian the bank french
+      3 | 2 | world bank macro poverty outlook
+      3 | 2 | bank galicia to hills viewpoint
+      3 | 3 | consello school to galicia
+      3 | 2 | museum macro instruction
+      3 | 2 | al school to forensic science to galicia
+      3 | 3 | free market foundation
+      3 | 1 | lithuania free market institute
+      3 | 3 | center galician to caracas
+      3 | 1 | nomura head of global macro research
+      3 | 2 | a central port authority symbol
+      3 | 2 | advice school of galicia
+      3 | 1 | federation of associations galicia republic argentina
+      3 | 1 | office economic to galicia
+      3 | 1 | decree galician school
+      3 | 2 | galician school
+      3 | 2 | renaissance macro research
+      3 | 1 | service to guard to galicia
+      3 | 1 | al service to guard to galicia
+      3 | 2 | head center macroeconomic
+      3 | 2 | agency of tourism of galicia
+      3 | 2 | association pampas
+      3 | 3 | administration galicia
+      3 | 3 | federation galicia
+      2 | 1 | federation theatrical of galicia
+      2 | 2 | laboratory to radon to galicia
+      2 | 2 | macro league
+      2 | 2 | federation galician to
+      2 | 2 | federation pampas
+      2 | 1 | academy galicia pains
+      2 | 2 | foundation public galicia
+      2 | 1 | macroeconomic overview in center point
+      2 | 2 | federation galician to municipalities
+      2 | 2 | institute free market
+      2 | 2 | academy galician do audiovisual
+      2 | 1 | global macro research head
+      2 | 2 | a center galician
+      2 | 2 | federation galician soccer
+      2 | 1 | central port authority patra
+      2 | 1 | united kingdom macro policy forum
+      2 | 2 | federation bank french
+      2 | 1 | center to supercomputing to galicia
+      2 | 1 | macrostrategy research initiative
+      2 | 2 | macrobert arts centre
+      2 | 1 | macrotech developers
+      2 | 1 | association to beauticians to galicia
+      2 | 1 | center dairy galicia
+      2 | 2 | a court top of justice of galicia
+      2 | 1 | institution galician
+      2 | 2 | federation buenos pampas
+      2 | 1 | a parliament to galicia
+      2 | 2 | branch to bank galicia
+      2 | 1 | federation of associations galicia
+      2 | 2 | party of interest tourism of galicia
+      2 | 1 | center pampas to studies
+      2 | 1 | hotel galician
+      2 | 2 | free markets limited government
+      2 | 1 | central port authority symbol fa
+      2 | 2 | center galician to art
+      2 | 2 | macro television studios
+      2 | 1 | association of journalists of galicia
+      2 | 2 | organizational y finance of movement add galicia
+      2 | 1 | macroinvertebrate community index
+      2 | 1 | committee galician
+      2 | 1 | a association pampas to writers
+      2 | 2 | galicia division
+      2 | 2 | bank french agricultural
+      2 | 1 | center galician to innovation
+      2 | 1 | federation kirsan ilyumzhinov
+      2 | 2 | vista energy
+      2 | 2 | association pampas to physiotherapists
+      2 | 2 | galicia a bank galicia
+      2 | 1 | macroeconomic policy institute
+      2 | 2 | court top of galicia
+
+## 2. Patrones específicos por emisor, con URLs de ejemplo (356,9 MiB procesados, tope 1 GiB)
+  53 | 7 | bank galicia
+         https://www.clarin.com/sociedad/premio-abanderados-argentinos-transformando-realidad-pais_0_yY1sejKMyw.html
+         https://www.losandes.com.ar/economia/son-argentinos-y-crearon-un-software-que-procesa-millones-facturas-las-empresas-mas-grandes-del-mundo-n6006715
+  34 | 7 | bank french
+         https://www.tradingsat.com/bnp-paribas-acta-FR0000131104/actualites/bnp-paribas-acta-bnp-paribas-confiant-pour-ses-perspectives-l-action-monte-1170601.html
+         https://www.boursorama.com/bourse/actualites/l-europe-reste-bien-orientee-avec-la-baisse-du-petrole-0a4bb004e0b146220bf4e5f6f558e417
+  24 | 6 | mercadolibre
+         https://www.fool.com/coverage/better-buy/2026/09/23/coupang-vs-mercadolibre-which-e-commerce-stock-is-a-better-buy-in-2026/?source=iedfolrf0000001
+         https://www.fool.com/coverage/better-buy/2026/09/23/coupang-vs-mercadolibre-which-e-commerce-stock-is-a-better-buy-in-2026/
+  14 | 3 | branch bank galicia
+         https://www.cadena3.com/noticia/sociedad/violento-intento-de-robo-en-un-banco-de-lomas-del-mirador-un-delincuente-detenido_597082
+         https://www.lanacion.com.ar/seguridad/asi-fue-el-arresto-ciudadano-realizado-por-clientes-del-banco-que-redujeron-al-ladron-que-disparo-en-nid23092026/
+  11 | 3 | a bank french
+         https://www.expansion.com/empresas/banca/2026/09/25/6ab6ce9ce5fdead6168b459a.html
+         https://www.borsaitaliana.it/borsa/notizie/radiocor/finanza/dettaglio/societe--generale-entro-2029-punta-a-14-mln-clienti-banca-online-boursobank-nRC_21092026_0818_105253778.html
+   8 | 5 | group financial galicia
+         https://www.iprofesional.com/finanzas/464624-5-acciones-argentinas-que-podrian-mas-que-duplicar-su-precio
+         https://www.iprofesional.com/finanzas/464707-10-acciones-que-prefieren-los-fondos-comunes-de-inversion
+   7 | 3 | bank galician
+         https://rpp.pe/peru/cusco/machu-picchu-conforman-comite-para-nueva-licitacion-de-la-ruta-hiram-bingham-noticia-1708916
+         https://www.elidealgallego.com/actualidad/economia/2026-09-21/la-gran-banca-espanola-habilita-para-sus-clientes-los-pagos-en-comercios-a-traves-de-bizum-pay-880503.html
+   5 | 3 | banco macro
+         https://www.riotimesonline.com/argentina-markets-merval-peso-saturday-september-19-2026/
+         https://www.riotimesonline.com/argentina-markets-merval-peso-thursday-september-24-2026/
+   3 | 2 | a branch bank galicia
+         https://www.perfil.com/noticias/policia/detuvieron-a-cinco-sospechosos-que-intentaron-retirar-us30000-y-29-millones-de-un-banco-con-un-dni-falso.phtml
+         https://www.canal26.com/policiales/2026/09/23/disparos-forcejos-y-maxima-tension-en-un-banco-del-conurbano-clientes-redujeron-un-ladron-y-evitaron-el-robo/
+   3 | 2 | bank galicia to hills viewpoint
+         https://www.lanacion.com.ar/seguridad/asi-fue-el-arresto-ciudadano-realizado-por-clientes-del-banco-que-redujeron-al-ladron-que-disparo-en-nid23092026/
+         https://www.lanacion.com.ar/seguridad/terror-en-la-matanza-tres-ladrones-dispararon-durante-un-robo-a-un-banco-y-los-clientes-redujeron-a-nid23092026/
+   3 | 1 | italian the bank french
+         https://www.ilmessaggero.it:443/economia/news/mps_assemblea_fusione_mediobanca_cda_diviso_riassetto_bancario-9783793.html
+         https://www.ilmessaggero.it/economia/news/mps_assemblea_fusione_mediobanca_cda_diviso_riassetto_bancario-9783793.html
+   2 | 2 | bank french agricultural
+         https://www.dire.it/23-09-2026/1269399-il-borsino-dei-mercati-wall-street-va-giu-col-tech-milano-resiste-con-eni-e-banche/
+         https://www.gravinalife.it/notizie/la-bppb-in-cordata-per-l-acquisto-dell-ex-popolare-di-bari/
+   2 | 2 | branch to bank galicia
+         https://www.clarin.com/policiales/tiros-banco-ramos-mejia-cliente-cajero-evitaron-robo-redujeron-ladrones_0_lovrwqZUFY.html
+         http://www.eldestapeweb.com/espectaculos/terrible-fallido-notera-tn-vecinos-movil-delincuentes-20269232142
+   2 | 2 | federation bank french
+         https://www.planet.fr/credit-a-la-consommation-lobtenir-va-etre-beaucoup-plus-difficile-dans-les-prochaines-semaines.2999389.817026.html
+         https://www.tf1info.fr/conso-argent/verif-est-il-vrai-que-plus-aucun-decouvert-bancaire-ne-sera-autorise-en-novembre-2465365.html
+   2 | 2 | galicia a bank galicia
+         https://www.lanacion.com.ar/propiedades/casas-y-departamentos/creditos-hipotecarios-ya-son-12-los-bancos-que-bajaron-la-tasa-al-75-y-otros-tres-la-fijaron-por-nid21092026/
+         https://www.contextotucuman.com/nota/420811/creditos-hipotecarios-ya-son-12-los-bancos-que-bajaron-las-tasas-a-7-5_por_ciento-y-otros-3-las-fijaron-por-debajo-de-7_por_ciento.html
+   2 | 2 | vista energy
+         https://latinfinance.com/daily-brief/2026/09/21/three-latam-issuers-line-up-cross-border-bond-sales/
+         https://www.themarketsdaily.com/2026/09/24/analysts-set-vista-energy-s-a-b-de-c-v-sponsored-adr-nysevist-pt-at-83-44.html
+   1 | 1 | vista energy price performance
+         https://www.themarketsdaily.com/2026/09/24/analysts-set-vista-energy-s-a-b-de-c-v-sponsored-adr-nysevist-pt-at-83-44.html
+   1 | 1 | al bank galicia to hills viewpoint
+         https://www.lanacion.com.ar/seguridad/asi-fue-el-forcejeo-en-el-banco-de-la-matanza-donde-un-ladron-disparo-durante-un-robo-y-los-propios-nid24092026/
+   1 | 1 | branch bank galicia to hills viewpoint
+         https://www.laprensa.com.ar/Tiros-en-un-banco-de-Ramos-Mejia-un-cliente-ayudo-a-evitar-un-robo-y-retener-a-uno-de-los-ladrones-576121.note.aspx
+   1 | 1 | group financial galicia bank
+         https://www.iprofesional.com/finanzas/465019-mercado-pago-permitira-comprar-y-vender-acciones-en-argentina
+   1 | 1 | argentina as bank galicia
+         https://www.perfil.com/noticias/modo-fontevecchia/fabian-kon-el-presidente-del-coloquio-de-idea-explica-como-argentina-podra-crecer-20-anos-sostenidamente-modof.phtml
+   1 | 1 | managers to bank galicia
+         https://mercado.com.ar/finanzas/la-25a-edicion-de-cms-financial-innovation-argentina-debatio-el-futuro-del-credito-las-cobranzas-y-la-tecnologia-en-el-sector-financiero
+   1 | 1 | central puerto company profile
+         https://www.tickerreport.com/banking-finance/13590693/bank-of-america-cuts-central-puerto-nysecepu-price-target-to-28-00.html
+   1 | 1 | institutional trading of vista energy
+         https://www.themarketsdaily.com/2026/09/24/analysts-set-vista-energy-s-a-b-de-c-v-sponsored-adr-nysevist-pt-at-83-44.html
+   1 | 1 | analyst recommendations for vista energy
+         https://www.themarketsdaily.com/2026/09/24/analysts-set-vista-energy-s-a-b-de-c-v-sponsored-adr-nysevist-pt-at-83-44.html
+   1 | 1 | news ratings for vista energy daily
+         https://www.themarketsdaily.com/2026/09/24/analysts-set-vista-energy-s-a-b-de-c-v-sponsored-adr-nysevist-pt-at-83-44.html
+   1 | 1 | single bank french
+         https://www.24matins.fr/pr/communique-resultats-du-1er-semestre-2026-le-groupe-afl-affiche-des-resultats-solides-et-realise-des-avancees-strategiques-en-matiere-de-refinancement
+   1 | 1 | bank galicia it
+         https://www.perfil.com/noticias/politica/nuevo-golpe-para-maximo-y-florencia-kirchner-casacion-confirmo-el-embargo-de-13-propiedades-familiares.phtml
+   1 | 1 | a group financial galicia
+         https://comercioyjusticia.info/negocios/mercado-pago-permitira-comprar-y-vender-acciones-anuncio-de-marcos-galperin/
+   1 | 1 | branch ramos mejia bank galicia
+         https://www.lanoticia1.com/noticia/la-matanza-un-ladron-disparo-durante-un-robo-a-un-banco-y-los-clientes-lo-atraparon
+   1 | 1 | branch hills viewpoint bank galicia
+         https://www.lanacion.com.ar/seguridad/asi-fue-el-arresto-ciudadano-realizado-por-clientes-del-banco-que-redujeron-al-ladron-que-disparo-en-nid23092026/
+   1 | 1 | a bank french company
+         https://www.capital.fr/entreprises-marches/societe-generale-boursobank-veut-franchir-le-cap-des-14-millions-de-clients-dici-2029-1530314
+   1 | 1 | ecosystem bank galicia
+         https://www.cronista.com/finanzas-mercados/pagos-digitales-que-opciones-tienen-los-los-comercios-para-cobrar-de-forma-presencial/
+   1 | 1 | supermarkets september a bank galicia
+         https://www.perfil.com/noticias/economia/cuales-son-los-mejores-descuentos-en-a50-supermercados-para-este-jueves-24-de-septiembre.phtml
+   1 | 1 | al bank galicia
+         https://www.cadena3.com/noticia/politica-esquina-economia/intendentes-en-panico-y-ahora-que-hacemos-con-la-corte-suprema_596287
+   1 | 1 | branch bank galicia to ramos mejia
+         https://www.eltrecetv.com.ar/mediodia-noticias/2026/09/24/asi-fue-el-asalto-al-banco-de-ramos-mejia-dramaticas-imagenes-de-las-camaras-de-seguridad/
+
+## Lectura
+- 'bank french' (34) y variantes: bancos franceses (BNP Paribas, Société Générale) -> descartado, no es BBVA Francés.
+- 'bank galicia' y variantes: medios argentinos (Clarín, La Nación, Perfil) sobre Banco Galicia -> alias de BANCO_GALICIA.
+- 'group financial galicia': Grupo Financiero Galicia (GGAL), entidad distinta del banco.
+- 'bank macro' aparece dentro de 'world bank macro poverty outlook' -> exclusión en BMA.
+- YPF, Pampa, Telecom, TGS, Edenor, Supervielle, BBVA Argentina, Cresud, IRSA, Loma Negra, Globant: 0 documentos en 7 días;
+  se incluyen sus formas canónicas inequívocas (docs_muestra = 0).
