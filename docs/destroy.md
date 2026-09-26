@@ -4,7 +4,7 @@ Principio 7: el destroy se escribe junto con la infra. **Todo con confirmación 
 (regla 00): nada de esto se corre sin OK de Gastón.
 
 ## Orden
-0. Productores que usan los SP (por ejemplo `infra/aws/sec_edgar`, ver su sección).
+0. Productores que usan los SP (`infra/aws/sec_edgar` y el container de enriquecimiento, ver sus secciones).
 1. Databricks (`infra/databricks`): suelta la external location, que depende del bucket.
 2. Vaciar el bucket del catálogo a propósito (ver abajo).
 3. AWS (`infra/aws`): bucket y rol IAM.
@@ -108,3 +108,19 @@ terraform destroy
 - La suscripción de SNS se borra con el tópico.
 - El secreto OAuth del SP se borra con el SP (destroy de `infra/databricks`) o vence solo.
 - Los lotes ya entregados al volume se borran con el catálogo.
+
+## Container de enriquecimiento (fase 5)
+Antes que `infra/databricks` (el workflow usa el SP `entity360-producer-enrichment`). Con OK:
+```powershell
+# 1) Cortar la ejecución diaria (o borrar .github/workflows/enriquecimiento-*.yml y pushear)
+gh workflow disable enriquecimiento-diario.yml
+# 2) Secretos del repo
+foreach ($s in 'DATABRICKS_HOST','DATABRICKS_CLIENT_ID','DATABRICKS_CLIENT_SECRET','USER_AGENT') { gh secret delete $s }
+# 3) Paquete de GHCR (todas sus versiones)
+gh api -X DELETE /user/packages/container/entity360-enrichment
+# 4) Imagen local
+docker image rm entity360-enrichment:local
+```
+- El borrado del paquete necesita el scope `delete:packages` (`gh auth refresh -s delete:packages`).
+- El secreto OAuth del SP se borra con el SP (destroy de `infra/databricks`) o vence solo.
+- Los lotes ya empujados al volume se borran con el catálogo.
