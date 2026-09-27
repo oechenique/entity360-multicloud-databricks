@@ -1,0 +1,83 @@
+version: 2
+
+sources:
+  - name: resolution
+    description: Resolución de identidades (tarea `resolucion` del job entity360-medallion, regla 08).
+    schema: resolution
+    config:
+      loaded_at_field: corrida_utc
+      freshness:
+        warn_after: {count: 26, period: hour}
+        error_after: {count: 50, period: hour}
+    tables:
+      - name: golden_record
+        description: Una fila por entidad, con reglas de supervivencia por atributo.
+      - name: entidad_registro
+        description: A qué entidad pertenece cada registro de cada fuente.
+      - name: registro
+        description: Registros de todas las fuentes que entran a la resolución.
+        config:
+          freshness: null
+
+  - name: silver
+    schema: silver
+    tables:
+      - name: gdelt_mencion
+        description: Menciones de entidades del universo en noticias (GDELT GKG).
+      - name: opensanctions_entidad
+        description: Entidades de OpenSanctions (CC BY-NC 4.0).
+      - name: gleif_entidad_hist
+        description: GLEIF desde el CDC del legacy, con historia (SCD tipo 2).
+      - name: gleif_direccion_hist
+      - name: gleif_nombre_alternativo_hist
+      - name: gleif_relacion_hist
+
+  # Frescura por fuente (regla 09): el último lote aterrizado e ingerido de cada productor. Los umbrales
+  # siguen la cadencia real de cada uno: SEC EDGAR y Wikidata solo empujan cuando algo cambió, y el
+  # cron de GDELT saltea horas (ADR 0003).
+  - name: landing
+    description: Lotes aterrizados por fuente (ops.ingestion_log).
+    schema: ops
+    config:
+      loaded_at_field: aterrizado_utc
+    tables:
+      - name: lotes_sqlserver_cdc
+        identifier: ingestion_log
+        description: CDC del legacy. Corre con la PC prendida (regla 04).
+        config:
+          freshness:
+            warn_after: {count: 3, period: day}
+            error_after: {count: 7, period: day}
+            filter: "fuente = 'sqlserver_cdc' and estado = 'ingerido_bronze'"
+      - name: lotes_sec_edgar
+        identifier: ingestion_log
+        description: SEC EDGAR. Solo escribe un lote si algún emisor presentó algo nuevo.
+        config:
+          freshness:
+            warn_after: {count: 10, period: day}
+            error_after: {count: 30, period: day}
+            filter: "fuente = 'sec_edgar' and estado = 'ingerido_bronze'"
+      - name: lotes_gdelt
+        identifier: ingestion_log
+        description: GDELT, cron horario con salteos; solo empuja si hubo menciones nuevas.
+        config:
+          freshness:
+            warn_after: {count: 12, period: hour}
+            error_after: {count: 48, period: hour}
+            filter: "fuente = 'gdelt' and estado = 'ingerido_bronze'"
+      - name: lotes_opensanctions
+        identifier: ingestion_log
+        description: OpenSanctions, una vez por día.
+        config:
+          freshness:
+            warn_after: {count: 36, period: hour}
+            error_after: {count: 72, period: hour}
+            filter: "fuente = 'opensanctions' and estado = 'ingerido_bronze'"
+      - name: lotes_wikidata
+        identifier: ingestion_log
+        description: Wikidata. Solo empuja si el resultado de la consulta cambió.
+        config:
+          freshness:
+            warn_after: {count: 30, period: day}
+            error_after: {count: 90, period: day}
+            filter: "fuente = 'wikidata' and estado = 'ingerido_bronze'"

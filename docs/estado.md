@@ -1,47 +1,51 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-27, 01:20 UTC** (cierre del día). Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-27, 22:00 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fase 6 (regla 08), paso 4: esperando el etiquetado de la parte A del set de validación.**
+**Fase 7 (regla 09) cerrada. Sigue la fase 8 (Airflow), con una decisión pendiente (abajo).**
 
 ## Hecho
-- **Fase 4 (GDELT)** cerrada salvo la verificación del cron (ver "Pendiente"):
-  - WIF, SA sin claves, respaldo en BigQuery sandbox y SP `entity360-producer-gdelt`.
-  - Tests del match de alias y de la idempotencia (`tests/gcp_gdelt`, 38 tests, uno contra BigQuery).
-  - Docs: `manual-steps.md` §9, `destroy.md` y la licencia en `fuentes.md`.
-- **Fase 6, pasos 0 a 3:**
-  - Paso 0 verificado en serverless (`databricks/evidencia/paso0-verificaciones.txt`) y ADR 0004
-    (job de PySpark, no Lakeflow Declarative Pipelines).
-  - Job `entity360-medallion` (`infra/databricks/medallion.tf`): Bronze (Auto Loader, capa 2 por
-    sha256) → Silver (SCD2 del CDC, normalización, cuarentena), todo en Iceberg gestionado.
-    **Schedule diario 08:45 (Buenos Aires), activo desde el 2026-09-27.**
-  - Dos corridas manuales verificadas (`databricks/evidencia/pasos1-3-primeras-corridas.txt`),
-    incluido un reenvío idéntico que quedó como `duplicado` sin sumar filas.
-  - 71 tests locales (`tests/medallion`).
-- **Fase 6, paso 4 (parte A):** `databricks/resolucion/validacion/parte_a.csv` generado.
+- **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
+  - GDELT: el cron de Actions saltea horas (3 corridas en 20 h el 2026-09-27); la ventana pasó a
+    24 h para no perder menciones (ADR 0003).
+- **Fase 6 (regla 08):**
+  - Job `entity360-medallion`: bronze → silver → resolucion, schedule diario 08:45 (Buenos Aires).
+    Consumo: 0,6–1,2 DBU por corrida (`databricks/evidencia/pasos1-3-primeras-corridas.txt`).
+  - Resolución de identidades (`databricks/medallion/identidades.py`, pesos **sin calibrar**): 1268
+    registros → 1132 entidades; 17 casos a revisar y 16 conflictos en `resolution.revision`.
+  - Set de validación: **parte A etiquetada** (59 registros) y **parte B generada** (60 pares, sin
+    etiquetar), en `databricks/resolucion/validacion/`.
+- **Fase 7 (regla 09):**
+  - Contratos de llegada con Soda Core 4 (`contracts/`): 5 fuentes, veredicto `_contrato_<ts>.json`
+    por lote, cuarentena en Bronze (`cuarentena_contrato`) y alerta por Telegram. Los 10 lotes del
+    landing, aprobados.
+  - dbt (`dbt/`): 5 modelos Gold en Iceberg gestionado con contratos enforced (ADR 0005); `dbt build`
+    24/24 y `dbt source freshness` 7/7.
+- Tests: 97 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+  `contracts\.venv`).
 
 ## Pendiente
-1. **Etiquetar la parte A (Gastón).** Son 59 registros:
-   - Archivo: `databricks/resolucion/validacion/parte_a.csv` (separado por `;`, se abre en Excel).
-   - Instrucciones: `databricks/resolucion/validacion/README.md`.
-   - Por registro: `respuesta` (`1`–`5`, `ninguno`, `otro` + `lei_otro`, o `incierto`),
-     `evidencia` (obligatoria) y `fecha`.
-   - **No regenerar el CSV** después de empezar: el script lo pisa.
-2. ~~Cron de `gdelt-horario`~~ **cerrado (2026-09-27):** corre solo, 17–23 s por corrida, pero GitHub
-   saltea slots (3 corridas en 20 h). La ventana pasó de 3 a 24 h para no perder menciones (ADR 0003).
-3. ~~Consumo en DBU~~ **cerrado (2026-09-27):** 0,58–1,22 DBU por corrida; la primera programada
-   (08:45) salió bien en 7,4 min. Detalle en `databricks/evidencia/pasos1-3-primeras-corridas.txt`.
-
-## Qué sigue (después del etiquetado)
-1. Parte B del set de validación (~60 pares: fáciles, positivos difíciles, negativos difíciles y
-   dudosos), en `parte_b.csv`.
-2. Paso 5: resolución (blocking, score, umbrales, clusters, golden record), calibración con la mitad
-   del set, y precisión y recall con intervalo de Wilson al 95 % sobre la otra mitad.
+1. **Etiquetar la parte B (Gastón):** `databricks/resolucion/validacion/parte_b.csv`, instrucciones en
+   el README de esa carpeta (`respuesta` `si`/`no`/`incierto`, `evidencia`, `fecha`). No abrir
+   `parte_b_estratos.csv` antes de terminar.
+2. **Paso 5 de la fase 6, después de la parte B:** calibrar pesos y umbrales con la mitad del set
+   (partición por estrato, semilla fija) y publicar precisión y recall con intervalo de Wilson sobre la
+   otra mitad.
+3. **Decisión de diseño para la fase 8 — lotes sin veredicto de contrato.** Hoy Bronze ingiere un lote
+   que todavía no tiene `_contrato_*.json` (solo frena los que están en cuarentena). Como el job corre
+   solo a las 08:45 y los contratos corren en Airflow local, un lote malo puede entrar si Airflow no
+   corrió antes. Opciones: (a) Bronze exige el veredicto (como exige el manifest) y el schedule del job
+   pasa a Airflow; con la PC apagada no se procesa nada nuevo, pero no se pierde nada. (b) Dejarlo como
+   está. Recomendación: (a).
+4. **Borrar `entity360.gold.prueba_contrato`:** tabla de prueba de la fase 7 (Iceberg + contrato). Es
+   un `DROP TABLE`: espera confirmación.
+5. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
+   a stderr.
 
 ## Estado del entorno al cerrar
-- `main` = `origin/main`, sin cambios locales.
-- SQL Server del legacy: contenedor **detenido** (`docker compose stop`), con el volumen intacto.
-  Para levantarlo: `docker compose -f legacy\docker-compose.yml start`.
-- Sin procesos ni watchers corriendo. Ningún job de Databricks en ejecución; la próxima corrida es
-  el schedule de las 08:45.
+- `main` = `origin/main`.
+- SQL Server del legacy: contenedor detenido, volumen intacto
+  (`docker compose -f legacy\docker-compose.yml start`).
+- Sin procesos corriendo. Próxima corrida del job: schedule de las 08:45.
+- Entornos locales: `.venv` (fase 6), `contracts\.venv` (Soda), `dbt\.venv` (dbt), todos ignorados.

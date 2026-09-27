@@ -1,0 +1,266 @@
+version: 2
+
+# Contratos enforced (regla 09): dbt valida nombres y tipos de cada columna antes de crear la tabla, y
+# el post-hook (aplicar_contrato_iceberg) aplica los not_null, que Iceberg gestionado hace cumplir, y los comentarios de columna. PRIMARY KEY y CHECK no existen
+# en Iceberg gestionado: unicidad y rangos van como tests (ADR 0005).
+
+models:
+  - name: dim_entity
+    description: >
+      Golden record: una fila por empresa. Consolida GLEIF (el legacy), SEC EDGAR, OpenSanctions,
+      Wikidata y GDELT con la resolución de identidades; cada atributo sale de la fuente que gana por las
+      reglas de supervivencia (procedencia dice de qué registro).
+    columns:
+      - name: entity_id
+        description: Identificador estable de la entidad (se conserva entre corridas de la resolución).
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests: [unique]
+      - name: nombre
+        description: Nombre legal (GLEIF primero; si no, SEC EDGAR, Wikidata, OpenSanctions, GDELT).
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: pais
+        description: País ISO 3166-1 alfa-2 (jurisdicción en GLEIF).
+        data_type: string
+      - name: ciudad
+        description: Ciudad de la sede, normalizada.
+        data_type: string
+      - name: lei
+        description: Legal Entity Identifier vigente (ISO 17442). Nulo si la entidad no está en GLEIF.
+        data_type: string
+        data_tests:
+          - unique
+      - name: cik
+        description: Central Index Key de la SEC, si la entidad presenta ante la SEC.
+        data_type: bigint
+        data_tests:
+          - unique
+          - rango: {arguments: {min: 1}}
+      - name: ticker
+        description: Símbolo bursátil (SEC EDGAR o Wikidata).
+        data_type: string
+      - name: sitio_web
+        description: Sitio web oficial (SEC EDGAR o Wikidata).
+        data_type: string
+      - name: forma_juridica
+        description: Forma jurídica normalizada (SA, SRL, INC...).
+        data_type: string
+      - name: estado_entidad
+        description: Estado en GLEIF (ACTIVE, INACTIVE).
+        data_type: string
+      - name: estado_registro
+        description: Estado del registro LEI en GLEIF (ISSUED, LAPSED, RETIRED...).
+        data_type: string
+      - name: sancionada
+        description: Algún registro de OpenSanctions de la entidad tiene sanción o programa.
+        data_type: boolean
+        constraints: [{type: not_null}]
+      - name: en_listas_de_riesgo
+        description: La entidad aparece en OpenSanctions (sanciones, PEP o listas de riesgo).
+        data_type: boolean
+        constraints: [{type: not_null}]
+      - name: fuentes
+        description: Fuentes de las que sale la entidad.
+        data_type: array<string>
+        constraints: [{type: not_null}]
+      - name: registros
+        description: Cantidad de registros de todas las fuentes unidos en la entidad.
+        data_type: int
+        constraints: [{type: not_null}]
+        data_tests:
+          - rango: {arguments: {min: 1}}
+      - name: duplicados_en_gleif
+        description: Registros de GLEIF de más en la entidad (LEI anulados o duplicados que se fusionaron).
+        data_type: int
+        constraints: [{type: not_null}]
+        data_tests:
+          - rango: {arguments: {min: 0}}
+      - name: registro_ancla
+        description: Registro que da nombre al cluster (<fuente>:<id>).
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: procedencia
+        description: Atributo -> registro del que sobrevive.
+        data_type: map<string,string>
+      - name: resuelto_utc
+        description: Corrida de la resolución que generó la fila.
+        data_type: timestamp
+        constraints: [{type: not_null}]
+
+  - name: bridge_entity_source
+    description: De qué registros de qué fuentes sale cada entidad (una fila por registro).
+    columns:
+      - name: entity_id
+        description: Entidad a la que pertenece el registro.
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_entity'), field: entity_id}}
+      - name: registro
+        description: Clave <fuente>:<id> del registro (la misma del set de validación).
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests: [unique]
+      - name: fuente
+        description: "Fuente del registro: gleif (el legacy), sec_edgar, opensanctions, wikidata o gdelt."
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests:
+          - accepted_values: {arguments: {values: [gleif, sec_edgar, opensanctions, wikidata, gdelt]}}
+      - name: id_fuente
+        description: Identificador en la fuente (LEI, CIK, id de OpenSanctions, QID, clave de GDELT).
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: nombre_en_fuente
+        description: Nombre del registro tal como lo trae la fuente.
+        data_type: string
+      - name: es_ancla
+        description: Es el registro que da nombre a la entidad.
+        data_type: boolean
+        constraints: [{type: not_null}]
+
+  - name: fct_news_signal
+    description: >
+      Menciones en noticias por entidad y día, con tono (GDELT GKG, cadencia de varias veces por día).
+      Datos: The GDELT Project (https://www.gdeltproject.org/).
+    data_tests:
+      - combinacion_unica: {arguments: {columnas: [entity_id, fecha]}}
+    columns:
+      - name: entity_id
+        description: Entidad mencionada.
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_entity'), field: entity_id}}
+      - name: fecha
+        description: Día de la publicación (UTC).
+        data_type: date
+        constraints: [{type: not_null}]
+      - name: menciones
+        description: Documentos que mencionan a la entidad ese día.
+        data_type: bigint
+        constraints: [{type: not_null}]
+        data_tests:
+          - rango: {arguments: {min: 1}}
+      - name: medios
+        description: Medios distintos que la mencionaron ese día.
+        data_type: bigint
+        constraints: [{type: not_null}]
+      - name: tono_promedio
+        description: Tono promedio (V2Tone de GDELT, de -100 a 100; negativo = cobertura negativa).
+        data_type: double
+        data_tests:
+          - rango: {arguments: {min: -100, max: 100}}
+      - name: tono_min
+        description: Tono del documento más negativo del día.
+        data_type: double
+      - name: tono_max
+        description: Tono del documento más positivo del día.
+        data_type: double
+      - name: menciones_negativas
+        description: Documentos con tono negativo (menor que 0).
+        data_type: bigint
+        constraints: [{type: not_null}]
+
+  - name: fct_risk_flags
+    description: >
+      Coincidencias de entidades con listas de riesgo de OpenSanctions (sanciones, PEP, listas de
+      vigilancia). Datos: OpenSanctions (opensanctions.org), CC BY-NC 4.0.
+    data_tests:
+      - combinacion_unica: {arguments: {columnas: [entity_id, opensanctions_id]}}
+    columns:
+      - name: entity_id
+        description: Entidad que aparece en la lista.
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_entity'), field: entity_id}}
+      - name: opensanctions_id
+        description: Identificador de la entidad en OpenSanctions.
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: nombre_en_lista
+        description: Nombre con el que figura en OpenSanctions.
+        data_type: string
+      - name: esquema
+        description: Tipo de entidad en OpenSanctions (Company, Organization, LegalEntity).
+        data_type: string
+      - name: sancionada
+        description: Tiene sanción o programa de sanciones asociado.
+        data_type: boolean
+      - name: sanciones
+        description: Detalle de las sanciones según OpenSanctions.
+        data_type: string
+      - name: datasets
+        description: Listas de OpenSanctions en las que aparece.
+        data_type: array<string>
+      - name: paises
+        description: Países asociados en OpenSanctions (ISO 3166-1 alfa-2).
+        data_type: array<string>
+      - name: lei_coincide
+        description: El registro de la lista trae el mismo LEI que el golden record (vínculo por identificador).
+        data_type: boolean
+        constraints: [{type: not_null}]
+      - name: primera_vez
+        description: Primera vez que OpenSanctions vio a la entidad.
+        data_type: timestamp
+      - name: ultimo_cambio
+        description: Último cambio del registro en OpenSanctions.
+        data_type: timestamp
+
+  - name: fct_entity_changes
+    description: >
+      Historial de cambios del legacy (SQL Server) capturados por CDC: una fila por versión de cada fila
+      del ERP (entidad, dirección, nombre alternativo, relación).
+    data_tests:
+      - combinacion_unica: {arguments: {columnas: [tabla_legacy, clave_fila, lsn, seqval]}}
+    columns:
+      - name: entity_id
+        description: Nulo si el LEI ya no está en el legacy (la historia se conserva).
+        data_type: string
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_entity'), field: entity_id}}
+      - name: lei
+        description: LEI de la fila del legacy (lei_hijo en relaciones).
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: tabla_legacy
+        description: "Tabla del ERP legacy: entidad, direccion, nombre_alternativo o relacion."
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests:
+          - accepted_values: {arguments: {values: [entidad, direccion, nombre_alternativo, relacion]}}
+      - name: clave_fila
+        description: Clave natural de la fila del ERP, como JSON.
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: operacion
+        description: insert, update o delete (CDC de SQL Server).
+        data_type: string
+        constraints: [{type: not_null}]
+        data_tests:
+          - accepted_values: {arguments: {values: [insert, update, delete]}}
+      - name: lsn
+        description: LSN del commit en el legacy (hexadecimal de ancho fijo).
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: seqval
+        description: Orden del cambio dentro del commit.
+        data_type: string
+        constraints: [{type: not_null}]
+      - name: valido_desde
+        description: Commit que abrió esta versión.
+        data_type: timestamp
+        constraints: [{type: not_null}]
+      - name: valido_hasta
+        description: Nulo = versión vigente.
+        data_type: timestamp
+      - name: vigente
+        description: Es la versión vigente de la fila.
+        data_type: boolean
+        constraints: [{type: not_null}]
+      - name: detalle
+        description: Atributos de la versión, como JSON.
+        data_type: string
+        constraints: [{type: not_null}]

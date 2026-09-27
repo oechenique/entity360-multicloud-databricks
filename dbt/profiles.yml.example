@@ -1,0 +1,17 @@
+# Copiar a dbt/profiles.yml (ignorado por git) o usar DBT_PROFILES_DIR. Nada identificatorio acá:
+# host, warehouse y token salen de variables de entorno.
+#   $env:DATABRICKS_HOST       = "<WORKSPACE_URL>"  (sin https://)
+#   $env:DATABRICKS_HTTP_PATH  = "/sql/1.0/warehouses/<WAREHOUSE_ID>"
+#   $env:DATABRICKS_TOKEN      = (databricks auth token -p entity360-free | ConvertFrom-Json).access_token
+# El token de la CLI es OAuth de vida corta (1 h): sin claves estáticas (principio 4).
+entity360:
+  target: databricks
+  outputs:
+    databricks:
+      type: databricks
+      catalog: entity360
+      schema: gold
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      threads: 4

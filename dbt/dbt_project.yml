@@ -1,0 +1,29 @@
+# Fase 7 (regla 09): Gold con contratos enforced sobre Silver y la resolución de identidades.
+name: entity360
+version: "1.0.0"
+profile: entity360
+require-dbt-version: [">=1.12.0", "<1.13.0"]
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+models:
+  entity360:
+    gold:
+      +materialized: table
+      +table_format: iceberg     # Camino A de Snowflake (regla 11): Gold se lee por Iceberg REST
+      +contract:
+        enforced: true
+      +tags: ["gold"]
+      +databricks_tags:
+        capa: gold
+      +persist_docs:          # descripciones como comentarios en Unity Catalog (las usa Genie)
+        relation: true
+        columns: true
+      +post-hook: "{{ aplicar_contrato_iceberg() }}"
+
+flags:
+  # table_format: iceberg sin este flag crea Delta con UniForm. Con el flag, Iceberg gestionado, como
+  # Silver y la resolución (ADR 0004) y lo que validó el spike para Snowflake (3b, 4e).
+  use_managed_iceberg: true

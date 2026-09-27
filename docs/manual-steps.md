@@ -180,3 +180,17 @@ por mail). Si falla el paso de auth a GCP, revisar que el workflow corra desde `
 
 Tests del productor (sin nube; los de BigQuery se saltean sin credenciales):
 `.venv\Scripts\python.exe -m pytest tests\gcp_gdelt`.
+
+## Contratos y Gold (fase 7)
+
+### 10. Canal de alertas (Telegram)
+Las cuarentenas de los contratos (y, desde la fase 8, las fuentes atrasadas) se avisan por Telegram.
+1. En Telegram, hablar con `@BotFather`, `/newbot`, y guardar el token.
+2. Mandarle un mensaje cualquiera al bot y leer el `chat.id` en
+   `https://api.telegram.org/bot<TOKEN>/getUpdates`.
+3. Variables de entorno (en Airflow, en `airflow/.env`, fuera de git): `TELEGRAM_BOT_TOKEN` y
+   `TELEGRAM_CHAT_ID`. Sin ellas, las alertas van a stderr y nada se frena.
+
+### 11. dbt
+`dbt/profiles.yml` (ignorado por git) sale de `dbt/profiles.yml.example`: host, warehouse y token por
+variables de entorno; el token es el OAuth de vida corta de la CLI. Ver `dbt/README.md`.

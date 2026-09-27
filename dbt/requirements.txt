@@ -1,0 +1,4 @@
+# dbt de la fase 7 (regla 09). Entorno propio: dbt\.venv
+# dbt-databricks 1.12.5 fija dbt-core 1.12.3.
+dbt-databricks==1.12.5
+dbt-core==1.12.3

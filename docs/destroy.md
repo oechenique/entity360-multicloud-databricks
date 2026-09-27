@@ -176,6 +176,9 @@ el código en `/Shared/entity360/medallion` y el volume `ops.checkpoints`. Las t
 Si el schedule está activo, pausarlo antes (`pause_status = "PAUSED"` en `medallion.tf` y
 `terraform apply`), para que no arranque una corrida a mitad del destroy.
 
+Las tablas de `gold` (fase 7) las crea dbt, no Terraform: se borran con el schema (`force_destroy`).
+Los veredictos de los contratos (`_contrato_*.json`) viven en el volume `landing.raw` y se borran con él.
+
 Para reprocesar una fuente desde cero sin destruir
 nada: borrar su checkpoint (`databricks fs rm -r dbfs:/Volumes/entity360/ops/checkpoints/<fuente>`);
 la capa 2 evita filas duplicadas en Bronze.
