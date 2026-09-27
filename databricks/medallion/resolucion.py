@@ -94,7 +94,9 @@ def registros() -> list[dict]:
                             datos={"sitio_web": (w["sitios_web"] or [None])[0]}))
     for e in json.loads(ALIAS.read_text(encoding="utf-8"))["entidades"]:
         nombre = re.sub(r"\s*\(.*\)\s*$", "", e["nombre"])          # "(subsidiaria de GGAL, ...)"
-        out.append(registro("gdelt", e["clave"], [nombre, *(a["forma"] for a in e["alias"])], ["AR"],
+        # Sin país: el diccionario no lo dice y suponer AR sumaba puntos falsos (la clave VIST, de la
+        # matriz mexicana, quedaba unida a la filial argentina; calibración v1, 2026-09-27).
+        out.append(registro("gdelt", e["clave"], [nombre, *(a["forma"] for a in e["alias"])],
                             ciks=[e["cik"]] if e.get("cik") else []))
     return out
 
@@ -174,11 +176,13 @@ def main():
 
     revision = [(p["clave_a"], p["clave_b"], p["puntaje"], p["decision"], p["motivo"])
                 for p in puntuados if p["decision"] == "revisar"]
-    revision += [(c["clave_a"], c["clave_b"], c["puntaje"], "conflicto", c["motivo"]) for c in conflictos]
+    revision += [(c["clave_a"], c["clave_b"], c["puntaje"],
+                  "empate" if c["motivo"].startswith("empate") else "conflicto", c["motivo"]) for c in conflictos]
     rev_df = spark.createDataFrame(revision, "clave_a string, clave_b string, puntaje int, tipo string, motivo string")
     comun.publicar(spark, rev_df.withColumn("corrida_utc", F.lit(corrida)), f"{R}.revision", ["clave_a", "clave_b"],
-                   "Casos que la resolución no fuerza (regla 08, paso 7): puntaje intermedio (revisar) o un par "
-                   "aceptado que uniría dos LEI firmes o dos CIK distintos (conflicto).", "resolution")
+                   "Casos que la resolución no fuerza (regla 08, paso 7): puntaje intermedio (revisar), un par "
+                   "aceptado que uniría dos LEI firmes o dos CIK distintos (conflicto) o un empate en el mejor "
+                   "puntaje con candidatos de LEI firmes distintos (empate).", "resolution")
 
     er = [(r["clave"], ids[raices[r["clave"]]]) for r in regs]
     comun.publicar(spark, spark.createDataFrame(er, "clave string, entity_id string")

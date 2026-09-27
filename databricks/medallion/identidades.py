@@ -12,10 +12,17 @@ Un **registro** es un dict con:
 
 Decisiones (pesos y umbrales **iniciales, sin calibrar**: se calibran con la mitad del set de
 validación, D11):
-- **Determinístico:** dos registros que comparten un LEI o un CIK son la misma entidad.
+- **Determinístico:** dos registros que comparten un LEI o un CIK son la misma entidad, salvo que el
+  identificador llegue solo desde Wikidata: ahí es una señal fuerte (`id_wikidata`), no una unión
+  automática ni un veto (D11: Wikidata es señal, no verdad; el ítem de la marca Flow trae el LEI de
+  Cablevisión Holding).
 - **Restricción de cluster:** nunca dos LEI firmes distintos ni dos CIK distintos. Un LEI es firme si
   su dígito de control es válido y su registro en GLEIF no está ANNULLED ni DUPLICATE (esos son
   duplicados que el propio GLEIF dio de baja: 63 de los 68 anulados tienen un gemelo vigente).
+- **Gemelo de LEI:** dos registros de GLEIF con la misma base (los 18 caracteres antes de los dígitos
+  de control) son una reemisión de la LOU argentina (2015): suman `gemelo_lei`.
+- **Empates:** si un registro empata en su mejor puntaje con candidatos de LEI firmes distintos, esos
+  pares van a revisión: nunca se une por el orden de las claves.
 - **Blocking:** país + prefijo del nombre, tokens poco frecuentes e identificadores débiles (ticker,
   dominio). Solo se comparan pares dentro de un bloque.
 - **Pares que se comparan:** de fuentes distintas, o dos registros de GLEIF si uno no es firme (el
@@ -41,6 +48,8 @@ PESOS = {
     "dominio": 30,
     "fondo_vs_no_fondo": -30,   # FCI, fideicomiso o fondo contra una empresa operativa
     "numeros_distintos": -20,   # SERIE 1 contra SERIE 2, FIDEICOMISO XXXV contra XXXVI
+    "id_wikidata": 40,          # LEI o CIK compartido que llega solo desde Wikidata (señal, no unión)
+    "gemelo_lei": 30,           # dos registros de GLEIF con la misma base de LEI (reemisión)
 }
 NOMBRE_PISO = 70
 UMBRAL_ACEPTAR = 70
@@ -50,6 +59,11 @@ MAX_FRECUENCIA_TOKEN = 25   # un token en más registros que esto no sirve de bl
 MAX_TAMANO_BLOQUE = 200     # bloques más grandes se descartan (se cuentan en el resumen)
 
 ESTADOS_NO_FIRMES = {"ANNULLED", "DUPLICATE"}
+FUENTES_SENAL = {"wikidata"}   # sus identificadores son señal, no unión ni veto (D11)
+# Alias que no identifican a nadie: OpenSanctions los lista para UTEs y consorcios ("Ute", "The Joint
+# Venture"). Un nombre hecho solo de estos tokens se ignora.
+TOKENS_GENERICOS = {"UTE", "JOINT", "VENTURE", "CONSORCIO", "CONSORTIUM"}
+MIN_TOKENS_CONJUNTO = 2        # token_set_ratio solo si los dos nombres tienen 2 tokens significativos
 FONDO = {"FCI", "FONDO", "FIDEICOMISO", "FF"}
 ROMANOS = re.compile(r"^[IVXLC]+$")
 
@@ -57,11 +71,11 @@ ROMANOS = re.compile(r"^[IVXLC]+$")
 # ------------------------------------------------------------------ nombres
 
 def variantes(nombres: list[str]) -> list[tuple[str, str]]:
-    """(tokens canónicos ordenados, nombre sin forma jurídica) de cada nombre no vacío."""
+    """(tokens canónicos ordenados, nombre sin forma jurídica) de cada nombre no vacío y no genérico."""
     out = []
     for n in nombres:
         x = N.nombre(n)
-        if x["sin_forma"]:
+        if x["sin_forma"] and not set(x["tokens"]) <= TOKENS_GENERICOS:
             v = (" ".join(sorted(x["tokens"])), x["sin_forma"])
             if v not in out:
                 out.append(v)
@@ -74,10 +88,21 @@ def _var(r: dict) -> list[tuple[str, str]]:
     return r["_var"]
 
 
+def _significativos(tokens: str) -> int:
+    return sum(1 for t in tokens.split() if t not in TOKENS_GENERICOS)
+
+
 def similitud(a: list[tuple[str, str]], b: list[tuple[str, str]]) -> float:
-    """Máximo sobre pares de variantes de max(token_set_ratio de tokens, ratio del nombre)."""
-    return max((max(fuzz.token_set_ratio(ta, tb), fuzz.ratio(sa, sb)) for ta, sa in a for tb, sb in b),
-               default=0.0)
+    """Máximo sobre pares de variantes de max(token_set_ratio de tokens, ratio del nombre).
+
+    token_set_ratio da 100 cuando un nombre está contenido en el otro: solo se usa si los dos tienen al
+    menos MIN_TOKENS_CONJUNTO tokens significativos (si no, "UTE" empataba con cualquier UTE)."""
+    def par(ta, sa, tb, sb):
+        r = fuzz.ratio(sa, sb)
+        if min(_significativos(ta), _significativos(tb)) >= MIN_TOKENS_CONJUNTO:
+            r = max(r, fuzz.token_set_ratio(ta, tb))
+        return r
+    return max((par(ta, sa, tb, sb) for ta, sa in a for tb, sb in b), default=0.0)
 
 
 def _tokens(nombres: list[str]) -> set[str]:
@@ -97,9 +122,16 @@ def es_fondo(nombres: list[str]) -> bool:
 # ------------------------------------------------------------------ identificadores
 
 def leis_firmes(r: dict) -> set[str]:
+    """LEI que cuentan para la restricción de cluster y para el veto."""
+    if r["fuente"] in FUENTES_SENAL:
+        return set()
     if r["fuente"] == "gleif":
         return set(r["leis"]) if r.get("lei_firme") else set()
     return set(r["leis"])
+
+
+def ciks_firmes(r: dict) -> set[int]:
+    return set() if r["fuente"] in FUENTES_SENAL else set(r["ciks"])
 
 
 def veto(a: dict, b: dict) -> str | None:
@@ -107,18 +139,36 @@ def veto(a: dict, b: dict) -> str | None:
     la, lb = leis_firmes(a), leis_firmes(b)
     if la and lb and not la & lb:
         return "LEI distintos"
-    if a["ciks"] and b["ciks"] and not set(a["ciks"]) & set(b["ciks"]):
+    ca, cb = ciks_firmes(a), ciks_firmes(b)
+    if ca and cb and not ca & cb:
         return "CIK distintos"
     return None
 
 
 def comparte_id(a: dict, b: dict) -> str | None:
-    """Identificador compartido (matching determinístico), o None."""
+    """Identificador compartido que une sin puntaje (matching determinístico), o None.
+    Si uno de los dos es de Wikidata no une: es la señal id_wikidata (comparte_id_senal)."""
+    if a["fuente"] in FUENTES_SENAL or b["fuente"] in FUENTES_SENAL:
+        return None
     if set(a["leis"]) & set(b["leis"]):
         return "LEI"
     if set(a["ciks"]) & set(b["ciks"]):
         return "CIK"
     return None
+
+
+def comparte_id_senal(a: dict, b: dict) -> bool:
+    """LEI o CIK compartido con un registro de Wikidata."""
+    if a["fuente"] not in FUENTES_SENAL and b["fuente"] not in FUENTES_SENAL:
+        return False
+    return bool(set(a["leis"]) & set(b["leis"]) or set(a["ciks"]) & set(b["ciks"]))
+
+
+def gemelos_lei(a: dict, b: dict) -> bool:
+    """Dos registros de GLEIF con la misma base de LEI (18 caracteres) y distinto dígito de control."""
+    if a["fuente"] != "gleif" or b["fuente"] != "gleif":
+        return False
+    return a["id_fuente"][:18] == b["id_fuente"][:18] and a["id_fuente"] != b["id_fuente"]
 
 
 def comparable(a: dict, b: dict) -> bool:
@@ -175,42 +225,62 @@ def pares_candidatos(registros: list[dict]) -> tuple[dict[tuple[str, str], set[s
 
 # ------------------------------------------------------------------ score
 
-def puntuar(a: dict, b: dict) -> dict:
-    """Puntaje del par con la contribución de cada señal y la decisión.
-
-    decision: determinístico | aceptado | revisar | rechazado | veto.
-    """
-    motivo = veto(a, b)
-    if motivo:
-        return {"puntaje": None, "similitud_nombre": None, "contribuciones": {}, "decision": "veto",
-                "motivo": motivo}
-    ident = comparte_id(a, b)
-    sim = similitud(_var(a), _var(b))
-    c = {"nombre": round(PESOS["nombre"] * min(1.0, max(0.0, (sim - NOMBRE_PISO) / (100 - NOMBRE_PISO))))}
+def senales(a: dict, b: dict) -> dict:
+    """Lo que el puntaje mira de un par, sin pesos (calibrar.py las calcula una vez y prueba pesos)."""
     pa, pb = set(a["paises"]), set(b["paises"])
-    if pa and pb:
-        c["pais"] = PESOS["pais_igual"] if pa & pb else PESOS["pais_distinto"]
-    if a.get("ciudad") and a.get("ciudad") == b.get("ciudad"):
-        c["ciudad"] = PESOS["ciudad_igual"]
-    if set(a["tickers"]) & set(b["tickers"]):
-        c["ticker"] = PESOS["ticker"]
-    if set(a["dominios"]) & set(b["dominios"]):
-        c["dominio"] = PESOS["dominio"]
-    if es_fondo(a["nombres"]) != es_fondo(b["nombres"]):
-        c["fondo_vs_no_fondo"] = PESOS["fondo_vs_no_fondo"]
-    if _numeros(a["nombres"]) != _numeros(b["nombres"]):
-        c["numeros_distintos"] = PESOS["numeros_distintos"]
+    return {"veto": veto(a, b), "ident": comparte_id(a, b), "sim": similitud(_var(a), _var(b)),
+            "pais": None if not (pa and pb) else bool(pa & pb),
+            "ciudad": bool(a.get("ciudad")) and a.get("ciudad") == b.get("ciudad"),
+            "ticker": bool(set(a["tickers"]) & set(b["tickers"])),
+            "dominio": bool(set(a["dominios"]) & set(b["dominios"])),
+            "fondo": es_fondo(a["nombres"]) != es_fondo(b["nombres"]),
+            "numeros": _numeros(a["nombres"]) != _numeros(b["nombres"]),
+            "id_wikidata": comparte_id_senal(a, b), "gemelo_lei": gemelos_lei(a, b)}
+
+
+def contribuciones(s: dict, pesos: dict | None = None, piso: float | None = None) -> dict:
+    p = pesos or PESOS
+    piso = NOMBRE_PISO if piso is None else piso
+    c = {"nombre": round(p["nombre"] * min(1.0, max(0.0, (s["sim"] - piso) / (100 - piso))))}
+    if s["pais"] is not None:
+        c["pais"] = p["pais_igual"] if s["pais"] else p["pais_distinto"]
+    for senal, peso in (("ciudad", "ciudad_igual"), ("ticker", "ticker"), ("dominio", "dominio"),
+                        ("id_wikidata", "id_wikidata"), ("gemelo_lei", "gemelo_lei")):
+        if s[senal]:
+            c[senal] = p[peso]
+    if s["fondo"]:
+        c["fondo_vs_no_fondo"] = p["fondo_vs_no_fondo"]
+    if s["numeros"]:
+        c["numeros_distintos"] = p["numeros_distintos"]
+    return c
+
+
+def decidir(s: dict, pesos: dict | None = None, piso: float | None = None,
+            aceptar: float | None = None, revisar: float | None = None) -> dict:
+    """decision: determinístico | aceptado | revisar | rechazado | veto."""
+    if s["veto"]:
+        return {"puntaje": None, "similitud_nombre": None, "contribuciones": {}, "decision": "veto",
+                "motivo": s["veto"]}
+    c = contribuciones(s, pesos, piso)
     puntaje = sum(c.values())
-    if ident:
-        decision, motivo = "determinístico", f"{ident} compartido"
-    elif puntaje >= UMBRAL_ACEPTAR:
+    aceptar = UMBRAL_ACEPTAR if aceptar is None else aceptar
+    revisar = UMBRAL_REVISAR if revisar is None else revisar
+    motivo = None
+    if s["ident"]:
+        decision, motivo = "determinístico", f"{s['ident']} compartido"
+    elif puntaje >= aceptar:
         decision = "aceptado"
-    elif puntaje >= UMBRAL_REVISAR:
+    elif puntaje >= revisar:
         decision = "revisar"
     else:
         decision = "rechazado"
-    return {"puntaje": puntaje, "similitud_nombre": round(sim, 1), "contribuciones": c, "decision": decision,
-            "motivo": motivo}
+    return {"puntaje": puntaje, "similitud_nombre": round(s["sim"], 1), "contribuciones": c,
+            "decision": decision, "motivo": motivo}
+
+
+def puntuar(a: dict, b: dict) -> dict:
+    """Puntaje del par con la contribución de cada señal y la decisión (pesos del módulo)."""
+    return decidir(senales(a, b))
 
 
 def pares_por_identificador(registros: list[dict]) -> set[tuple[str, str]]:
@@ -228,11 +298,12 @@ def pares_por_identificador(registros: list[dict]) -> set[tuple[str, str]]:
 
 def clusters(registros: list[dict], pares: list[dict]) -> tuple[dict[str, str], list[dict]]:
     """Une los pares determinísticos y después los aceptados, de mayor a menor puntaje, sin violar la
-    restricción (un LEI firme y un CIK por cluster). Devuelve (clave -> raíz, conflictos)."""
+    restricción (un LEI firme y un CIK por cluster). Los empates (empates()) no se unen: van a
+    revisión junto con los conflictos. Devuelve (clave -> raíz, conflictos)."""
     por_clave = {r["clave"]: r for r in registros}
     padre = {k: k for k in por_clave}
     leis = {k: set(leis_firmes(r)) for k, r in por_clave.items()}
-    ciks = {k: set(r["ciks"]) for k, r in por_clave.items()}
+    ciks = {k: ciks_firmes(r) for k, r in por_clave.items()}
 
     def raiz(k):
         while padre[k] != k:
@@ -241,9 +312,11 @@ def clusters(registros: list[dict], pares: list[dict]) -> tuple[dict[str, str], 
         return k
 
     orden = {"determinístico": 0, "aceptado": 1}
-    unibles = sorted((p for p in pares if p["decision"] in orden),
+    empatados = empates(pares, por_clave)
+    unibles = sorted((p for p in pares if p["decision"] in orden and (p["clave_a"], p["clave_b"]) not in empatados),
                      key=lambda p: (orden[p["decision"]], -(p["puntaje"] or 0), p["clave_a"], p["clave_b"]))
-    conflictos = []
+    conflictos = [{**p, "motivo": "empate: el mismo puntaje con candidatos de LEI firmes distintos"}
+                  for p in pares if (p["clave_a"], p["clave_b"]) in empatados]
     for p in unibles:
         ra, rb = raiz(p["clave_a"]), raiz(p["clave_b"])
         if ra == rb:
@@ -256,6 +329,25 @@ def clusters(registros: list[dict], pares: list[dict]) -> tuple[dict[str, str], 
         padre[vieja] = nueva
         leis[nueva], ciks[nueva] = l, c
     return {k: raiz(k) for k in por_clave}, conflictos
+
+
+def empates(pares: list[dict], por_clave: dict[str, dict]) -> set[tuple[str, str]]:
+    """Pares aceptados que empatan en el mejor puntaje de un registro con candidatos de LEI firmes
+    distintos. Unir cualquiera sería elegir por el orden de las claves: van a revisión."""
+    mejores: dict[str, list[tuple[int, str, tuple[str, str]]]] = {}
+    for p in pares:
+        if p["decision"] != "aceptado":
+            continue
+        for yo, otro in ((p["clave_a"], p["clave_b"]), (p["clave_b"], p["clave_a"])):
+            mejores.setdefault(yo, []).append((p["puntaje"], otro, (p["clave_a"], p["clave_b"])))
+    out = set()
+    for yo, cands in mejores.items():
+        tope = max(c[0] for c in cands)
+        top = [c for c in cands if c[0] == tope]
+        leis = {frozenset(leis_firmes(por_clave[otro])) for _, otro, _ in top if leis_firmes(por_clave[otro])}
+        if len(leis) > 1:
+            out |= {par for _, _, par in top}
+    return out
 
 
 PRIORIDAD_ANCLA = {"gleif": 0, "sec_edgar": 1, "wikidata": 2, "opensanctions": 3, "gdelt": 4}
@@ -310,8 +402,8 @@ SUPERVIVENCIA = {
     "nombre": ["gleif", "sec_edgar", "wikidata", "opensanctions", "gdelt"],
     "pais": ["gleif", "sec_edgar", "wikidata", "opensanctions", "gdelt"],
     "ciudad": ["gleif", "sec_edgar"],
-    "lei": ["gleif", "wikidata", "opensanctions"],
-    "cik": ["sec_edgar", "wikidata", "gdelt"],
+    "lei": ["gleif", "opensanctions"],
+    "cik": ["sec_edgar", "gdelt"],         # Wikidata no: sus identificadores son señal (D11)
     "ticker": ["sec_edgar", "wikidata"],
     "sitio_web": ["sec_edgar", "wikidata"],
     "forma_juridica": ["gleif", "sec_edgar"],

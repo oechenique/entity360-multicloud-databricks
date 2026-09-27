@@ -17,12 +17,19 @@ Unidades (se suman A y B):
 - Recall del blocking (solo A: los pares de B salieron del blocking): el par (registro, LEI de la
   etiqueta) es candidato directo, o está conectado en el grafo de candidatos no vetados.
 
-No cambia el job: escribe resultados.json y el informe; aplicar los pesos es un paso aparte.
+No cambia el job: escribe resultados_<version>.json; aplicar los pesos es un paso aparte. Las señales y
+el puntaje son identidades.senales / identidades.decidir: el mismo código que corre el job.
 
-Uso (desde la raíz del repo):
-    .venv\\Scripts\\python.exe databricks\\resolucion\\calibracion\\calibrar.py
+Versiones: v1 = resolución inicial (commit 51ee671, medición ciega); v2 = con las correcciones de la
+calibración (sin país supuesto en GDELT, alias genéricos, gemelo de LEI y empates a revisión,
+identificadores de Wikidata como señal). La mitad de evaluación no es ciega para la v2: sus errores se
+miraron para diagnosticar.
+
+Uso (desde la raíz del repo, después de correr la tarea `resolucion` con el código de la versión):
+    .venv\\Scripts\\python.exe databricks\\resolucion\\calibracion\\calibrar.py --version v2
 """
 
+import argparse
 import csv
 import itertools
 import json
@@ -38,7 +45,7 @@ import metricas  # noqa: E402
 from generar_parte_a import PERFIL, WAREHOUSE, consultar  # noqa: E402
 
 VALIDACION = RAIZ / "databricks" / "resolucion" / "validacion"
-SALIDA = Path(__file__).resolve().parent / "resultados.json"
+AQUI = Path(__file__).resolve().parent
 SEMILLA = 20260927
 
 INICIALES = {**I.PESOS, "nombre_piso": I.NOMBRE_PISO, "umbral_aceptar": I.UMBRAL_ACEPTAR}
@@ -67,40 +74,19 @@ def registros_de_silver() -> list[dict]:
              "tickers": f["tickers"], "dominios": f["dominios"], "datos": {}} for f in filas]
 
 
-def senales(a: dict, b: dict) -> dict:
-    """Lo que puntuar() mira de un par, sin pesos: se calcula una vez."""
-    pa, pb = set(a["paises"]), set(b["paises"])
-    return {"veto": I.veto(a, b), "ident": I.comparte_id(a, b),
-            "sim": I.similitud(I._var(a), I._var(b)),
-            "pais": None if not (pa and pb) else bool(pa & pb),
-            "ciudad": bool(a.get("ciudad")) and a.get("ciudad") == b.get("ciudad"),
-            "id_debil": int(bool(set(a["tickers"]) & set(b["tickers"]))) + int(bool(set(a["dominios"]) & set(b["dominios"]))),
-            "fondo": I.es_fondo(a["nombres"]) != I.es_fondo(b["nombres"]),
-            "numeros": I._numeros(a["nombres"]) != I._numeros(b["nombres"])}
-
-
-def decidir(s: dict, p: dict) -> tuple[str, int | None]:
-    """El mismo cálculo que identidades.puntuar, con pesos p."""
-    if s["veto"]:
-        return "veto", None
-    piso = p["nombre_piso"]
-    pts = round(p["nombre"] * min(1.0, max(0.0, (s["sim"] - piso) / (100 - piso))))
-    if s["pais"] is not None:
-        pts += p["pais_igual"] if s["pais"] else p["pais_distinto"]
-    pts += I.PESOS["ciudad_igual"] if s["ciudad"] else 0
-    pts += p["id_debil"] * s["id_debil"]
-    pts += p["fondo_vs_no_fondo"] if s["fondo"] else 0
-    pts += p["numeros_distintos"] if s["numeros"] else 0
-    if s["ident"]:
-        return "determinístico", pts
-    return ("aceptado" if pts >= p["umbral_aceptar"] else "otro"), pts
+def pesos_de(p: dict) -> dict:
+    """Pesos de la grilla -> diccionario de identidades.PESOS (ticker y dominio comparten peso)."""
+    return {**I.PESOS, **{k: p[k] for k in ("nombre", "pais_igual", "pais_distinto", "fondo_vs_no_fondo",
+                                             "numeros_distintos")}, "ticker": p["id_debil"], "dominio": p["id_debil"]}
 
 
 def resolver(regs, pares, sen, p) -> dict[str, str]:
+    """Decisiones con identidades.decidir (el mismo código del job) y clusters con identidades.clusters."""
+    pesos = pesos_de(p)
     lista = []
     for (a, b) in pares:
-        d, pts = decidir(sen[(a, b)], p)
-        lista.append({"clave_a": a, "clave_b": b, "decision": d, "puntaje": pts})
+        d = I.decidir(sen[(a, b)], pesos, p["nombre_piso"], p["umbral_aceptar"])
+        lista.append({"clave_a": a, "clave_b": b, "decision": d["decision"], "puntaje": d["puntaje"]})
     raices, _ = I.clusters(regs, lista)
     return raices
 
@@ -207,11 +193,14 @@ def evaluar(regs, pares, sen, p, us):
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--version", default="v2")
+    version = ap.parse_args().version
     regs = registros_de_silver()
     pares_bl, resumen = I.pares_candidatos(regs)
     pares = set(pares_bl) | I.pares_por_identificador(regs)
     por_clave = {r["clave"]: r for r in regs}
-    sen = {(a, b): senales(por_clave[a], por_clave[b]) for (a, b) in pares}
+    sen = {(a, b): I.senales(por_clave[a], por_clave[b]) for (a, b) in pares}
     ini = {k: INICIALES[k] for k in ("nombre", "nombre_piso", "pais_igual", "pais_distinto", "fondo_vs_no_fondo",
                                      "numeros_distintos", "umbral_aceptar")} | {"id_debil": I.PESOS["ticker"]}
     _, raices_ini = evaluar(regs, pares, sen, ini, [])
@@ -234,7 +223,7 @@ def main() -> int:
             mejor, clave_mejor = (p, m), orden
     p_cal, m_cal = mejor
 
-    res = {"semilla": SEMILLA, "unidades": {"calibracion": len(cal), "evaluacion": len(ev)},
+    res = {"version": version, "entidades_con_iniciales": len(set(raices_ini.values())), "semilla": SEMILLA, "unidades": {"calibracion": len(cal), "evaluacion": len(ev)},
            "pesos_iniciales": ini, "pesos_calibrados": p_cal, "calibracion_con_calibrados": m_cal,
            "calibracion_con_iniciales": evaluar(regs, pares, sen, ini, cal)[0],
            "evaluacion_con_iniciales": evaluar(regs, pares, sen, ini, ev)[0],
@@ -244,7 +233,7 @@ def main() -> int:
                                     for parte in "AB"},
            "blocking_evaluacion": blocking(ev, pares, sen), "blocking_todo_a": blocking(us, pares, sen),
            "resumen_blocking": resumen}
-    SALIDA.write_text(json.dumps(res, indent=2, ensure_ascii=False, default=list) + "\n", encoding="utf-8")
+    (AQUI / f"resultados_{version}.json").write_text(json.dumps(res, indent=2, ensure_ascii=False, default=list) + "\n", encoding="utf-8")
     print(json.dumps(res, indent=2, ensure_ascii=False, default=list))
     return 0
 

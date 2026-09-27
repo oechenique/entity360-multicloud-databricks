@@ -14,6 +14,20 @@ Son unas 120 decisiones en dos tandas:
 (2026-09-27), con una línea de evidencia por decisión. Es un solo anotador y una sola pasada: no hay
 acuerdo entre anotadores que medir, y la evidencia breve permite auditar cada decisión.
 
+## Resultados publicados
+
+Detalle y causas en `databricks/resolucion/calibracion/INFORME.md`. Mitad de evaluación (57 unidades),
+intervalo de Wilson al 95 %:
+
+| Versión | Precisión | Recall | Recall del blocking |
+|---|---|---|---|
+| **v1**, resolución inicial (**medición ciega**) | 0,913 [0,732–0,976] | 0,955 [0,782–0,992] | 11/11 [0,741–1,000] |
+| **v2**, con 4 correcciones | 1,000 [0,851–1,000] | 1,000 [0,851–1,000] | 11/11 [0,741–1,000] |
+
+**La mitad de evaluación no es ciega para la v2**: las correcciones salieron de mirar los errores de
+todo el set, incluida esa mitad. La v2 además perdió dos uniones correctas en la mitad de calibración
+(Cresud y Banco Galicia): en el set completo pasa de 43/4/3 (VP/FP/FN) a 44/0/2.
+
 Precisión y recall se publican con **intervalo de Wilson al 95 %** (`databricks/medallion/metricas.py`).
 Los pesos y umbrales se calibran con la mitad de las decisiones (partición por estrato, semilla fija) y
 las métricas se informan sobre la otra mitad.

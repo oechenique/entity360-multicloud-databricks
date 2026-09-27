@@ -1,10 +1,9 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-27, 23:15 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-27, 23:55 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fase 8 (regla 10) cerrada: Airflow local orquesta todo. Sigue la fase 9 (Snowflake), y en paralelo
-el etiquetado de la parte B.**
+**Fases 6 a 8 cerradas. Sigue la fase 9 (Snowflake): espera el OK de Gastón (abre el trial de 30 días).**
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
@@ -13,10 +12,10 @@ el etiquetado de la parte B.**
 - **Fase 6 (regla 08):**
   - Job `entity360-medallion`: bronze → silver → resolucion, schedule diario 08:45 (Buenos Aires).
     Consumo: 0,6–1,2 DBU por corrida (`databricks/evidencia/pasos1-3-primeras-corridas.txt`).
-  - Resolución de identidades (`databricks/medallion/identidades.py`, pesos **sin calibrar**): 1268
-    registros → 1132 entidades; 17 casos a revisar y 16 conflictos en `resolution.revision`.
-  - Set de validación: **parte A etiquetada** (59 registros) y **parte B generada** (60 pares, sin
-    etiquetar), en `databricks/resolucion/validacion/`.
+  - Resolución de identidades (`databricks/medallion/identidades.py`, v2): 1268 registros → 1137
+    entidades; 51 casos a revisar y 11 conflictos en `resolution.revision`.
+  - Set de validación etiquetado: parte A (59 registros) y parte B (60 pares), en
+    `databricks/resolucion/validacion/`. Resolución v2: 1137 entidades.
 - **Fase 7 (regla 09):**
   - Contratos de llegada con Soda Core 4 (`contracts/`): 5 fuentes, veredicto `_contrato_<ts>.json`
     por lote, cuarentena en Bronze (`cuarentena_contrato`) y alerta por Telegram. Los 10 lotes del
@@ -31,12 +30,12 @@ el etiquetado de la parte B.**
 
 ## Pendiente
 1. ~~Etiquetar la parte B~~ **hecho** (60 pares, 2026-09-27).
-2. **Calibración (paso 5 de la fase 6): números listos, sin aplicar.** La grilla no cambia los pesos
-   (los iniciales empatan en el máximo). Evaluación: precisión 0,913 [0,732–0,976], recall 0,955
-   [0,782–0,992], recall del blocking 11/11. Quedan 7 errores con causas estructurales (país supuesto de
-   GDELT, alias genéricos de OpenSanctions, gemelos de LEI anulados, un identificador de marca): ver
-   `databricks/resolucion/calibracion/INFORME.md`. Decisión de Gastón pendiente: qué causas corregir y
-   cómo evaluar después (la mitad de evaluación ya se miró).
+2. ~~Calibración~~ **v2 aplicada al job (2026-09-27).** Las 4 correcciones (GDELT sin país, alias
+   genéricos y ≥ 2 tokens, gemelo de LEI y empates a revisión, Wikidata como señal) con los mismos pesos
+   (umbral 70). Evaluación: v1 ciega 0,913/0,955; v2 1,000/1,000 (no ciega). Restricciones de integridad
+   verificadas y Gold refrescado. **Queda por decidir:** la v2 perdió Cresud (A006) y Banco Galicia
+   (A059) en la mitad de calibración; hay dos ajustes propuestos en
+   `databricks/resolucion/calibracion/INFORME.md`, sin aplicar.
 3. ~~Lotes sin veredicto~~ **resuelto (ADR 0006):** Bronze exige el veredicto y el schedule de las
    08:45 está **pausado**: el job lo dispara Airflow (fase 8). Cuarentena probada de punta a punta
    (`contracts/evidencia/cuarentena-punta-a-punta.txt`).
@@ -49,8 +48,9 @@ el etiquetado de la parte B.**
 
 ## Estado del entorno al cerrar
 - `main` = `origin/main`.
-- **Airflow levantado** (`.\airflow\levantar.ps1`, UI en http://localhost:8080) y el SQL Server del
-  legacy **prendido** (lo lee el extractor CDC). El job de Databricks lo dispara Airflow (ADR 0006).
-  Para apagar: `docker compose -f airflow\docker-compose.yml stop` y
-  `docker compose -f legacy\docker-compose.yml stop`.
+- **Airflow detenido** y **SQL Server del legacy detenido** (`docker compose stop`, volúmenes intactos).
+  El DAG queda activo en la base de Airflow: con Airflow prendido corre a las 08:45. Para retomar:
+  `docker compose -f legacy\docker-compose.yml start` y `.\airflow\levantar.ps1`.
+- El job de Databricks no corre solo (schedule pausado, ADR 0006): sin Airflow no se procesa nada nuevo
+  (los productores siguen aterrizando lotes).
 - Entornos locales: `.venv` (fase 6), `contracts\.venv` (Soda), `dbt\.venv` (dbt), todos ignorados.

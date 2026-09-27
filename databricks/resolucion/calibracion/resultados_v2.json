@@ -1,0 +1,194 @@
+{
+  "version": "v2",
+  "entidades_con_iniciales": 1137,
+  "semilla": 20260927,
+  "unidades": {
+    "calibracion": 62,
+    "evaluacion": 57
+  },
+  "pesos_iniciales": {
+    "nombre": 60,
+    "nombre_piso": 70,
+    "pais_igual": 10,
+    "pais_distinto": -20,
+    "fondo_vs_no_fondo": -30,
+    "numeros_distintos": -20,
+    "umbral_aceptar": 70,
+    "id_debil": 30
+  },
+  "pesos_calibrados": {
+    "nombre": 60,
+    "nombre_piso": 70,
+    "pais_igual": 10,
+    "pais_distinto": -20,
+    "id_debil": 30,
+    "fondo_vs_no_fondo": -30,
+    "numeros_distintos": -20,
+    "umbral_aceptar": 60
+  },
+  "calibracion_con_calibrados": {
+    "vp": 23,
+    "fp": 1,
+    "fn": 1,
+    "precision": 0.9583333333333334,
+    "precision_ic95": [
+      0.7975819352134406,
+      0.9926065438344942
+    ],
+    "recall": 0.9583333333333334,
+    "recall_ic95": [
+      0.7975819352134406,
+      0.9926065438344942
+    ],
+    "f1": 0.9583333333333334
+  },
+  "calibracion_con_iniciales": {
+    "vp": 22,
+    "fp": 0,
+    "fn": 2,
+    "precision": 1.0,
+    "precision_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "recall": 0.9166666666666666,
+    "recall_ic95": [
+      0.741511978067893,
+      0.9768411847029567
+    ],
+    "f1": 0.9565217391304348
+  },
+  "evaluacion_con_iniciales": {
+    "vp": 22,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "precision_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "recall": 1.0,
+    "recall_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "f1": 1.0
+  },
+  "evaluacion_con_calibrados": {
+    "vp": 22,
+    "fp": 1,
+    "fn": 0,
+    "precision": 0.9565217391304348,
+    "precision_ic95": [
+      0.7900884492974114,
+      0.9922833338565469
+    ],
+    "recall": 1.0,
+    "recall_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "f1": 0.9777777777777777
+  },
+  "evaluacion_por_parte": {
+    "A": {
+      "iniciales": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      },
+      "calibrados": {
+        "vp": 11,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.9166666666666666,
+        "precision_ic95": [
+          0.646120088858883,
+          0.9851349055950829
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 0.9565217391304348
+      }
+    },
+    "B": {
+      "iniciales": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      },
+      "calibrados": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      }
+    }
+  },
+  "blocking_evaluacion": {
+    "n": 11,
+    "directo": 11,
+    "directo_ic95": [
+      0.7411670330319684,
+      1.0
+    ],
+    "conectado": 11,
+    "conectado_ic95": [
+      0.7411670330319684,
+      1.0
+    ]
+  },
+  "blocking_todo_a": {
+    "n": 22,
+    "directo": 22,
+    "directo_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "conectado": 22,
+    "conectado_ic95": [
+      0.8513451253913791,
+      1.0
+    ]
+  },
+  "resumen_blocking": {
+    "bloques": 2592,
+    "bloques_descartados_por_tamano": 0,
+    "pares": 4697
+  }
+}

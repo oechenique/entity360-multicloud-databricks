@@ -67,11 +67,11 @@ def test_identificador_compartido_es_deterministico():
 
 
 def test_veto_por_lei_firme_o_cik_distinto():
-    a = reg("wikidata", "Q1", ["Banco X"], leis=[LEI_A])
+    a = reg("opensanctions", "x1", ["Banco X"], leis=[LEI_A])
     b = reg("gleif", LEI_B, ["BANCO X SA"], leis=[LEI_B])
     assert I.puntuar(a, b)["decision"] == "veto"
     c = reg("sec_edgar", "1", ["Banco X"], ciks=[1])
-    d = reg("wikidata", "Q2", ["Banco X"], ciks=[2])
+    d = reg("gdelt", "BX", ["Banco X"], ciks=[2])
     assert I.puntuar(c, d)["motivo"] == "CIK distintos"
 
 
@@ -185,3 +185,90 @@ def test_golden_supervivencia_y_procedencia():
     assert g["procedencia"]["nombre"] == "gleif:" + LEI_A and g["procedencia"]["cik"] == "sec_edgar:9"
     assert g["sancionada"] and g["en_listas_de_riesgo"] and g["duplicados_en_gleif"] == 1
     assert g["fuentes"] == ["gleif", "opensanctions", "sec_edgar"] and g["registros"] == 4
+
+
+# ------------------------------------------------------------------ correcciones v2 (calibración, 2026-09-27)
+# Un test por causa, con los registros reales de resolution.registro que produjeron cada error.
+
+def test_v2_gdelt_sin_pais_no_une_matriz_con_filial():
+    """Causa 1 (A016, A058): la clave VIST de GDELT (CIK de Vista Energy S.A.B. de C.V., la matriz
+    mexicana) llegaba a 70 contra la filial argentina solo por el país AR supuesto."""
+    vist = reg("gdelt", "VIST", ["Vista Energy", "vista energy", "vista oil gas"], paises=[], ciks=[1762506])
+    filial = reg("gleif", "549300FE4UJNCG1DB123", ["VISTA ENERGY ARGENTINA S.A.U"], ciudad="VICENTE LOPEZ",
+                 leis=["549300FE4UJNCG1DB123"])
+    p = I.puntuar(vist, filial)
+    assert "pais" not in p["contribuciones"] and p["decision"] != "aceptado"
+    con_pais = I.puntuar({**vist, "paises": ["AR"], "_var": I.variantes(vist["nombres"])}, filial)
+    assert con_pais["decision"] == "aceptado"      # el error de la v1
+
+
+def test_v2_alias_genericos_no_unen_utes_distintas():
+    """Causa 2 (A028): los alias "Ute" y "The Joint Venture" de una UTE de OpenSanctions empataban en
+    100 con cualquier nombre que contuviera UTE (token_set_ratio de un solo token)."""
+    segura = reg("opensanctions", "NK-LgLtSwxJ78zsZp8dE6CzXX", [
+        "Constructora J.C. Segura Construcciones S.A.", "CONSTRUCTORA J. C. SEGURA CONSTRUCCIONES S.A.",
+        "CONSTRUCTORA J. C. SEGURA CONSTRUCCIONES S.A. – GAVINOR S.R.L. – UTE",
+        "Constructora J.C. Segura Construcciones S.A.- Gavinor S.R.L.-UTE", "Gavinor S.R.L.",
+        "The Joint Venture", "Ute"])
+    casino = reg("gleif", "9598005G39NLDQ0LXK91",
+                 ["CASINO BUENOS AIRES S.A.-COMPAÑÍA DE INVERSIONES EN ENTRETENIMIENTOS SA, U.T.E."],
+                 ciudad="BUENOS AIRES", leis=["9598005G39NLDQ0LXK91"])
+    assert all(v[0] not in ("UTE", "JOINT VENTURE") for v in I.variantes(segura["nombres"]))
+    p = I.puntuar(segura, casino)
+    assert p["similitud_nombre"] < 80 and p["decision"] == "rechazado"
+
+
+def test_v2_un_solo_token_no_usa_token_set():
+    assert I.similitud(I.variantes(["Gavinor S.R.L."]), I.variantes(["GAVINOR CASINO SA"])) < 100
+    assert I.similitud(I.variantes(["Central Puerto S.A."]), I.variantes(["CENTRAL PUERTO DEL SUR SA"])) == 100
+
+
+BCRA_ANULADO, BCRA, REPUBLICA = "579100KKDDKIFCBKB036", "579100KKDDKIFCBKB062", "549300KPBYGYF7HCHO27"
+
+
+def _bcra():
+    return [reg("gleif", BCRA_ANULADO, ["BANCO CENTRAL DE LA REPUBLICA ARGENTINA"], ciudad="BUENOS AIRES",
+                leis=[BCRA_ANULADO], lei_firme=False),
+            reg("gleif", BCRA, ["BANCO CENTRAL DE LA REPUBLICA ARGENTINA"], ciudad="BUENOS AIRES", leis=[BCRA]),
+            reg("gleif", REPUBLICA, ["República Argentina"], ciudad="BUENOS AIRES", leis=[REPUBLICA])]
+
+
+def test_v2_gemelo_de_lei_gana_al_empate():
+    """Causa 3 (B019): el LEI anulado del BCRA empataba en 75 con su gemelo vigente y con "República
+    Argentina", y el orden de las claves lo unía al Estado. La base del LEI (18 caracteres) es la misma."""
+    anulado, bcra, republica = _bcra()
+    assert I.gemelos_lei(anulado, bcra) and not I.gemelos_lei(anulado, republica)
+    gemelo, estado = I.puntuar(anulado, bcra), I.puntuar(anulado, republica)
+    assert gemelo["contribuciones"]["gemelo_lei"] == I.PESOS["gemelo_lei"]
+    assert gemelo["puntaje"] > estado["puntaje"]
+    pares = [{"clave_a": a["clave"], "clave_b": b["clave"], **I.puntuar(a, b)}
+             for a, b in ((anulado, bcra), (anulado, republica))]
+    raices, conflictos = I.clusters([anulado, bcra, republica], pares)
+    assert raices[anulado["clave"]] == raices[bcra["clave"]] != raices[republica["clave"]]
+    assert [c["clave_b"] for c in conflictos] == [republica["clave"]]
+
+
+def test_v2_empate_con_lei_firmes_distintos_va_a_revision():
+    """Sin la señal de gemelo, el mismo empate no se resuelve por orden alfabético: los dos pares van
+    a revisión y el anulado queda solo."""
+    anulado, bcra, republica = _bcra()
+    pares = [{"clave_a": anulado["clave"], "clave_b": o["clave"], "decision": "aceptado", "puntaje": 75,
+              "motivo": None} for o in (bcra, republica)]
+    raices, conflictos = I.clusters([anulado, bcra, republica], pares)
+    assert len(set(raices.values())) == 3
+    assert {c["clave_b"] for c in conflictos} == {bcra["clave"], republica["clave"]}
+    assert all(c["motivo"].startswith("empate") for c in conflictos)
+
+
+def test_v2_lei_de_wikidata_es_senal_no_union():
+    """Causa 4 (B038): el ítem de Wikidata de Flow (una marca) trae el LEI de Cablevisión Holding; antes
+    era una unión determinística."""
+    flow = reg("wikidata", "Q22905362", ["Flow"], leis=["254900SFRPHMM26ZOQ87"], dominios=["personal.com.ar"])
+    cablevision = reg("gleif", "254900SFRPHMM26ZOQ87", ["CABLEVISION HOLDING S. A."], ciudad="BUENOS AIRES",
+                      leis=["254900SFRPHMM26ZOQ87"])
+    p = I.puntuar(flow, cablevision)
+    assert p["decision"] not in ("determinístico", "aceptado")
+    assert p["contribuciones"]["id_wikidata"] == I.PESOS["id_wikidata"]
+    assert I.leis_firmes(flow) == set()                 # tampoco veta ni cuenta para la restricción
+    otro = reg("gleif", "529900T8BM49AURSDO55", ["FLOW SA"], leis=["529900T8BM49AURSDO55"])
+    assert I.puntuar(flow, otro)["decision"] != "veto"

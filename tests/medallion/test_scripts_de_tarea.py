@@ -34,3 +34,15 @@ def test_script_de_tarea_sin_dunder_file(script):
     arbol = ast.parse((CODIGO / script).read_text(encoding="utf-8"))
     usos = [n.lineno for n in ast.walk(arbol) if isinstance(n, ast.Name) and n.id == "__file__"]
     assert not usos, f"{script} usa __file__ en las líneas {usos}: usar Path(comun.__file__)"
+
+
+def test_resolucion_no_supone_pais_para_gdelt():
+    """Calibración v1 (A016, A058): resolucion.py le ponía país AR a las claves de GDELT y eso sumaba
+    los puntos que unían la matriz mexicana de Vista con su filial argentina. El diccionario de alias
+    no dice el país: el registro de GDELT va sin país."""
+    arbol = ast.parse((CODIGO / "resolucion.py").read_text(encoding="utf-8"))
+    llamadas = [n for n in ast.walk(arbol) if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "registro"
+                and n.args and isinstance(n.args[0], ast.Constant) and n.args[0].value == "gdelt"]
+    assert len(llamadas) == 1
+    c = llamadas[0]
+    assert len(c.args) <= 3 and "paises" not in {k.arg for k in c.keywords}
