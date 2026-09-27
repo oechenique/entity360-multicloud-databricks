@@ -11,14 +11,16 @@ Cada corrida (una por hora, GitHub Actions):
    volume. Así un push fallido se reintenta solo en la corrida siguiente (extracción y entrega
    separadas, como en la fase 3). Sin pendientes, no empuja nada (D6, capa 1).
 
-La ventana cubre más de una hora a propósito: el cron de Actions se atrasa o saltea corridas.
+La ventana es de 24 horas: el cron de Actions se atrasa o saltea corridas (el 2026-09-27 hubo huecos de
+4,8 y 6,8 horas entre corridas). Con la exclusión por GKGRECORDID, releer lo ya visto no duplica nada;
+cuesta ~100 MiB por corrida (la partición de ayer y la de hoy), ~75 GiB por mes contra 1 TiB gratis.
 
 Variables de entorno:
     GOOGLE_CLOUD_PROJECT, GOOGLE_APPLICATION_CREDENTIALS   (WIF en Actions; ADC del usuario en local)
     DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET   (SP entity360-producer-gdelt)
 
 Uso:
-    python extractor.py [--ventana-horas 3] [--solo-leer]
+    python extractor.py [--ventana-horas 24] [--solo-leer]
 """
 
 import argparse
@@ -149,7 +151,7 @@ def pendientes(c: bigquery.Client, tabla: str, hasta: str | None) -> list[dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ventana-horas", type=int, default=3)
+    ap.add_argument("--ventana-horas", type=int, default=24)
     ap.add_argument("--solo-leer", action="store_true", help="consulta y resume: no respalda ni empuja")
     a = ap.parse_args()
     t0 = time.perf_counter()

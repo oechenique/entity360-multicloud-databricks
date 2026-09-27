@@ -28,25 +28,10 @@
    - Por registro: `respuesta` (`1`–`5`, `ninguno`, `otro` + `lei_otro`, o `incierto`),
      `evidencia` (obligatoria) y `fecha`.
    - **No regenerar el CSV** después de empezar: el script lo pisa.
-2. **Cron de `gdelt-horario`: todavía no corrió solo.**
-   - El `schedule` llegó a `main` el 2026-09-26 a las 23:25 UTC.
-   - El slot de las 00:23 UTC pasó sin corrida `schedule`; a las 01:20 UTC seguía sin ninguna (solo
-     las 4 manuales del 2026-09-26). El workflow figura activo y `enriquecimiento-diario` (también
-     nuevo) tampoco corrió todavía: parece la demora de GitHub con schedules nuevos.
-   - Verificar:
-     `gh run list --workflow gdelt-horario.yml --event schedule --limit 5 --json createdAt,startedAt,updatedAt,conclusion`.
-     Cada corrida tiene que durar menos de 60 s (ADR 0003).
-   - Si al día siguiente sigue sin correr, revisar la pestaña Actions (GitHub puede desactivar schedules).
-3. **Consumo en DBU por corrida del job: falta medirlo.** `system.billing.usage` llega con ~12 h de
-   retraso. Consulta (SQL warehouse):
-   ```sql
-   SELECT usage_metadata.job_run_id, sku_name, round(sum(usage_quantity), 4) AS dbu
-   FROM system.billing.usage
-   WHERE usage_metadata.job_id = '<terraform output medallion_job_id>'
-   GROUP BY ALL
-   ```
-   Anotar el resultado en `databricks/evidencia/pasos1-3-primeras-corridas.txt`, junto con la primera
-   corrida programada (08:45).
+2. ~~Cron de `gdelt-horario`~~ **cerrado (2026-09-27):** corre solo, 17–23 s por corrida, pero GitHub
+   saltea slots (3 corridas en 20 h). La ventana pasó de 3 a 24 h para no perder menciones (ADR 0003).
+3. ~~Consumo en DBU~~ **cerrado (2026-09-27):** 0,58–1,22 DBU por corrida; la primera programada
+   (08:45) salió bien en 7,4 min. Detalle en `databricks/evidencia/pasos1-3-primeras-corridas.txt`.
 
 ## Qué sigue (después del etiquetado)
 1. Parte B del set de validación (~60 pares: fáciles, positivos difíciles, negativos difíciles y

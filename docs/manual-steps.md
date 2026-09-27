@@ -168,9 +168,9 @@ frena (regla 06).
    ```powershell
    .venv\Scripts\python.exe producers\gcp_gdelt\credenciales.py cargar --dias 90
    ```
-5. La imagen se publica sola con el push a `main` (`gdelt-imagen.yml`). Primera corrida a mano,
-   con una ventana más larga si hace falta recuperar horas (máx. 24):
-   `gh workflow run gdelt-horario.yml -f ventana_horas=3`. Después corre sola con el cron (minuto 23
+5. La imagen se publica sola con el push a `main` (`gdelt-imagen.yml`). Primera corrida a mano
+   (la ventana por defecto es de 24 horas, el máximo; ADR 0003):
+   `gh workflow run gdelt-horario.yml`. Después corre sola con el cron (minuto 23
    de cada hora).
 6. Anotar el secreto en la tabla de secretos vigentes (§5).
 

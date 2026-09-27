@@ -51,14 +51,19 @@ y 10 GB de almacenamiento por mes), IAM y Workload Identity Federation.
 
   Si GDELT pasa de 60 s por corrida, cada job cuesta 2 minutos (~1.530, 77 %) y se baja a **cada 2
   horas** (~370). Sin medio de pago cargado, pasarse del cupo bloquea los workflows, no cobra.
-- **Cuota de BigQuery:** cada corrida escanea las columnas de la partición del día hasta ese momento
-  (0,05–0,2 GiB). Son ~40–140 GiB por mes contra 1 TiB gratis. Pasarse falla, no cobra.
+- **Cuota de BigQuery:** con la ventana de 24 h, cada corrida escanea las columnas de la partición de
+  ayer y la de hoy: 100 MiB facturados, medido el 2026-09-27. Son ~75 GiB por mes contra 1 TiB gratis.
+  Pasarse falla, no cobra.
 - **Sin DML:** la idempotencia por `GKGRECORDID` se resuelve en la consulta (excluye los ids que ya
   están en el respaldo) y el respaldo se escribe con load jobs.
 - **Respaldo de 60 días:** alcanza para la deduplicación (mira las últimas horas) y para reintentar
   un push. El histórico largo vive en Bronze/Silver de Databricks, no en GCP.
-- **El cron de Actions no es exacto:** en horas de carga se atrasa o saltea corridas. La ventana de
-  la consulta cubre más de una hora para que un salteo no pierda menciones.
+- **El cron de Actions no es exacto:** en horas de carga se atrasa o saltea corridas. El primer día
+  con el schedule activo (2026-09-27) corrió **3 veces en 20 horas** (05:27, 12:13 y 17:04 UTC, entre
+  17 y 23 s cada una), con huecos de 4,8 y 6,8 horas. La ventana original de 3 horas perdía las
+  menciones de esos huecos (una corrida a mano con 24 horas recuperó una), así que la ventana pasó a
+  **24 horas**: la exclusión por `GKGRECORDID` hace que releer no duplique. La cadencia real es "varias
+  veces por día, sin pérdidas", no "cada hora": el README lo dice así.
 
 ## Cómo migrar a GCP con facturación
 Con una cuenta de facturación: presupuesto con alertas **primero** (principio 5); después Cloud Run Job

@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
     inputs:
       ventana_horas:
-        description: "Horas hacia atrás (recuperar corridas perdidas; máx. 24 para no escanear de más)"
-        default: "3"
+        description: "Horas hacia atrás (24 cubre los salteos del cron; máx. 24 para no escanear de más)"
+        default: "24"
         type: choice
         options: ["3", "6", "12", "24"]
 
@@ -60,4 +60,4 @@ jobs:
           -v "${{ steps.gcp.outputs.credentials_file_path }}:/creds.json:ro"
           -e GOOGLE_APPLICATION_CREDENTIALS=/creds.json -e GOOGLE_CLOUD_PROJECT
           -e DATABRICKS_HOST -e DATABRICKS_CLIENT_ID -e DATABRICKS_CLIENT_SECRET
-          "$IMAGEN" --ventana-horas "${{ inputs.ventana_horas || '3' }}"
+          "$IMAGEN" --ventana-horas "${{ inputs.ventana_horas || '24' }}"

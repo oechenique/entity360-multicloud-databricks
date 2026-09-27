@@ -39,6 +39,24 @@ silver: mismos conteos que la corrida 1 (el reproceso no abre versiones SCD2 ni 
 - OpenSanctions: 2597, de las cuales 52 en el universo (AR o LEI del legacy); 33 sin LEI.
 - Wikidata: 20 ítems, 9 sin LEI. SEC EDGAR: 16 emisores, 22 nombres (6 anteriores).
 
-## Consumo
-system.billing.usage llega con ~12 h de retraso (último dato al cierre: 2026-09-26 12:00 UTC):
-el DBU por corrida (usage_metadata.job_id = id del job) queda pendiente de medir.
+## Corrida 3 (primera programada, 2026-09-27 08:45 Buenos Aires = 11:45 UTC): SUCCESS, 7,4 min
+# bronze 2,2 min + silver 5,1 min. Trigger PERIODIC.
+bronze.*: 0 filas nuevas en las 5 fuentes
+silver: mismos conteos que las corridas 1 y 2
+# Por qué 0 filas: ningún productor dejó un lote nuevo antes de las 11:45 UTC.
+# - SEC EDGAR: el scheduler disparó el extractor a las 08:00 (11:00 UTC); 16 emisores sin presentaciones
+#   nuevas (domingo): "sin cambios: no se escribe lote", la entrega no se disparó. DLQ vacía.
+# - GDELT: la corrida de las 05:27 UTC no encontró menciones nuevas; la de las 12:13 UTC (3 menciones)
+#   llegó después del job y entra en la corrida del 2026-09-28.
+# - Enriquecimiento: el cron de 09:17 UTC corrió a las 14:41 UTC (5,4 h tarde). OpenSanctions empujó un
+#   lote nuevo (2597 registros, sha256 distinto al del 2026-09-26); Wikidata sin cambios.
+
+## Consumo (system.billing.usage, consultado el 2026-09-27 20:10 UTC; el dato llegó con < 9 h de retraso)
+SELECT usage_metadata.job_run_id, sku_name, round(sum(usage_quantity), 4) AS dbu
+FROM system.billing.usage WHERE usage_metadata.job_id = '<medallion_job_id>' GROUP BY ALL
+corrida 1 (manual, carga inicial, 6,6 min):   0.5762 DBU   PREMIUM_JOBS_SERVERLESS_COMPUTE_US_EAST_OHIO
+corrida 2 (manual, reproceso, 5,3 min):       0.7435 DBU
+corrida 3 (programada, sin novedades, 7,4 min): 1.2232 DBU
+# ~0,6-1,2 DBU por corrida, ~30 DBU por mes con una corrida diaria. En Free Edition no se paga, pero
+# cuenta para la cuota diaria de serverless. Silver reprocesa todo aunque Bronze no traiga filas nuevas:
+# es lo que más consume y la primera optimización si la cuota aprieta (saltear fuentes sin lotes nuevos).
