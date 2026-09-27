@@ -1,0 +1,94 @@
+# Fase 6, paso 0 (2026-09-27): databricks/paso0/verificaciones.py en serverless (jobs submit, environment 4, rapidfuzz==3.14.6)
+# Corrida única: intento 1 = 3,4 min, reintento automático = 2,2 min. Las dos terminan FAILED a propósito (ver 'Lectura', punto 3).
+# Todo lo creado con prefijo _paso0 se borró al final (verificado: en ops solo queda ingestion_log).
+
+## resultado.json
+{
+  "1_autoloader_binaryfile": {
+    "ok": true,
+    "archivos_todos": [
+      "wikidata_20260926T222617Z.jsonl"
+    ],
+    "archivos_jsonl": [
+      "wikidata_20260926T222617Z.jsonl"
+    ]
+  },
+  "2_sha256_igual_al_manifest": {
+    "ok": true,
+    "lotes": [
+      {
+        "archivo": "wikidata_20260926T222617Z.jsonl",
+        "spark_igual_manifest": true,
+        "python_igual_manifest": true
+      }
+    ]
+  },
+  "3_foreachbatch_merge_idempotente": {
+    "ok": true,
+    "filas_tras_corrida": [
+      20,
+      20
+    ],
+    "excepcion_propagada": "StreamingQueryException",
+    "archivos_reentregados_tras_falla": 1
+  },
+  "4_iceberg_gestionado": {
+    "ok": true,
+    "merge": [
+      [
+        1,
+        "a"
+      ],
+      [
+        2,
+        "B"
+      ],
+      [
+        3,
+        "c"
+      ]
+    ],
+    "append_streaming": "ERROR UnsupportedOperationException: [MANAGED_ICEBERG_OPERATION_NOT_SUPPORTED] Managed Iceberg tables do not support Delta streaming writes.\n\nJVM stacktrace:\ncom.databricks.sql.transaction.tahoe.DeltaUnsupportedOperationException\n\tat com.databricks.sql.transaction.tahoe.DeltaErrorsEdge.operationUnsupportedForManagedIcebergTable(DeltaEr",
+    "merge_foreachbatch": 20,
+    "formato": "iceberg"
+  },
+  "5_rapidfuzz": {
+    "ok": true,
+    "version": "3.14.6",
+    "driver": 85.71428571428571,
+    "udf": [
+      0.88,
+      0.857
+    ]
+  },
+  "6_system_billing_usage": {
+    "ok": true,
+    "filas": 525,
+    "ultima_fecha": "2026-09-26",
+    "dbu_ultimos_7_dias": "6.083"
+  }
+}
+
+## Error de la tarea (get-run-output)
+ERROR: Some streams terminated before this command could finish!
+
+## Lectura
+1. Auto Loader con binaryFile **no ve los `_manifest_*.json` ni sin pathGlobFilter** (Spark oculta
+   los archivos que empiezan con `_`). Igual se deja `pathGlobFilter = *.jsonl`, explícito.
+2. `sha2(content, 256)` en Spark == `sha256` del manifest: la capa 2 se apoya en el hash del
+   contenido, calculado en Bronze, sin depender de que el manifest ya esté.
+3. foreachBatch con MERGE insert-only por (sha256, linea): un segundo stream sobre los mismos archivos
+   deja 20 filas (no 40). Una excepción en el micro-batch propaga `StreamingQueryException` y **el
+   checkpoint no avanza** (el archivo se vuelve a entregar). Además, **la tarea termina FAILED aunque
+   el script capture la excepción** ("Some streams terminated before this command could finish"):
+   por eso esta corrida figura como fallida. En el job es lo buscado: "manifest todavía no llegó" ->
+   la tarea falla -> el reintento del job lo toma. No se captura.
+4. Iceberg gestionado: CREATE, MERGE y **MERGE desde foreachBatch funcionan**; el append en streaming
+   no (`MANAGED_ICEBERG_OPERATION_NOT_SUPPORTED: ... do not support Delta streaming writes`).
+   Como Bronze, Silver y la resolución escriben solo con MERGE, **van en Iceberg gestionado**
+   (regla 08: "Iceberg donde sea posible"). `ops.ingestion_log` sigue en Delta (fase 1).
+5. rapidfuzz 3.14.6 se instala en el environment serverless y corre en el driver y en una pandas UDF.
+   token_set_ratio("BANCO MACRO", "MACRO BANK") = 0,857 sin traducir: por eso el score compara los
+   tokens canónicos (MACRO BANK -> MACRO BANCO) y no el texto crudo.
+6. `system.billing.usage` es legible en Free Edition (525 filas, 6,083 DBU en 7 días): el consumo de
+   cada corrida del job se mide por `usage_metadata.job_run_id`.
