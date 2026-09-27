@@ -1,0 +1,4 @@
+# Herramientas locales de la fase 6 (fuera del job): generador del set de validación.
+#   .venv\Scripts\python.exe -m pip install -r databricks\requirements-local.txt
+databricks-sdk==0.143.0
+rapidfuzz==3.14.6
