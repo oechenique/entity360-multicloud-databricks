@@ -1,0 +1,192 @@
+{
+  "semilla": 20260927,
+  "unidades": {
+    "calibracion": 62,
+    "evaluacion": 57
+  },
+  "pesos_iniciales": {
+    "nombre": 60,
+    "nombre_piso": 70,
+    "pais_igual": 10,
+    "pais_distinto": -20,
+    "fondo_vs_no_fondo": -30,
+    "numeros_distintos": -20,
+    "umbral_aceptar": 70,
+    "id_debil": 30
+  },
+  "pesos_calibrados": {
+    "nombre": 60,
+    "nombre_piso": 70,
+    "pais_igual": 10,
+    "pais_distinto": -20,
+    "id_debil": 30,
+    "fondo_vs_no_fondo": -30,
+    "numeros_distintos": -20,
+    "umbral_aceptar": 70
+  },
+  "calibracion_con_calibrados": {
+    "vp": 22,
+    "fp": 2,
+    "fn": 2,
+    "precision": 0.9166666666666666,
+    "precision_ic95": [
+      0.741511978067893,
+      0.9768411847029567
+    ],
+    "recall": 0.9166666666666666,
+    "recall_ic95": [
+      0.741511978067893,
+      0.9768411847029567
+    ],
+    "f1": 0.9166666666666666
+  },
+  "calibracion_con_iniciales": {
+    "vp": 22,
+    "fp": 2,
+    "fn": 2,
+    "precision": 0.9166666666666666,
+    "precision_ic95": [
+      0.741511978067893,
+      0.9768411847029567
+    ],
+    "recall": 0.9166666666666666,
+    "recall_ic95": [
+      0.741511978067893,
+      0.9768411847029567
+    ],
+    "f1": 0.9166666666666666
+  },
+  "evaluacion_con_iniciales": {
+    "vp": 21,
+    "fp": 2,
+    "fn": 1,
+    "precision": 0.9130434782608695,
+    "precision_ic95": [
+      0.7320401892425634,
+      0.9758199955157796
+    ],
+    "recall": 0.9545454545454546,
+    "recall_ic95": [
+      0.7820195416134267,
+      0.991930572378736
+    ],
+    "f1": 0.9333333333333332
+  },
+  "evaluacion_con_calibrados": {
+    "vp": 21,
+    "fp": 2,
+    "fn": 1,
+    "precision": 0.9130434782608695,
+    "precision_ic95": [
+      0.7320401892425634,
+      0.9758199955157796
+    ],
+    "recall": 0.9545454545454546,
+    "recall_ic95": [
+      0.7820195416134267,
+      0.991930572378736
+    ],
+    "f1": 0.9333333333333332
+  },
+  "evaluacion_por_parte": {
+    "A": {
+      "iniciales": {
+        "vp": 11,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.8461538461538461,
+        "precision_ic95": [
+          0.5776536898051745,
+          0.9567418216419186
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 0.9166666666666666
+      },
+      "calibrados": {
+        "vp": 11,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.8461538461538461,
+        "precision_ic95": [
+          0.5776536898051745,
+          0.9567418216419186
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 0.9166666666666666
+      }
+    },
+    "B": {
+      "iniciales": {
+        "vp": 10,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7224672001371107,
+          0.9999999999999999
+        ],
+        "recall": 0.9090909090909091,
+        "recall_ic95": [
+          0.6226415635484043,
+          0.9837678271141151
+        ],
+        "f1": 0.9523809523809523
+      },
+      "calibrados": {
+        "vp": 10,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7224672001371107,
+          0.9999999999999999
+        ],
+        "recall": 0.9090909090909091,
+        "recall_ic95": [
+          0.6226415635484043,
+          0.9837678271141151
+        ],
+        "f1": 0.9523809523809523
+      }
+    }
+  },
+  "blocking_evaluacion": {
+    "n": 11,
+    "directo": 11,
+    "directo_ic95": [
+      0.7411670330319684,
+      1.0
+    ],
+    "conectado": 11,
+    "conectado_ic95": [
+      0.7411670330319684,
+      1.0
+    ]
+  },
+  "blocking_todo_a": {
+    "n": 22,
+    "directo": 22,
+    "directo_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "conectado": 22,
+    "conectado_ic95": [
+      0.8513451253913791,
+      1.0
+    ]
+  },
+  "resumen_blocking": {
+    "bloques": 2576,
+    "bloques_descartados_por_tamano": 0,
+    "pares": 5009
+  }
+}

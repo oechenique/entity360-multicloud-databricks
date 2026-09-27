@@ -30,17 +30,21 @@ el etiquetado de la parte B.**
   `contracts\.venv`).
 
 ## Pendiente
-1. **Etiquetar la parte B (Gastón):** `databricks/resolucion/validacion/parte_b.csv`, instrucciones en
-   el README de esa carpeta (`respuesta` `si`/`no`/`incierto`, `evidencia`, `fecha`). No abrir
-   `parte_b_estratos.csv` antes de terminar.
-2. **Paso 5 de la fase 6, después de la parte B:** calibrar pesos y umbrales con la mitad del set
-   (partición por estrato, semilla fija) y publicar precisión y recall con intervalo de Wilson sobre la
-   otra mitad.
+1. ~~Etiquetar la parte B~~ **hecho** (60 pares, 2026-09-27).
+2. **Calibración (paso 5 de la fase 6): números listos, sin aplicar.** La grilla no cambia los pesos
+   (los iniciales empatan en el máximo). Evaluación: precisión 0,913 [0,732–0,976], recall 0,955
+   [0,782–0,992], recall del blocking 11/11. Quedan 7 errores con causas estructurales (país supuesto de
+   GDELT, alias genéricos de OpenSanctions, gemelos de LEI anulados, un identificador de marca): ver
+   `databricks/resolucion/calibracion/INFORME.md`. Decisión de Gastón pendiente: qué causas corregir y
+   cómo evaluar después (la mitad de evaluación ya se miró).
 3. ~~Lotes sin veredicto~~ **resuelto (ADR 0006):** Bronze exige el veredicto y el schedule de las
    08:45 está **pausado**: el job lo dispara Airflow (fase 8). Cuarentena probada de punta a punta
    (`contracts/evidencia/cuarentena-punta-a-punta.txt`).
 4. ~~Borrar `gold.prueba_contrato`~~ **hecho** (2026-09-27).
-5. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
+5. **Aligerar el stack de Airflow:** la corrida del DAG saturó la CPU de la PC. Más adelante: seguir
+   con LocalExecutor, límites de CPU y memoria por contenedor en `airflow/docker-compose.yml` y un techo
+   para WSL2 en `.wslconfig` (`processors`, `memory`).
+6. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
 
 ## Estado del entorno al cerrar
