@@ -182,3 +182,12 @@ Los veredictos de los contratos (`_contrato_*.json`) viven en el volume `landing
 Para reprocesar una fuente desde cero sin destruir
 nada: borrar su checkpoint (`databricks fs rm -r dbfs:/Volumes/entity360/ops/checkpoints/<fuente>`);
 la capa 2 evita filas duplicadas en Bronze.
+
+## Airflow (fase 8)
+```powershell
+docker compose -f airflow\docker-compose.yml down -v   # containers, red y base de Airflow (volumen postgres-db)
+docker image rm entity360-airflow:3.3.2
+```
+El SP `entity360-orquestador`, sus grants y el permiso sobre el job se borran con el `terraform destroy`
+de `infra/databricks`. Borrar también las credenciales del llavero de Windows (servicio
+`entity360-airflow`, en el Administrador de credenciales) y revocar su secreto si no se destruye el SP.

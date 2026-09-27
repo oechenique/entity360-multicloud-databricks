@@ -11,6 +11,8 @@ crash.log
 .env.*
 !.env.example
 profiles.yml
+# Perfil de dbt de Airflow: sin secretos, todo por variables de entorno (ADR 0007).
+!airflow/config/profiles.yml
 *.pem
 
 # Python
@@ -39,3 +41,7 @@ dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 dbt/.user.yml
+
+# Fase 8: Airflow local
+airflow/logs/
+airflow/plugins/

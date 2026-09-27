@@ -1,0 +1,117 @@
+# Fase 8 (regla 10): Airflow local como plano de control. Local por decisión de costo.
+# Levantar con airflow\levantar.ps1: lee las credenciales del llavero de Windows y las pasa como
+# variables de entorno (ADR 0007). `docker compose` directo falla sin ellas (`:?`).
+# UI: http://localhost:8080 (solo localhost; todos los usuarios son admin, uso local).
+name: entity360-airflow
+
+x-airflow: &airflow
+  build:
+    context: ..
+    dockerfile: airflow/Dockerfile
+  image: entity360-airflow:3.3.2
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: America/Argentina/Buenos_Aires
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+    AIRFLOW__API_AUTH__JWT_SECRET: ${E360_JWT_SECRET:?correr airflow\levantar.ps1}
+    AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "60"
+    # Cosmos corre `dbt ls` al parsear el DAG (sobre un bind mount de Windows): 30 s no alcanzan.
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: "120"
+    AIRFLOW__DAG_PROCESSOR__DAG_FILE_PROCESSOR_TIMEOUT: "180"
+    # Databricks: SP entity360-orquestador (OAuth M2M). Conexión para DatabricksRunNowOperator,
+    # variables DATABRICKS_* para los contratos (databricks-sdk) y el perfil de dbt.
+    AIRFLOW_CONN_DATABRICKS_DEFAULT: >-
+      {"conn_type": "databricks", "host": "${E360_DATABRICKS_HOST:?}", "login": "${E360_ORQ_CLIENT_ID:?}",
+       "password": "${E360_ORQ_CLIENT_SECRET:?}", "extra": {"service_principal_oauth": true}}
+    DATABRICKS_HOST: ${E360_DATABRICKS_HOST:?}
+    DATABRICKS_CLIENT_ID: ${E360_ORQ_CLIENT_ID:?}
+    DATABRICKS_CLIENT_SECRET: ${E360_ORQ_CLIENT_SECRET:?}
+    DATABRICKS_HTTP_PATH: ${E360_WAREHOUSE_HTTP_PATH:?}
+    E360_MEDALLION_JOB_ID: ${E360_MEDALLION_JOB_ID:?}
+    # Extractor CDC: su propio SP (ADR 0002) y el login de solo lectura del SQL Server del legacy.
+    CDC_DATABRICKS_HOST: ${CDC_DATABRICKS_HOST:?}
+    CDC_DATABRICKS_CLIENT_ID: ${CDC_DATABRICKS_CLIENT_ID:?}
+    CDC_DATABRICKS_SECRET: ${CDC_DATABRICKS_SECRET:?}
+    CDC_SQL_PASSWORD: ${CDC_SQL_PASSWORD:?}
+    CDC_SQL_HOST: entity360-legacy-mssql
+    # Alertas (Telegram, opcional): sin estas variables van a stderr (contracts/alertas.py).
+    TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    E360_RAIZ: /opt/entity360
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./config:/opt/entity360/airflow_config:ro
+    - ../dbt:/opt/entity360/dbt
+    - ../contracts:/opt/entity360/contracts:ro
+    # rw: el checkpoint del LSN (state/) es el mismo que usa el extractor corrido a mano en la PC.
+    - ../producers/cdc_extractor:/opt/entity360/cdc_extractor
+  # Tapa los entornos y artefactos de Windows que viven dentro de los proyectos montados: Cosmos hashea
+  # la carpeta de dbt en cada parseo y el .venv tiene miles de archivos.
+  tmpfs:
+    - /opt/entity360/dbt/.venv
+    - /opt/entity360/dbt/target
+    - /opt/entity360/dbt/logs
+    - /opt/entity360/contracts/.venv
+  networks: [default, legacy]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    airflow-init:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow # solo en la red interna de compose, sin puerto publicado
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+
+  airflow-init:
+    <<: *airflow
+    command: ["bash", "-c", "airflow db migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  airflow-apiserver:
+    <<: *airflow
+    command: api-server
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 30s
+      retries: 5
+    restart: unless-stopped
+
+  airflow-scheduler:
+    <<: *airflow
+    command: scheduler
+    restart: unless-stopped
+
+  airflow-dag-processor:
+    <<: *airflow
+    command: dag-processor
+    restart: unless-stopped
+
+volumes:
+  postgres-db:
+
+networks:
+  # La red del SQL Server del legacy (legacy/docker-compose.yml): el extractor CDC lo ve por nombre.
+  legacy:
+    name: entity360-legacy_default
+    external: true

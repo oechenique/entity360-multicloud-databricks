@@ -2,3 +2,5 @@
 #   .venv\Scripts\python.exe -m pip install -r databricks\requirements-local.txt
 databricks-sdk==0.143.0
 rapidfuzz==3.14.6
+# Tests del DAG de Airflow (tests/airflow): misma versión que los constraints de Airflow 3.3.2.
+pyyaml==6.0.3

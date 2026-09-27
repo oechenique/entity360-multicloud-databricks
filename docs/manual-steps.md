@@ -194,3 +194,20 @@ Las cuarentenas de los contratos (y, desde la fase 8, las fuentes atrasadas) se 
 ### 11. dbt
 `dbt/profiles.yml` (ignorado por git) sale de `dbt/profiles.yml.example`: host, warehouse y token por
 variables de entorno; el token es el OAuth de vida corta de la CLI. Ver `dbt/README.md`.
+
+## Airflow (fase 8)
+
+### 12. Principal de Airflow y credenciales (ADR 0007)
+1. `terraform apply` en `infra/databricks` (SP `entity360-orquestador`, grants y permiso sobre el job).
+2. Pasar al SP las tablas de Gold que ya existan (dbt las recrea y hace falta ser dueño; una sola vez,
+   con el perfil del usuario, en el SQL editor o con la Statement Execution API):
+   ```sql
+   ALTER TABLE entity360.gold.<tabla> OWNER TO `<application_id del SP>`;   -- las 5 tablas de gold
+   ```
+3. Secreto OAuth del SP (90 días) al llavero de Windows:
+   ```powershell
+   .venv\Scripts\python.exe airflow\credenciales.py configurar --dias 90
+   .venv\Scripts\python.exe airflow\credenciales.py verificar   # también mira las del extractor CDC (§6)
+   ```
+4. `.\airflow\levantar.ps1` (ver `airflow/README.md`). Anotar el secreto en la tabla de secretos
+   vigentes (§5). Rotarlo: volver a correr el paso 3 y `levantar.ps1`.

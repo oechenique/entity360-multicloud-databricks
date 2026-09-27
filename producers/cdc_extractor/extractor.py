@@ -13,7 +13,9 @@ Cada corrida:
    final guarda el checkpoint. Si se corta en el medio, la corrida siguiente re-emite el mismo rango
    (mismo contenido y sha256) y Bronze lo descarta (capa 2).
 
-Credenciales en el Administrador de credenciales de Windows (credenciales.py), nunca a disco.
+Credenciales en el Administrador de credenciales de Windows (credenciales.py), nunca a disco. En
+Airflow (fase 8, container Linux sin ese llavero) llegan como variables de entorno CDC_* que
+airflow/levantar.ps1 lee del mismo llavero; CDC_SQL_HOST apunta al SQL Server del host.
 
 Uso:
     .venv\\Scripts\\python.exe producers\\cdc_extractor\\extractor.py [--solo-leer]
@@ -27,7 +29,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-import keyring
+import os
+
 import pymssql
 import requests
 
@@ -38,6 +41,15 @@ RAIZ_VOLUME = f"/Volumes/entity360/landing/raw/{FUENTE}"
 INSTANCIAS = ["erp_entidad", "erp_direccion", "erp_nombre_alternativo", "erp_relacion"]
 OPERACION = {1: "delete", 2: "insert", 3: "update_antes", 4: "update"}
 CHECKPOINT = Path(__file__).resolve().parent / "state" / "checkpoint.json"
+
+
+def credencial(clave: str) -> str | None:
+    """Variable de entorno CDC_<CLAVE> (Airflow) o, si no está, el llavero de Windows."""
+    valor = os.environ.get(f"CDC_{clave.upper()}")
+    if valor:
+        return valor
+    import keyring   # solo en Windows: el container de Airflow no lo tiene
+    return keyring.get_password(SERVICIO, clave)
 
 
 def lsn_hex(b: bytes) -> str:
@@ -52,10 +64,9 @@ def lsn_bytes(h: str) -> bytes:
 
 class Volume:
     def __init__(self):
-        self.host = keyring.get_password(SERVICIO, "databricks_host").rstrip("/")
+        self.host = credencial("databricks_host").rstrip("/")
         r = requests.post(f"{self.host}/oidc/v1/token", timeout=60,
-                          auth=(keyring.get_password(SERVICIO, "databricks_client_id"),
-                                keyring.get_password(SERVICIO, "databricks_secret")),
+                          auth=(credencial("databricks_client_id"), credencial("databricks_secret")),
                           data={"grant_type": "client_credentials", "scope": "all-apis"})
         r.raise_for_status()
         self.s = requests.Session()
@@ -164,8 +175,8 @@ def main() -> int:
     desde_ckpt, origen = leer_checkpoint(vol)
     print(f"checkpoint: {desde_ckpt or '-'} ({origen})")
 
-    con = pymssql.connect(server="127.0.0.1", port=1433, user="cdc_extractor",
-                          password=keyring.get_password(SERVICIO, "sql_password"), database="entity360_erp")
+    con = pymssql.connect(server=os.environ.get("CDC_SQL_HOST", "127.0.0.1"), port=1433, user="cdc_extractor",
+                          password=credencial("sql_password"), database="entity360_erp")
     filas, lsn_desde, lsn_hasta = leer_cambios(con.cursor(), desde_ckpt)
     con.close()
 

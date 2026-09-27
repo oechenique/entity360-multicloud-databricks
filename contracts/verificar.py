@@ -124,7 +124,11 @@ def contrato_de(ruta_datos: str) -> str:
 # ------------------------------------------------------------------ lotes del volume
 
 def _cliente():
+    """En Airflow, el SP entity360-orquestador (DATABRICKS_HOST/CLIENT_ID/CLIENT_SECRET en el entorno,
+    ADR 0007); en la PC, el perfil de la CLI."""
     from databricks.sdk import WorkspaceClient
+    if os.environ.get("DATABRICKS_CLIENT_ID"):
+        return WorkspaceClient(auth_type="oauth-m2m")
     return WorkspaceClient(profile=os.environ.get("DATABRICKS_CONFIG_PROFILE", "entity360-free"))
 
 

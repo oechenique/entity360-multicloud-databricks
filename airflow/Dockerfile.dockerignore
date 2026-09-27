@@ -1,0 +1,4 @@
+# El contexto es la raíz del repo: solo entran los requirements de dbt y de los contratos.
+*
+!dbt/requirements.txt
+!contracts/requirements.txt

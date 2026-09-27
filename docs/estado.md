@@ -1,9 +1,10 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-27, 22:00 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-27, 23:15 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fase 7 (regla 09) cerrada. Sigue la fase 8 (Airflow), con una decisión pendiente (abajo).**
+**Fase 8 (regla 10) cerrada: Airflow local orquesta todo. Sigue la fase 9 (Snowflake), y en paralelo
+el etiquetado de la parte B.**
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
@@ -22,7 +23,10 @@
     landing, aprobados.
   - dbt (`dbt/`): 5 modelos Gold en Iceberg gestionado con contratos enforced (ADR 0005); `dbt build`
     24/24 y `dbt source freshness` 7/7.
-- Tests: 97 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+- **Fase 8 (regla 10):** Airflow 3.3 local en Docker (`airflow/`), DAG `entity360_convergencia` a las
+  08:45: extractor CDC → sensores de llegada por fuente → contratos → job de Databricks → dbt con
+  Cosmos → frescura. SP propio `entity360-orquestador` (ADR 0007). Primera corrida completa en verde.
+- Tests: 3 en `tests/airflow`, 99 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente
@@ -41,7 +45,8 @@
 
 ## Estado del entorno al cerrar
 - `main` = `origin/main`.
-- SQL Server del legacy: contenedor detenido, volumen intacto
-  (`docker compose -f legacy\docker-compose.yml start`).
-- Sin procesos corriendo. El job no corre solo: schedule pausado (ADR 0006).
+- **Airflow levantado** (`.\airflow\levantar.ps1`, UI en http://localhost:8080) y el SQL Server del
+  legacy **prendido** (lo lee el extractor CDC). El job de Databricks lo dispara Airflow (ADR 0006).
+  Para apagar: `docker compose -f airflow\docker-compose.yml stop` y
+  `docker compose -f legacy\docker-compose.yml stop`.
 - Entornos locales: `.venv` (fase 6), `contracts\.venv` (Soda), `dbt\.venv` (dbt), todos ignorados.

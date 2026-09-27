@@ -1,0 +1,19 @@
+# Fase 8 (2026-09-27): primeras corridas del DAG entity360_convergencia (Airflow 3.3.2, Cosmos 1.15.1).
+
+## Corrida 1: scheduled__2026-09-27T11:45:00+00:00 (al despausar, catchup=False) -> success
+extraer_cdc: checkpoint 0x0000002E000028E00005 (archivo local, el mismo que usa la PC); 0 cambios:
+  "sin cambios nuevos: no se empuja nada (idempotente)". SQL Server por la red entity360-legacy_default.
+llegada_*: las 5 fuentes dentro de su umbral (success).
+contratos: 0 lotes pendientes (los 10 ya tenían veredicto), 0 en cuarentena.
+medallion: job disparado por el SP entity360-orquestador, SUCCESS en 9,2 min.
+dbt_gold: 5 modelos OK. dbt_gold.dim_entity.test falló en el intento 1 y pasó en el reintento:
+  relationships_fct_entity_changes_* y relationships_fct_news_signal_* -> SQLSTATE 42P01 (tabla no
+  encontrada). Causa: Cosmos colgó esos tests (dos modelos) de dim_entity y corrieron mientras
+  fct_entity_changes y fct_news_signal se recreaban en paralelo. Corrección:
+  RenderConfig(should_detach_multiple_parents_tests=True): cada test de dos modelos va en su propia
+  tarea, después de los dos.
+frescura: dbt source freshness, success.
+
+## Corrida 2: manual__2026-09-27T23:00:52 (con la corrección) -> success, 23 tareas, 0 reintentos
+extraer_cdc 0,1 min | contratos 0,2 min | medallion 8,2 min | dbt_gold.*.run 0,6–1,0 min | frescura 0,3 min
+total: 11,4 min
