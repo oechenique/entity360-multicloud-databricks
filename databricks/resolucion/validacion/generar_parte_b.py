@@ -5,7 +5,9 @@ calibrar) y arma ~60 pares para que un humano decida si son la misma entidad leg
 
 Qué pares entran:
 - **No** los de un registro de la parte A contra GLEIF: la respuesta de la parte A ya los decide
-  (su LEI, `ninguno` u `otro`), y la parte A da la precisión y el recall de esos registros.
+  (su LEI, `ninguno` u `otro`), y la parte A da la precisión y el recall de esos registros. Tampoco
+  los de un registro ligado a uno de la parte A por un CIK o un LEI compartido (una clave de GDELT
+  con el CIK de un emisor de la SEC): es la misma entidad, así que la parte A también los decide.
 - **No** los vetados (dos LEI firmes o dos CIK distintos): la restricción ya decide.
 - Sí todo lo demás: duplicados dentro de GLEIF (LEI anulado contra vigente) y pares entre fuentes
   sin LEI (SEC, OpenSanctions, Wikidata, GDELT), que la parte A no cubre.
@@ -52,6 +54,20 @@ def claves_parte_a() -> set[str]:
         return {f"{r['fuente']}:{r['id_fuente']}" for r in csv.DictReader(f, delimiter=";")}
 
 
+def ligados_a(en_a: set[str], deterministicos: list[tuple[str, str]]) -> set[str]:
+    """Registros de la parte A más los que no son de GLEIF y comparten CIK o LEI con alguno de ellos
+    (clausura transitiva). GLEIF no propaga: sus pares con los de A son justamente lo que A decide."""
+    ligados, cambio = set(en_a), True
+    while cambio:
+        cambio = False
+        for x, y in deterministicos:
+            for a, b in ((x, y), (y, x)):
+                if a in ligados and b not in ligados and not b.startswith("gleif:"):
+                    ligados.add(b)
+                    cambio = True
+    return ligados
+
+
 def link(clave: str) -> str:
     fuente, id_ = clave.split(":", 1)
     return {
@@ -89,6 +105,7 @@ def main() -> int:
                   FROM {R}.par_candidato WHERE decision <> 'veto'""")
     for p in pares:
         p["similitud_nombre"] = float(p["similitud_nombre"]) if p["similitud_nombre"] is not None else None
+    en_a = ligados_a(en_a, [(p["clave_a"], p["clave_b"]) for p in pares if p["decision"] == "determinístico"])
 
     def cubierto_por_a(p):
         a, b = p["clave_a"], p["clave_b"]

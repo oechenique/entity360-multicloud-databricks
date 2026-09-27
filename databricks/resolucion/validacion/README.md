@@ -45,9 +45,13 @@ juntó, y verlos antes puede anclar las respuestas de la parte A.
 
 - Cada fila es un **par** de registros (`a_…` y `b_…`) que la primera corrida de la resolución (pesos
   sin calibrar) comparó. Sin puntaje y en orden aleatorio, como en la parte A.
-- No están los pares de un registro de la parte A contra GLEIF: esos los decide la respuesta de la
-  parte A. Están los duplicados dentro de GLEIF (un LEI anulado contra uno vigente) y los pares entre
-  fuentes sin LEI.
+- No están los pares de un registro de la parte A contra GLEIF, ni los de un registro ligado a uno
+  de la parte A por un CIK o un LEI compartido (por ejemplo, la clave de GDELT de un emisor de la
+  SEC): esos los decide la respuesta de la parte A. Están los duplicados dentro de GLEIF (un LEI
+  anulado contra uno vigente) y los pares entre fuentes que la parte A no cubre.
+- **Casi no hay positivos difíciles** (misma entidad con nombres muy distintos: 1 en la primera
+  corrida). Esos casos son los registros de fuentes externas contra el legacy, que cubre la parte A:
+  **su recall se mide en la parte A**, no en la B.
 - Completar `respuesta` (`si`, `no` o `incierto`), `evidencia` (**obligatoria**) y `fecha`, con el
   mismo criterio de **misma entidad legal** de la parte A.
 - `parte_b_estratos.csv` tiene el estrato de cada par (dudoso, positivo difícil, negativo difícil,
