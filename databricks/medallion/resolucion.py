@@ -35,7 +35,8 @@ import normalizacion as N  # noqa: E402
 
 S = f"{comun.CATALOGO}.silver"
 R = f"{comun.CATALOGO}.resolution"
-ALIAS = Path(__file__).resolve().parent / "alias.json"
+# El script de la tarea no tiene __file__ (spark_python_task lo corre con exec): la ruta sale de comun.
+ALIAS = Path(comun.__file__).resolve().parent / "alias.json"
 
 
 def filas(sql: str) -> list[dict]:

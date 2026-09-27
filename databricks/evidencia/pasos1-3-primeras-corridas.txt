@@ -60,3 +60,18 @@ corrida 3 (programada, sin novedades, 7,4 min): 1.2232 DBU
 # ~0,6-1,2 DBU por corrida, ~30 DBU por mes con una corrida diaria. En Free Edition no se paga, pero
 # cuenta para la cuota diaria de serverless. Silver reprocesa todo aunque Bronze no traiga filas nuevas:
 # es lo que más consume y la primera optimización si la cuota aprieta (saltear fuentes sin lotes nuevos).
+
+## Paso 5: primera corrida de la resolución (2026-09-27, run 28864339406718)
+# Intento 1 y reintento: NameError: name '__file__' is not defined (resolucion.py:38). spark_python_task
+# en serverless ejecuta el script con exec(compile(...)) y no le define __file__. Corrección: la ruta
+# sale de comun.__file__; tests/medallion/test_scripts_de_tarea.py falla si una tarea vuelve a usarlo.
+# Repair-run solo de `resolucion` (bronze 2,9 min y silver 5,1 min ya habían terminado bien): SUCCESS, 2,4 min.
+resolution.registro: 1268 {"gleif": 1163, "sec_edgar": 16, "opensanctions": 52, "wikidata": 20, "gdelt": 17}
+blocking: {"bloques": 2576, "bloques_descartados_por_tamano": 0, "pares": 5009}; pares puntuados: 5011
+decisiones: {"rechazado": 4535, "aceptado": 146, "veto": 259, "determinístico": 54, "revisar": 17}; conflictos: 16
+entidades: 1132 (99 con más de un registro)
+# Pesos y umbrales iniciales, sin calibrar. Chequeos de integridad (SQL warehouse):
+# 1268 claves únicas, 1268 en entidad_registro, 1132 entity_id = 1132 golden records, 0 sin nombre;
+# 0 entidades con dos LEI firmes o dos CIK; 0 pares determinísticos en entidades distintas; los 16
+# aceptados que quedaron separados son los 16 conflictos de resolution.revision (más 17 "revisar");
+# 64 entidades con un duplicado de GLEIF fusionado.

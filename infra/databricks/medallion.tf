@@ -67,21 +67,8 @@ resource "databricks_job" "medallion" {
     }
   }
 
-  task {
-    task_key                  = "silver"
-    environment_key           = "default"
-    max_retries               = 1
-    min_retry_interval_millis = 60000
-    timeout_seconds           = 1800
-    depends_on {
-      task_key = "bronze"
-    }
-    spark_python_task {
-      python_file = databricks_workspace_file.medallion["silver.py"].workspace_path
-      source      = "WORKSPACE"
-    }
-  }
-
+  # Las tareas van en orden alfabético de task_key, como las devuelve la API: si no, el plan
+  # muestra un cambio permanente (el orden de ejecución lo dan los depends_on).
   # rapidfuzz: verificado en el paso 0 (se instala en el environment serverless).
   task {
     task_key                  = "resolucion"
@@ -94,6 +81,21 @@ resource "databricks_job" "medallion" {
     }
     spark_python_task {
       python_file = databricks_workspace_file.medallion["resolucion.py"].workspace_path
+      source      = "WORKSPACE"
+    }
+  }
+
+  task {
+    task_key                  = "silver"
+    environment_key           = "default"
+    max_retries               = 1
+    min_retry_interval_millis = 60000
+    timeout_seconds           = 1800
+    depends_on {
+      task_key = "bronze"
+    }
+    spark_python_task {
+      python_file = databricks_workspace_file.medallion["silver.py"].workspace_path
       source      = "WORKSPACE"
     }
   }
