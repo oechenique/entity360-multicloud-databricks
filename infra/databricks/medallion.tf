@@ -78,7 +78,7 @@ resource "databricks_job" "medallion" {
   schedule {
     quartz_cron_expression = "0 45 8 * * ?"
     timezone_id            = "America/Argentina/Buenos_Aires"
-    pause_status           = "PAUSED" # se activa después de la primera corrida manual verificada
+    pause_status           = "UNPAUSED" # activo desde el 2026-09-27, después de dos corridas manuales verificadas
   }
 
   tags = {
