@@ -185,7 +185,7 @@ la capa 2 evita filas duplicadas en Bronze.
 
 ## Airflow (fase 8)
 ```powershell
-docker compose -f airflow\docker-compose.yml down -v   # containers, red y base de Airflow (volumen postgres-db)
+docker compose -p entity360-airflow down -v   # containers, red y base de Airflow (volumen postgres-db)
 docker image rm entity360-airflow:3.3.2
 ```
 El SP `entity360-orquestador`, sus grants y el permiso sobre el job se borran con el `terraform destroy`

@@ -4,7 +4,7 @@
 #
 # Uso (desde la raíz del repo, con Docker Desktop y el legacy creado alguna vez):
 #   .\airflow\levantar.ps1              # build + up -d
-#   docker compose -f airflow\docker-compose.yml stop     # detener (conserva la base de Airflow)
+#   docker compose -p entity360-airflow stop     # detener (conserva la base de Airflow)
 $ErrorActionPreference = "Stop"
 $raiz = Split-Path $PSScriptRoot -Parent
 

@@ -48,7 +48,8 @@
 
 ## Estado del entorno al cerrar
 - `main` = `origin/main`.
-- **Airflow detenido** y **SQL Server del legacy detenido** (`docker compose stop`, volúmenes intactos).
+- **Airflow detenido** (`docker compose -p entity360-airflow stop`) y **SQL Server del legacy
+  detenido** (`docker compose -f legacy\docker-compose.yml stop`), con los volúmenes intactos.
   El DAG queda activo en la base de Airflow: con Airflow prendido corre a las 08:45. Para retomar:
   `docker compose -f legacy\docker-compose.yml start` y `.\airflow\levantar.ps1`.
 - El job de Databricks no corre solo (schedule pausado, ADR 0006): sin Airflow no se procesa nada nuevo

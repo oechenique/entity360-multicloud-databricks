@@ -41,10 +41,14 @@ credenciales en el llavero (`docs/manual-steps.md` §12).
 ```powershell
 docker compose -f legacy\docker-compose.yml start     # el SQL Server que lee el extractor CDC
 .\airflow\levantar.ps1                                  # build + up -d; UI en http://localhost:8080
-docker compose -f airflow\docker-compose.yml stop       # detener (conserva la base de Airflow)
+docker compose -p entity360-airflow stop       # detener (conserva la base de Airflow)
 ```
 
 La UI escucha solo en `localhost` y todos los usuarios son admin (uso local).
+
+Para detener o bajar se usa el **nombre del proyecto** (`-p entity360-airflow`), no el archivo: el
+compose exige las credenciales (`${...:?}`) hasta para interpolar un `stop`, y fuera de `levantar.ps1`
+no están en el entorno.
 
 **Con la PC apagada no se procesa nada nuevo** (ADR 0006): los productores siguen aterrizando lotes y
 la primera corrida de Airflow los toma todos. No se pierde nada.
