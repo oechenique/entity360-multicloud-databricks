@@ -7,15 +7,21 @@ Por archivo:
   del job lo vuelve a entregar (paso 0, punto 3). El productor sube el manifest después de los datos.
 - sha256 del contenido distinto del manifest, o cantidad de líneas distinta de `registros` -> error:
   no se ingiere y queda en ops.ingestion_log para revisar a mano.
-- veredicto del contrato de llegada en `cuarentena` (contracts/verificar.py, regla 09) ->
-  cuarentena_contrato: no se ingiere; el veredicto dice qué check crítico falló. Un lote sin veredicto
-  se ingiere (el contrato todavía no corrió: ver docs/estado.md, decisión pendiente de la fase 8).
+- sin veredicto del contrato de llegada (contracts/verificar.py, regla 09), o con un veredicto de otro
+  contenido (otro sha256) -> excepción, igual que sin manifest: el lote no entra sin verificar
+  (ADR 0006). Airflow corre los contratos antes de disparar el job.
+- veredicto en `cuarentena` -> cuarentena_contrato: no se ingiere; el veredicto dice qué check crítico
+  falló.
 - sha256 ya ingerido desde otro archivo (o repetido dentro del mismo lote) -> duplicado: no se ingiere.
 - si no -> ingerido_bronze.
 """
 
 
 class ManifestPendiente(RuntimeError):
+    pass
+
+
+class ContratoPendiente(RuntimeError):
     pass
 
 
@@ -32,20 +38,31 @@ def contrato_de(ruta_datos: str) -> str:
 
 
 def clasificar(archivos: list[dict], manifests: dict[str, dict | None], ingeridos: dict[str, str],
-               contratos: dict[str, dict | None] | None = None) -> list[dict]:
+               contratos: dict[str, dict | None]) -> list[dict]:
     """archivos: {ruta, sha256, lineas}; manifests: ruta de datos -> manifest (None si no está);
     ingeridos: sha256 -> ruta ya ingerida (estado ingerido_bronze en ops.ingestion_log);
-    contratos: ruta de datos -> veredicto del contrato de llegada (None o ausente si no corrió)."""
-    contratos = contratos or {}
+    contratos: ruta de datos -> veredicto del contrato de llegada (None si no corrió)."""
     faltan = [a["ruta"] for a in archivos if manifests.get(a["ruta"]) is None]
     if faltan:
         raise ManifestPendiente(f"sin manifest todavía (se reintenta): {', '.join(sorted(faltan))}")
+    sin_veredicto = [a["ruta"] for a in archivos if not contratos.get(a["ruta"])]
+    otro_contenido = [a["ruta"] for a in archivos
+                      if contratos.get(a["ruta"]) and contratos[a["ruta"]].get("sha256") != a["sha256"]]
+    if sin_veredicto or otro_contenido:
+        partes = []
+        if sin_veredicto:
+            partes.append(f"sin veredicto del contrato (correr contracts/verificar.py --pendientes): "
+                          f"{', '.join(sorted(sin_veredicto))}")
+        if otro_contenido:
+            partes.append(f"veredicto de otro contenido (borrar el _contrato y re-verificar): "
+                          f"{', '.join(sorted(otro_contenido))}")
+        raise ContratoPendiente("; ".join(partes))
     vistos = dict(ingeridos)
     salida = []
     for a in sorted(archivos, key=lambda a: a["ruta"]):
         m = manifests[a["ruta"]]
-        c = contratos.get(a["ruta"])
-        if c and c.get("estado") == "cuarentena" and c.get("sha256") == a["sha256"]:
+        c = contratos[a["ruta"]]
+        if c.get("estado") == "cuarentena":
             estado, motivo = "cuarentena_contrato", "contrato: " + ", ".join(c.get("fallas_criticas") or [])
         elif m.get("sha256") != a["sha256"]:
             estado, motivo = "error", "sha256 distinto del manifest"

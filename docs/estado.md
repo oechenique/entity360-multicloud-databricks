@@ -32,14 +32,10 @@
 2. **Paso 5 de la fase 6, después de la parte B:** calibrar pesos y umbrales con la mitad del set
    (partición por estrato, semilla fija) y publicar precisión y recall con intervalo de Wilson sobre la
    otra mitad.
-3. **Decisión de diseño para la fase 8 — lotes sin veredicto de contrato.** Hoy Bronze ingiere un lote
-   que todavía no tiene `_contrato_*.json` (solo frena los que están en cuarentena). Como el job corre
-   solo a las 08:45 y los contratos corren en Airflow local, un lote malo puede entrar si Airflow no
-   corrió antes. Opciones: (a) Bronze exige el veredicto (como exige el manifest) y el schedule del job
-   pasa a Airflow; con la PC apagada no se procesa nada nuevo, pero no se pierde nada. (b) Dejarlo como
-   está. Recomendación: (a).
-4. **Borrar `entity360.gold.prueba_contrato`:** tabla de prueba de la fase 7 (Iceberg + contrato). Es
-   un `DROP TABLE`: espera confirmación.
+3. ~~Lotes sin veredicto~~ **resuelto (ADR 0006):** Bronze exige el veredicto y el schedule de las
+   08:45 está **pausado**: el job lo dispara Airflow (fase 8). Cuarentena probada de punta a punta
+   (`contracts/evidencia/cuarentena-punta-a-punta.txt`).
+4. ~~Borrar `gold.prueba_contrato`~~ **hecho** (2026-09-27).
 5. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
 
@@ -47,5 +43,5 @@
 - `main` = `origin/main`.
 - SQL Server del legacy: contenedor detenido, volumen intacto
   (`docker compose -f legacy\docker-compose.yml start`).
-- Sin procesos corriendo. Próxima corrida del job: schedule de las 08:45.
+- Sin procesos corriendo. El job no corre solo: schedule pausado (ADR 0006).
 - Entornos locales: `.venv` (fase 6), `contracts\.venv` (Soda), `dbt\.venv` (dbt), todos ignorados.

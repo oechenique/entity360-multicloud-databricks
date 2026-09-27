@@ -1,0 +1,22 @@
+# Fase 7: prueba de cuarentena de punta a punta (2026-09-27, 22:12 UTC). ADR 0006.
+# Lote real de Wikidata (wikidata_20260926T222617Z.jsonl, 20 líneas) truncado a 12 líneas, subido como
+# wikidata_20260927T221243Z.jsonl con el manifest del lote completo (sha256 27405d2c…, 20 registros):
+# simula una subida cortada. Orden del productor: datos y después manifest.
+archivo sha256 de4f3b9fd581…, 12 líneas | manifest sha256 27405d2c7d1f…, registros 20
+
+## 1. Contratos (contracts/verificar.py --pendientes)
+[alerta sin canal configurado] entity360: lote en cuarentena (wikidata)
+wikidata: wikidata_20260927T221243Z.jsonl -> cuarentena (sha256 del manifest, registros del manifest)
+lotes en cuarentena en esta corrida: 1
+
+## 2. Bronze (job entity360-medallion, solo la tarea bronze, run 143301879477895): SUCCESS
+bronze.wikidata: 0 filas nuevas
+ops.ingestion_log: ...; wikidata/cuarentena_contrato=1; wikidata/duplicado=1; wikidata/ingerido_bronze=1
+SELECT ... FROM ops.ingestion_log WHERE archivo LIKE '%20260927T221243Z%'
+  wikidata | wikidata_20260927T221243Z.jsonl | de4f3b9fd581 | 20 | cuarentena_contrato
+SELECT count(*) FROM bronze.wikidata WHERE _archivo LIKE '%20260927T221243Z%'  ->  0
+
+## 3. Limpieza
+Borrados del landing: wikidata_20260927T221243Z.jsonl, _manifest_… y _contrato_… (y la carpeta
+ingest_date=2026-09-27 de wikidata, que quedó vacía). La fila cuarentena_contrato de ops.ingestion_log
+queda como traza de la prueba.

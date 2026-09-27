@@ -33,8 +33,11 @@ Además, `verificar.py` compara el lote con su manifest: **sha256** y **cantidad
 
 `verificar.py` escribe `_contrato_<ts>.json` junto al manifest del lote, con el estado (`aprobado` o
 `cuarentena`), las fallas críticas, los avisos y el resultado de cada check. Bronze
-(`databricks/medallion/capa2.py`) no ingiere un lote en `cuarentena`: queda como `cuarentena_contrato`
-en `ops.ingestion_log`. El veredicto es de un sha256: si el archivo cambia, ese veredicto no aplica.
+(`databricks/medallion/capa2.py`) **exige** el veredicto (ADR 0006): un lote sin veredicto frena su
+fuente hasta que se verifique, y uno en `cuarentena` no se ingiere y queda como `cuarentena_contrato`
+en `ops.ingestion_log`. El veredicto es de un sha256: si el archivo cambia, hay que volver a verificarlo.
+
+Prueba de punta a punta con un lote real truncado: `evidencia/cuarentena-punta-a-punta.txt`.
 
 Un lote en cuarentena se revisa a mano. Si fue un error de la fuente, el productor reenvía un lote nuevo
 (otro timestamp) y ese se verifica solo.

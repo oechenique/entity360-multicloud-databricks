@@ -42,6 +42,7 @@ resource "databricks_workspace_file" "alias_gdelt" {
 # concurrentes y cuota diaria de cómputo). Los reintentos cubren el "manifest todavía no llegó"
 # (paso 0: el micro-batch falla y el checkpoint no avanza). Una corrida por día, después de los
 # productores diarios (enriquecimiento 06:17, SEC EDGAR 08:00); GDELT y el CDC se acumulan.
+# Desde el ADR 0006 lo dispara Airflow: el schedule está pausado.
 resource "databricks_job" "medallion" {
   name                = "entity360-medallion"
   description         = "Bronze (Auto Loader) -> Silver (SCD2, normalización, cuarentena) -> resolución de identidades. Regla 08, ADR 0004."
@@ -103,7 +104,9 @@ resource "databricks_job" "medallion" {
   schedule {
     quartz_cron_expression = "0 45 8 * * ?"
     timezone_id            = "America/Argentina/Buenos_Aires"
-    pause_status           = "UNPAUSED" # activo desde el 2026-09-27, después de dos corridas manuales verificadas
+    # Pausado desde el 2026-09-27 (ADR 0006): Bronze exige el veredicto del contrato de llegada y lo
+    # dispara Airflow (fase 8) después de los contratos. El schedule queda declarado como referencia.
+    pause_status = "PAUSED"
   }
 
   tags = {

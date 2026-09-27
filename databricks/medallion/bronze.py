@@ -9,8 +9,9 @@ manifest, paso 0), los lotes repetidos quedan como `duplicado` en ops.ingestion_
 es un MERGE insert-only por (_sha256, _linea): reprocesar no suma filas. Iceberg gestionado no admite
 append en streaming (paso 0): solo MERGE, desde foreachBatch.
 
-Un lote que el contrato de llegada (Soda, regla 09) puso en cuarentena no se ingiere: queda como
-`cuarentena_contrato` en ops.ingestion_log y las demás fuentes siguen.
+Contrato de llegada (Soda, regla 09, ADR 0006): un lote sin veredicto hace fallar el micro-batch de
+su fuente, como uno sin manifest (el reintento lo vuelve a tomar); uno en cuarentena no se ingiere y
+queda como `cuarentena_contrato` en ops.ingestion_log. Airflow corre los contratos y después el job.
 
 Un lote con `error` (hash o cantidad de registros distintos del manifest) no se ingiere y la tarea
 termina fallida al final, después de procesar las demás fuentes, hasta que alguien lo revise
