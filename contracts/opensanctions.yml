@@ -1,0 +1,43 @@
+# Contrato de llegada de opensanctions (regla 09, Soda Core 4).
+# Nivel `fail` = crítico: el lote va a cuarentena y no entra a Bronze. `level: warn` = aviso, el lote pasa.
+# El sha256 y la cantidad de registros contra el manifest los verifica contracts/verificar.py.
+dataset: lote/main/lote
+columns:
+  - name: id
+    checks:
+      - missing:
+  - name: name
+    checks:
+      - missing:
+  - name: schema
+    checks:
+      - missing:
+      - invalid:
+          valid_values: [Company, Organization, LegalEntity, PublicBody]
+          threshold:
+            level: warn
+  - name: leis
+  - name: countries
+  - name: aliases
+  - name: last_change
+checks:
+  - schema:
+      allow_extra_columns: true
+      allow_other_column_order: true
+  - duplicate:
+      columns: [id]
+  - freshness:
+      # El export consolidado se actualiza todos los días: una semana sin cambios es un atraso.
+      column: last_change
+      threshold:
+        level: warn
+        unit: day
+        must_be_less_than: 7
+  - row_count:
+      # El filtro del productor deja ~2.600 entidades (2026-09-27): fuera de rango es un cambio del filtro.
+      qualifier: volumen
+      threshold:
+        level: warn
+        must_be_between:
+          greater_than_or_equal: 1000
+          less_than_or_equal: 10000

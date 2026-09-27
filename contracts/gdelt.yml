@@ -1,0 +1,51 @@
+# Contrato de llegada de gdelt (regla 09, Soda Core 4).
+# Nivel `fail` = crítico: el lote va a cuarentena y no entra a Bronze. `level: warn` = aviso, el lote pasa.
+# El sha256 y la cantidad de registros contra el manifest los verifica contracts/verificar.py.
+dataset: lote/main/lote
+columns:
+  - name: gkg_record_id
+    checks:
+      - missing:
+  - name: entidad
+    checks:
+      - missing:
+      # Las claves de producers/gcp_gdelt/alias.json (un test verifica que coincidan).
+      - invalid:
+          valid_values: [GGAL, BANCO_GALICIA, BMA, MELI, VIST, CEPU, YPF, PAM, TEO, TGS, EDN, SUPV, BBAR, CRESY, IRS, LOMA, GLOB]
+  - name: fecha_gdelt
+    checks:
+      - missing:
+  - name: tono
+    data_type: DOUBLE
+    checks:
+      - invalid:
+          valid_min: -100
+          valid_max: 100
+  - name: url
+    checks:
+      - missing:
+          threshold:
+            level: warn
+  - name: lote_utc
+  - name: medio
+  - name: formas
+checks:
+  - schema:
+      allow_extra_columns: true
+      allow_other_column_order: true
+  - duplicate:
+      columns: [gkg_record_id, entidad]
+  - freshness:
+      # La ventana de la consulta es de 24 h (ADR 0003): una mención más vieja que 26 h es un atraso.
+      column: fecha_gdelt
+      threshold:
+        level: warn
+        unit: hour
+        must_be_less_than: 26
+  - row_count:
+      qualifier: volumen
+      threshold:
+        level: warn
+        must_be_between:
+          greater_than_or_equal: 1
+          less_than_or_equal: 2000

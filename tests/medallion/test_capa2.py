@@ -56,3 +56,31 @@ def test_errores(m, motivo):
     a = arch("T1", "s1")
     [r] = capa2.clasificar([a], {a["ruta"]: m}, {})
     assert r["estado"] == "error" and motivo in r["motivo"]
+
+
+# ------------------------------------------------------------------ contrato de llegada (regla 09)
+
+def test_contrato_de():
+    assert capa2.contrato_de(f"{R}/wikidata_20260926T222617Z.jsonl") == f"{R}/_contrato_20260926T222617Z.json"
+
+
+def test_lote_en_cuarentena_por_contrato_no_se_ingiere():
+    a = arch("T1", "s1")
+    c = {"estado": "cuarentena", "sha256": "s1", "fallas_criticas": ["invalid op"]}
+    [r] = capa2.clasificar([a], {a["ruta"]: man("s1")}, {}, {a["ruta"]: c})
+    assert (r["estado"], r["motivo"]) == ("cuarentena_contrato", "contrato: invalid op")
+
+
+def test_contrato_aprobado_o_ausente_se_ingiere():
+    a, b = arch("T1", "s1"), arch("T2", "s2")
+    [ra, rb] = capa2.clasificar([a, b], {a["ruta"]: man("s1"), b["ruta"]: man("s2")}, {},
+                                {a["ruta"]: {"estado": "aprobado", "sha256": "s1"}})
+    assert ra["estado"] == rb["estado"] == "ingerido_bronze"
+
+
+def test_veredicto_de_otro_contenido_no_aplica():
+    """El veredicto es de un sha256: si el archivo cambió después, no se usa ese veredicto."""
+    a = arch("T1", "s2")
+    c = {"estado": "cuarentena", "sha256": "s1", "fallas_criticas": ["invalid op"]}
+    [r] = capa2.clasificar([a], {a["ruta"]: man("s2")}, {}, {a["ruta"]: c})
+    assert r["estado"] == "ingerido_bronze"

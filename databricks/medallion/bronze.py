@@ -9,6 +9,9 @@ manifest, paso 0), los lotes repetidos quedan como `duplicado` en ops.ingestion_
 es un MERGE insert-only por (_sha256, _linea): reprocesar no suma filas. Iceberg gestionado no admite
 append en streaming (paso 0): solo MERGE, desde foreachBatch.
 
+Un lote que el contrato de llegada (Soda, regla 09) puso en cuarentena no se ingiere: queda como
+`cuarentena_contrato` en ops.ingestion_log y las demás fuentes siguen.
+
 Un lote con `error` (hash o cantidad de registros distintos del manifest) no se ingiere y la tarea
 termina fallida al final, después de procesar las demás fuentes, hasta que alguien lo revise
 (estado -> `revisado` en ops.ingestion_log).
@@ -58,13 +61,14 @@ def procesar(fuente: str, tabla: str):
         conteo = {r.path: r["count"] for r in lineas.groupBy("path").count().collect()}
         archivos = [{"ruta": p.replace("dbfs:", ""), "path": p, "sha256": r.sha256, "lineas": conteo.get(p, 0),
                      "aterrizado": r.modificationTime} for p, r in info.items()]
-        manifests = {}
+        manifests, contratos = {}, {}
         for a in archivos:
-            m = Path(capa2.manifest_de(a["ruta"]))
+            m, c = Path(capa2.manifest_de(a["ruta"])), Path(capa2.contrato_de(a["ruta"]))
             manifests[a["ruta"]] = json.loads(m.read_text(encoding="utf-8")) if m.exists() else None
+            contratos[a["ruta"]] = json.loads(c.read_text(encoding="utf-8")) if c.exists() else None
         ingeridos = {r.sha256: r.archivo for r in s.table(comun.INGESTION_LOG)
                      .where("estado = 'ingerido_bronze'").select("sha256", "archivo").collect()}
-        decision = capa2.clasificar(archivos, manifests, ingeridos)
+        decision = capa2.clasificar(archivos, manifests, ingeridos, contratos)
 
         ok = [(d["path"], json.dumps(d["manifest"], ensure_ascii=False, sort_keys=True))
               for d in decision if d["estado"] == "ingerido_bronze"]

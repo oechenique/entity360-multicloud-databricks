@@ -1,0 +1,4 @@
+# Contratos de llegada (regla 09). Entorno propio: contracts\.venv
+soda-core==4.25.0
+soda-duckdb==4.25.0
+databricks-sdk==0.143.0

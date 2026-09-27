@@ -1,0 +1,48 @@
+# Contrato de llegada de sqlserver_cdc (CDC del legacy) (regla 09, Soda Core 4).
+# Nivel `fail` = crítico: el lote va a cuarentena y no entra a Bronze. `level: warn` = aviso, el lote pasa.
+# El sha256 y la cantidad de registros contra el manifest los verifica contracts/verificar.py.
+dataset: lote/main/lote
+columns:
+  - name: tabla
+    checks:
+      - missing:
+      - invalid:
+          valid_values: [entidad, direccion, nombre_alternativo, relacion]
+  - name: op
+    checks:
+      - missing:
+      - invalid:
+          valid_values: [insert, update, update_antes, delete]
+  - name: lsn
+    checks:
+      - missing:
+      - invalid:
+          valid_format:
+            name: LSN hexadecimal de ancho fijo
+            regex: '^0x[0-9A-F]{20}$'
+  - name: seqval
+    checks:
+      - missing:
+  - name: commit_time
+    checks:
+      - missing:
+  - name: lei
+    checks:
+      - missing:
+      - invalid:
+          valid_format:
+            name: LEI (ISO 17442)
+            regex: '^[0-9A-Z]{18}[0-9]{2}$'
+checks:
+  - schema:
+      allow_extra_columns: true
+      allow_other_column_order: true
+  - duplicate:
+      columns: [tabla, lsn, seqval, op]
+  - row_count:
+      qualifier: volumen
+      threshold:
+        level: warn
+        must_be_between:
+          greater_than_or_equal: 1
+          less_than_or_equal: 5000

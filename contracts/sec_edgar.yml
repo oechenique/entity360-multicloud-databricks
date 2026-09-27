@@ -1,0 +1,32 @@
+# Contrato de llegada de sec_edgar (regla 09, Soda Core 4).
+# Nivel `fail` = crítico: el lote va a cuarentena y no entra a Bronze. `level: warn` = aviso, el lote pasa.
+# El sha256 y la cantidad de registros contra el manifest los verifica contracts/verificar.py.
+dataset: lote/main/lote
+columns:
+  - name: cik
+    checks:
+      - missing:
+  - name: nombre
+    checks:
+      - missing:
+  - name: ticker
+    checks:
+      - missing:
+          threshold:
+            level: warn
+  - name: estado_incorporacion
+  - name: ultima_presentacion
+  - name: extraido_utc
+checks:
+  - schema:
+      allow_extra_columns: true
+      allow_other_column_order: true
+  - duplicate:
+      columns: [cik]
+  - row_count:
+      qualifier: volumen
+      threshold:
+        level: warn
+        must_be_between:
+          greater_than_or_equal: 1
+          less_than_or_equal: 100

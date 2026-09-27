@@ -1,0 +1,32 @@
+# Contrato de llegada de wikidata (regla 09, Soda Core 4).
+# Nivel `fail` = crítico: el lote va a cuarentena y no entra a Bronze. `level: warn` = aviso, el lote pasa.
+# El sha256 y la cantidad de registros contra el manifest los verifica contracts/verificar.py.
+dataset: lote/main/lote
+columns:
+  - name: qid
+    checks:
+      - missing:
+      - invalid:
+          valid_format:
+            name: QID
+            regex: '^Q[0-9]+$'
+  - name: etiqueta_es
+  - name: etiqueta_en
+  - name: leis
+  - name: ciks
+checks:
+  - schema:
+      allow_extra_columns: true
+      allow_other_column_order: true
+  - duplicate:
+      columns: [qid]
+  - failed_rows:
+      name: con alguna etiqueta
+      expression: etiqueta_es IS NULL AND etiqueta_en IS NULL
+  - row_count:
+      qualifier: volumen
+      threshold:
+        level: warn
+        must_be_between:
+          greater_than_or_equal: 5
+          less_than_or_equal: 200

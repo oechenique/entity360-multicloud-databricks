@@ -33,3 +33,9 @@ producers/cdc_extractor/state/
 
 # Fase 3: zips de las Lambdas (los genera Terraform)
 infra/aws/sec_edgar/build/
+
+# Fase 7: artefactos de dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
