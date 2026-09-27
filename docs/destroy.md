@@ -168,3 +168,14 @@ Verificación: `gcloud iam workload-identity-pools list --location=global --proj
 pools activos (`--show-deleted` los muestra en `DELETED`), `gcloud iam service-accounts list
 --project $proyecto` sin `entity360-gdelt`, `bq ls --project_id=$proyecto` sin `entity360_gdelt` y
 `terraform state list` vacío en `infra/gcp`.
+
+## Medallion (fase 6)
+Todo en `infra/databricks`: el `terraform destroy` del paso 1 borra el job `entity360-medallion`,
+el código en `/Shared/entity360/medallion` y el volume `ops.checkpoints`. Las tablas de `bronze`,
+`silver` y `resolution` (Iceberg gestionadas) se borran con los schemas (`force_destroy = true`).
+Si el schedule está activo, pausarlo antes (`pause_status = "PAUSED"` en `medallion.tf` y
+`terraform apply`), para que no arranque una corrida a mitad del destroy.
+
+Para reprocesar una fuente desde cero sin destruir
+nada: borrar su checkpoint (`databricks fs rm -r dbfs:/Volumes/entity360/ops/checkpoints/<fuente>`);
+la capa 2 evita filas duplicadas en Bronze.

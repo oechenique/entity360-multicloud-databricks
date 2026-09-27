@@ -1,0 +1,44 @@
+# Fase 6, pasos 1 a 3 (2026-09-27): job entity360-medallion (Terraform, infra/databricks/medallion.tf)
+# Serverless, environment 4. Schedule diario 08:45 (Buenos Aires) creado en PAUSA.
+
+## Corrida 1 (manual, landing con los lotes de las fases 2 a 5): SUCCESS, 6,6 min (bronze 2,1 + silver 4,5)
+bronze.sqlserver_cdc: 4036 filas nuevas        # 4025 + 11 (manifests del 2026-09-25 y 2026-09-26)
+bronze.sec_edgar: 16 filas nuevas
+bronze.gdelt: 10 filas nuevas
+bronze.opensanctions: 2597 filas nuevas
+bronze.wikidata: 20 filas nuevas
+ops.ingestion_log: gdelt/ingerido_bronze=1; opensanctions/ingerido_bronze=1; sec_edgar/ingerido_bronze=1; sqlserver_cdc/ingerido_bronze=2; wikidata/ingerido_bronze=1
+silver.gleif_entidad_hist: 1167 versiones, 1163 vigentes            # 1162 inserts + 1 insert + 4 updates reales
+silver.gleif_direccion_hist: 2327 versiones, 2326 vigentes          # 2324 + 2 inserts + 1 update
+silver.gleif_nombre_alternativo_hist: 147 versiones, 147 vigentes
+silver.gleif_relacion_hist: 395 versiones, 393 vigentes             # 393 + 2 updates (estado_registro)
+silver (cuarentena, filas...): {"gleif_cuarentena": 0, "gleif_lei": 1163, "sec_edgar": [0, 16, 22], "opensanctions": [21, 2597, 13096], "wikidata": [0, 20, 23], "gdelt": [0, 10]}
+
+## Corrida 2 (manual): capa 2 de punta a punta + reproceso de Silver. SUCCESS, 5,3 min
+# Antes: copia idéntica del lote de Wikidata subida con otro nombre (wikidata_20260927T004500Z.jsonl,
+# mismo sha256 27405d2c…, manifest con el archivo nuevo), como un reenvío del productor.
+bronze.sqlserver_cdc: 0 filas nuevas
+bronze.sec_edgar: 0 filas nuevas
+bronze.gdelt: 0 filas nuevas
+bronze.opensanctions: 0 filas nuevas
+bronze.wikidata: 0 filas nuevas
+ops.ingestion_log: ...; wikidata/duplicado=1; wikidata/ingerido_bronze=1
+silver: mismos conteos que la corrida 1 (el reproceso no abre versiones SCD2 ni duplica filas).
+# Después: los dos archivos de prueba se borraron del landing (ingest_date=2026-09-27); la fila
+# `duplicado` de ops.ingestion_log queda como traza de la prueba.
+
+## Cuarentena
+- 21 filas de OpenSanctions, no bloqueantes: su campo `leis` trae identificadores que no son LEI
+  (CIN de India como U51909DL2006PTC14620, cuentas rusas como 40807810240000000002). Se descarta el
+  identificador y el registro pasa.
+- 68 LEI del legacy fallan el dígito de control: todos de la LOU argentina (5791…, 2015) y ANNULLED
+  en GLEIF. No van a cuarentena (son el registro oficial): silver.gleif_lei.lei_valido = false.
+
+## Universo para la resolución (Silver)
+- GLEIF: 1163 entidades vigentes (1095 con LEI válido).
+- OpenSanctions: 2597, de las cuales 52 en el universo (AR o LEI del legacy); 33 sin LEI.
+- Wikidata: 20 ítems, 9 sin LEI. SEC EDGAR: 16 emisores, 22 nombres (6 anteriores).
+
+## Consumo
+system.billing.usage llega con ~12 h de retraso (último dato al cierre: 2026-09-26 12:00 UTC):
+el DBU por corrida (usage_metadata.job_id = id del job) queda pendiente de medir.
