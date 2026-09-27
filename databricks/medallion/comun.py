@@ -30,9 +30,10 @@ def spark_y_modulos():
     from pyspark.sql import SparkSession
 
     import capa2
+    import identidades
     import normalizacion
     import scd2
-    for m in (capa2, normalizacion, scd2, sys.modules[__name__]):
+    for m in (capa2, identidades, normalizacion, scd2, sys.modules[__name__]):
         cloudpickle.register_pickle_by_value(m)
     return SparkSession.builder.getOrCreate()
 
@@ -45,3 +46,22 @@ def comentar(spark, tabla: str, comentario: str, capa: str, columnas: dict[str, 
     spark.sql(f"ALTER TABLE {tabla} SET TAGS ('capa' = '{capa}')")
     for col, texto in (columnas or {}).items():
         spark.sql(f"ALTER TABLE {tabla} ALTER COLUMN {col} COMMENT {q(texto)}")
+
+
+def ddl(df) -> str:
+    return ", ".join(f"`{f.name}` {f.dataType.simpleString()}" for f in df.schema.fields)
+
+
+def publicar(spark, df, tabla: str, claves: list[str], comentario: str, capa: str,
+             columnas: dict[str, str] | None = None, borrar_faltantes: bool = True) -> int:
+    """MERGE por clave natural: actualiza, inserta y (si se pide) borra lo que ya no está en la fuente.
+    Iceberg gestionado se escribe solo con MERGE (paso 0)."""
+    spark.sql(f"CREATE TABLE IF NOT EXISTS {tabla} ({ddl(df)}) USING ICEBERG")
+    comentar(spark, tabla, comentario, capa, columnas)
+    df.createOrReplaceTempView("fuente_publicar")
+    on = " AND ".join(f"t.`{c}` <=> s.`{c}`" for c in claves)
+    spark.sql(f"""MERGE INTO {tabla} t USING fuente_publicar s ON {on}
+                  WHEN MATCHED THEN UPDATE SET *
+                  WHEN NOT MATCHED THEN INSERT *
+                  {"WHEN NOT MATCHED BY SOURCE THEN DELETE" if borrar_faltantes else ""}""")
+    return spark.table(tabla).count()

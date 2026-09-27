@@ -68,22 +68,12 @@ def con_nombre(df, col: str, prefijo: str = "nombre"):
 
 # ------------------------------------------------------------------ escritura
 
-def ddl(df) -> str:
-    return ", ".join(f"`{f.name}` {f.dataType.simpleString()}" for f in df.schema.fields)
+ddl = comun.ddl
 
 
 def publicar(df, tabla: str, claves: list[str], comentario: str, columnas: dict[str, str] | None = None,
              borrar_faltantes: bool = True) -> int:
-    """MERGE por clave natural: actualiza, inserta y (si se pide) borra lo que ya no está en la fuente."""
-    spark.sql(f"CREATE TABLE IF NOT EXISTS {tabla} ({ddl(df)}) USING ICEBERG")
-    comun.comentar(spark, tabla, comentario, "silver", columnas)
-    df.createOrReplaceTempView("fuente_silver")
-    on = " AND ".join(f"t.`{c}` <=> s.`{c}`" for c in claves)
-    spark.sql(f"""MERGE INTO {tabla} t USING fuente_silver s ON {on}
-                  WHEN MATCHED THEN UPDATE SET *
-                  WHEN NOT MATCHED THEN INSERT *
-                  {"WHEN NOT MATCHED BY SOURCE THEN DELETE" if borrar_faltantes else ""}""")
-    return spark.table(tabla).count()
+    return comun.publicar(spark, df, tabla, claves, comentario, "silver", columnas, borrar_faltantes)
 
 
 def cuarentena(df, fuente: str, motivo_col: str, bloqueante: bool):

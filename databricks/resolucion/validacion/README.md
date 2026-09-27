@@ -8,7 +8,7 @@ Son unas 120 decisiones en dos tandas:
 | Parte | Qué mide | Archivo | Unidad |
 |---|---|---|---|
 | **A** | Recall (y el del blocking) | `parte_a.csv` | Un **registro** que necesita matching difuso: ¿cuál es su LEI en el legacy, si tiene? |
-| **B** | Precisión en los casos difíciles | `parte_b.csv` (se genera después de la parte A) | Un **par** de registros: ¿son la misma entidad? |
+| **B** | Precisión en los pares que la parte A no decide | `parte_b.csv` (sale de la primera corrida de la resolución) | Un **par** de registros: ¿son la misma entidad? |
 
 Precisión y recall se publican con **intervalo de Wilson al 95 %** (`databricks/medallion/metricas.py`).
 Los pesos y umbrales se calibran con la mitad de las decisiones (partición por estrato, semilla fija) y
@@ -38,6 +38,21 @@ las métricas se informan sobre la otra mitad.
 - Si hay dos LEI de la misma entidad (duplicado en GLEIF), elegir el que está `ISSUED` y anotarlo
   en `evidencia`.
 
+## Parte B: cómo etiquetar
+
+**Etiquetar la parte B después de terminar la parte A**: la parte B muestra pares que la resolución
+juntó, y verlos antes puede anclar las respuestas de la parte A.
+
+- Cada fila es un **par** de registros (`a_…` y `b_…`) que la primera corrida de la resolución (pesos
+  sin calibrar) comparó. Sin puntaje y en orden aleatorio, como en la parte A.
+- No están los pares de un registro de la parte A contra GLEIF: esos los decide la respuesta de la
+  parte A. Están los duplicados dentro de GLEIF (un LEI anulado contra uno vigente) y los pares entre
+  fuentes sin LEI.
+- Completar `respuesta` (`si`, `no` o `incierto`), `evidencia` (**obligatoria**) y `fecha`, con el
+  mismo criterio de **misma entidad legal** de la parte A.
+- `parte_b_estratos.csv` tiene el estrato de cada par (dudoso, positivo difícil, negativo difícil,
+  fácil), que se usa para partir el set en calibración y evaluación. **No abrirlo antes de terminar.**
+
 ## Regenerar
 
 ```powershell
@@ -45,7 +60,11 @@ las métricas se informan sobre la otra mitad.
 .venv\Scripts\python.exe databricks\resolucion\validacion\generar_parte_a.py
 ```
 
-El script **pisa** `parte_a.csv`: no regenerarlo después de empezar a etiquetar.
+```powershell
+.venv\Scripts\python.exe databricks\resolucion\validacion\generar_parte_b.py
+```
+
+Los scripts **pisan** `parte_a.csv` y `parte_b.csv`: no regenerarlos después de empezar a etiquetar.
 
 ## Fuentes y licencias
 Nombres e identificadores de registros públicos: GLEIF (CC0), SEC EDGAR (dominio público),

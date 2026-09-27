@@ -30,6 +30,12 @@ resource "databricks_workspace_file" "medallion" {
   path     = "${databricks_directory.medallion.path}/${each.value}"
 }
 
+# La tarea `resolucion` lee las claves de GDELT del diccionario de alias del productor (fase 4).
+resource "databricks_workspace_file" "alias_gdelt" {
+  source = "${path.module}/../../producers/gcp_gdelt/alias.json"
+  path   = "${databricks_directory.medallion.path}/alias.json"
+}
+
 # --------------------------------------------------------------------------- job
 
 # ADR 0004: job de PySpark explícito, serverless. Una tarea por capa (Free Edition: pocas tareas
@@ -38,13 +44,14 @@ resource "databricks_workspace_file" "medallion" {
 # productores diarios (enriquecimiento 06:17, SEC EDGAR 08:00); GDELT y el CDC se acumulan.
 resource "databricks_job" "medallion" {
   name                = "entity360-medallion"
-  description         = "Bronze (Auto Loader) -> Silver (SCD2, normalización, cuarentena). Regla 08, ADR 0004."
+  description         = "Bronze (Auto Loader) -> Silver (SCD2, normalización, cuarentena) -> resolución de identidades. Regla 08, ADR 0004."
   max_concurrent_runs = 1
 
   environment {
     environment_key = "default"
     spec {
       environment_version = "4"
+      dependencies        = ["rapidfuzz==3.14.6"]
     }
   }
 
@@ -71,6 +78,22 @@ resource "databricks_job" "medallion" {
     }
     spark_python_task {
       python_file = databricks_workspace_file.medallion["silver.py"].workspace_path
+      source      = "WORKSPACE"
+    }
+  }
+
+  # rapidfuzz: verificado en el paso 0 (se instala en el environment serverless).
+  task {
+    task_key                  = "resolucion"
+    environment_key           = "default"
+    max_retries               = 1
+    min_retry_interval_millis = 60000
+    timeout_seconds           = 1800
+    depends_on {
+      task_key = "silver"
+    }
+    spark_python_task {
+      python_file = databricks_workspace_file.medallion["resolucion.py"].workspace_path
       source      = "WORKSPACE"
     }
   }
