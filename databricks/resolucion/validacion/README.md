@@ -10,6 +10,10 @@ Son unas 120 decisiones en dos tandas:
 | **A** | Recall (y el del blocking) | `parte_a.csv` | Un **registro** que necesita matching difuso: ¿cuál es su LEI en el legacy, si tiene? |
 | **B** | Precisión en los pares que la parte A no decide | `parte_b.csv` (sale de la primera corrida de la resolución) | Un **par** de registros: ¿son la misma entidad? |
 
+**Quién etiquetó:** las dos partes las etiquetó el autor del proyecto (Gastón), en una sesión
+(2026-09-27), con una línea de evidencia por decisión. Es un solo anotador y una sola pasada: no hay
+acuerdo entre anotadores que medir, y la evidencia breve permite auditar cada decisión.
+
 Precisión y recall se publican con **intervalo de Wilson al 95 %** (`databricks/medallion/metricas.py`).
 Los pesos y umbrales se calibran con la mitad de las decisiones (partición por estrato, semilla fija) y
 las métricas se informan sobre la otra mitad.
@@ -52,7 +56,7 @@ juntó, y verlos antes puede anclar las respuestas de la parte A.
 - **Casi no hay positivos difíciles** (misma entidad con nombres muy distintos: 1 en la primera
   corrida). Esos casos son los registros de fuentes externas contra el legacy, que cubre la parte A:
   **su recall se mide en la parte A**, no en la B.
-- Completar `respuesta` (`si`, `no` o `incierto`), `evidencia` (**obligatoria**) y `fecha`, con el
+- Completar `respuesta` (`match`, `no_match` o `incierto`), `evidencia` (**obligatoria**) y `fecha`, con el
   mismo criterio de **misma entidad legal** de la parte A.
 - `parte_b_estratos.csv` tiene el estrato de cada par (dudoso, positivo difícil, negativo difícil,
   fácil), que se usa para partir el set en calibración y evaluación. **No abrirlo antes de terminar.**
