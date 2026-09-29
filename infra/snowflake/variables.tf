@@ -34,3 +34,8 @@ variable "a2_role_arn" {
   type        = string
   default     = ""
 }
+
+variable "dbt_rsa_public_key" {
+  description = "Clave PÚBLICA del usuario ENTITY360_DBT_SVC (base64 DER, snowflake/cuenta.py claves). No es un secreto."
+  type        = string
+}

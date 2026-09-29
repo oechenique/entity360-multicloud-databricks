@@ -3,6 +3,7 @@
 snowflake_profile        = "entity360"
 camino                   = "A"            # A | A2 | B (docs/fase9-plan.md §5)
 creditos_mensuales       = 20
+dbt_rsa_public_key       = "<clave pública de ENTITY360_DBT_SVC: snowflake/cuenta.py claves>"
 # Solo Camino A2:
 # a2_bucket_url = "s3://entity360-uc-<AWS_ACCOUNT_ID>/catalogs/entity360/"
 # a2_role_arn   = "arn:aws:iam::<AWS_ACCOUNT_ID>:role/entity360-snowflake-a2"

@@ -87,11 +87,13 @@ lo lleva): se deja anotado en el ADR 0012 como exposición residual, visible sol
 historial de la cuenta (ACCOUNTADMIN por defecto), y el secreto vence a los 90 días.
 
 Pasos, con el trial abierto:
-1. **Bootstrap manual** (nuevo `manual-steps.md` §13): en Snowsight, con ACCOUNTADMIN, crear el usuario
-   de servicio `ENTITY360_TF` (y `ENTITY360_DBT_SVC`) con key pair; clave privada fuera del repo; perfil
-   `entity360` en `~/.snowflake/connections.toml`. Anotar la fecha de alta del trial.
-2. `terraform.tfvars` desde el `.example` (sin secretos: perfil, camino, créditos) → `terraform plan`
-   → revisar → `apply` con OK. Crea monitor, warehouse, roles y la base de marts.
+1. **Bootstrap** (`manual-steps.md` §14): `snowflake/cuenta.py claves` genera los key pairs en
+   `~/.snowflake/keys` e imprime el único SQL que se corre en Snowsight (crea `ENTITY360_TF`, usuario de
+   servicio con la clave pública); `cuenta.py conexiones` arma los perfiles locales con el account
+   identifier. `ENTITY360_DBT_SVC` lo crea Terraform con su clave pública. Anotar la fecha de alta del trial.
+2. `terraform.tfvars` desde el `.example` (sin secretos: perfil, camino, créditos, clave pública de dbt)
+   → `terraform plan` → revisar → `apply` con OK. Crea monitor, warehouse, roles, la base de marts y el
+   usuario de dbt.
 3. `pip install -r snowflake\requirements.txt` en el `.venv` y
    `.venv\Scripts\python.exe snowflake\integracion.py crear --camino A`: integración, base
    catalog-linked, grants de lectura y `SYSTEM$VERIFY_CATALOG_INTEGRATION`. Correrlo dos veces tiene que

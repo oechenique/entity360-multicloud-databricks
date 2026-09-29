@@ -106,3 +106,20 @@ resource "snowflake_grant_account_role" "dbt_a_sysadmin" {
   role_name        = snowflake_account_role.dbt.name
   parent_role_name = "SYSADMIN"
 }
+
+# --- usuario de servicio de dbt (key pair, sin contraseña) ---------------------------------------
+# La clave pública no es un secreto: la genera snowflake/cuenta.py claves y va en terraform.tfvars.
+# La privada queda en ~/.snowflake/keys (fuera del repo) y dbt la lee por SNOWFLAKE_PRIVATE_KEY_PATH.
+
+resource "snowflake_service_user" "dbt" {
+  name              = "ENTITY360_DBT_SVC"
+  comment           = "dbt de entity360 (target snowflake): construye los marts. Key pair, sin contraseña."
+  rsa_public_key    = var.dbt_rsa_public_key
+  default_role      = snowflake_account_role.dbt.name
+  default_warehouse = snowflake_warehouse.entity360.name
+}
+
+resource "snowflake_grant_account_role" "dbt_al_usuario" {
+  role_name = snowflake_account_role.dbt.name
+  user_name = snowflake_service_user.dbt.name
+}

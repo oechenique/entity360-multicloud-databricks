@@ -233,18 +233,42 @@ Ningún secreto pasa por un state de Terraform (ADR 0012).
 3. Validación del vending (`docs/fase9-plan.md` §1): si falla, ver el criterio del §5 del plan antes de
    abrir el trial.
 
-### 14. Trial y usuario de Terraform de Snowflake
-1. Abrir el trial en **AWS us-east-2** (la región del bucket del catálogo). **Fecha de alta: ______**
-   (vence a los 30 días o al agotar el crédito).
-2. En Snowsight, con ACCOUNTADMIN: usuarios de servicio `ENTITY360_TF` (Terraform y el script) y
-   `ENTITY360_DBT_SVC` (dbt), con key pair y sin contraseña. Las claves privadas, fuera del repo.
-3. Conexión `entity360` en `~/.snowflake/connections.toml` (la usan Terraform y `integracion.py`).
+### 14. Trial, usuarios de servicio y conexiones
+Cada paso que crea algo en Snowflake se muestra antes y corre con OK.
 
-### 15. Catalog integration y base catalog-linked (ADR 0012)
-Después del `terraform apply` de `infra/snowflake` (necesita los roles y, en el A2, el external volume):
-```powershell
-.venv\Scripts\python.exe snowflake\integracion.py crear --camino A
-# Camino A2: crear --camino A2 --external-volume ENTITY360_GOLD_VOL
-.venv\Scripts\python.exe snowflake\integracion.py crear --camino A   # segunda vez: "sin cambios"
-```
-Rotar el secreto: `guardar-secreto` y `crear --camino A --rotar-secreto`.
+**Gastón (UI, lo mínimo):**
+1. Abrir el trial: **Enterprise, AWS us-east-2** (la región del bucket del catálogo). **Fecha de alta:
+   ______** (vence a los 30 días o al agotar el crédito). Pasar el account identifier `<ORG>-<CUENTA>`.
+2. Snowsight → hoja SQL nueva, rol ACCOUNTADMIN → pegar el SQL que imprimió
+   `snowflake\cuenta.py claves` (crea `ENTITY360_TF`, `TYPE = SERVICE`, solo con la clave **pública**, sin
+   contraseña) y verificar con `DESC USER ENTITY360_TF` (`HAS_PASSWORD = false`).
+3. Verificar el mail del perfil (Snowsight → perfil): los avisos del resource monitor van a los
+   ACCOUNTADMIN con mail verificado.
+
+**Claude (PC):**
+- `snowflake\cuenta.py claves` (ya hecho el 2026-09-29): pares RSA de `ENTITY360_TF` y
+  `ENTITY360_DBT_SVC` en `~/.snowflake/keys`, acceso solo del usuario de Windows. La clave pública de dbt
+  va en `infra/snowflake/terraform.tfvars` (ignorado por git; una clave pública no es un secreto).
+- Con el account identifier: `snowflake\cuenta.py conexiones --cuenta <ORG>-<CUENTA>` (perfil
+  `entity360` de `~/.snowflake/config` para Terraform y de `connections.toml` para el conector) y prueba
+  de conexión con `SELECT CURRENT_USER(), CURRENT_ROLE()` (no usa warehouse).
+
+`ENTITY360_TF` usa ACCOUNTADMIN: crear un resource monitor y una catalog integration lo exigen. Es un
+usuario de servicio sin contraseña, solo en esta PC; en una cuenta de empresa serían roles separados.
+
+### 15. Terraform, catalog integration y marts (cada paso con OK)
+1. `terraform init` y `terraform plan -out` en `infra/snowflake` → Gastón revisa el plan → `apply`:
+   resource monitor, warehouse (arranca suspendido), roles, base de marts y el usuario `ENTITY360_DBT_SVC`.
+2. Mostrar qué va a crear `integracion.py` (integración `ENTITY360_UNITY`, base `ENTITY360_UC`, grants de
+   lectura) → OK → `snowflake\integracion.py crear --camino A` y una segunda vez, que tiene que decir
+   "sin cambios". `SYSTEM$VERIFY_CATALOG_INTEGRATION` en la salida.
+3. `SHOW TABLES IN DATABASE ENTITY360_UC`: las 5 tablas de `gold` y ninguna otra. Conteos contra los de
+   Gold del 2026-09-29 (Gold no cambió desde el `dbt build` de las 15:48 UTC: `dim_entity` 1136,
+   `bridge_entity_source` 1268, `fct_risk_flags` 52, `fct_news_signal` 10, `fct_entity_changes` 4036), sin
+   usar el warehouse de Databricks.
+4. dbt de los marts (OK): `dbt\.venv` con `requirements-snowflake.txt`, variables `SNOWFLAKE_ACCOUNT`,
+   `SNOWFLAKE_USER = ENTITY360_DBT_SVC`, `SNOWFLAKE_PRIVATE_KEY_PATH`, y
+   `dbt build --target snowflake --select marts --vars "{snowflake_gold_database: ENTITY360_UC}"`.
+5. Consumo del día en `WAREHOUSE_METERING_HISTORY` (llega con demora) en `snowflake/evidencia/consumo.md`.
+
+Rotar el secreto del SP: `integracion.py guardar-secreto` y `crear --camino A --rotar-secreto`.

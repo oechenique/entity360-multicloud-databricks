@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 18:55 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 19:10 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -62,12 +62,23 @@
   token del SP, `config`, credenciales S3 temporales en `loadTable` de `gold.dim_entity`, scan de 1136
   filas (igual que la última resolución) y 403 en `silver.sec_emisor`. **Camino A.** Evidencia:
   `snowflake/evidencia/vending-sp.txt`. El trial sigue sin abrir (espera OK).
+- **Fase 9, preparación del trial (2026-09-29):** Gastón abre el trial (Enterprise, AWS us-east-2).
+  `snowflake/cuenta.py claves` ya generó los key pairs de `ENTITY360_TF` y `ENTITY360_DBT_SVC` en
+  `~/.snowflake/keys` (fuera del repo, acceso solo del usuario de Windows); la clave pública de dbt está
+  en `infra/snowflake/terraform.tfvars` (ignorado). Orden exacto en `manual-steps.md` §14–15: Gastón corre
+  un solo SQL en Snowsight (usuario `ENTITY360_TF` con la clave pública); después, con OK en cada paso,
+  `cuenta.py conexiones`, `terraform plan`/`apply` de `infra/snowflake`, `integracion.py crear --camino A`
+  y dbt de los marts. Nada creado en Snowflake todavía.
   - **Incidente:** la primera corrida imprimió el token OAuth del SP (1 h de vida, solo lectura de gold):
     el paso 1 devolvía el token y `Pasos` imprimía el resultado. Corregido (el paso devuelve una
     descripción y `Pasos` oculta el secreto y el token en todo lo que imprime), con 5 tests que fallan
-    con la versión vieja. El token vence a la hora de emitido (19:41 UTC del 2026-09-29) y no se puede revocar
-    por separado; los archivos locales con la salida, borrados.
-- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 18 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+    con la versión vieja. **El token vence a las 19:41 UTC del 2026-09-29** (una hora
+    después de emitido). **No se rota el secreto del SP:** rotarlo no invalida un token ya emitido, que
+    vive hasta su `exp`; solo cortaría tokens nuevos, y no hay indicio de que el secreto se haya
+    expuesto. Verificado (`git log -p --all`, 68 commits, y el working tree): el token nunca entró a un
+    commit. Fuera del repo quedó en el transcript local de la sesión de Claude Code; los archivos de
+    salida del scratchpad, borrados.
+- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 23 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente
