@@ -221,10 +221,20 @@ de `infra/databricks`. Borrar también las credenciales del llavero de Windows (
 ## Snowflake (fase 9)
 La fase 9 está planificada (`docs/fase9-plan.md`) y su Terraform escrito, pero **no hay recursos**: ni
 trial abierto ni `apply`. Cuando existan, antes que `infra/databricks` (Snowflake lee Gold con el SP de
-Databricks), con OK:
+Databricks), con OK.
+
+Primero lo que no es de Terraform (ADR 0012): la base catalog-linked y la catalog integration, en ese
+orden (la base depende de la integración). En Snowsight, con ACCOUNTADMIN:
+```sql
+SHOW DATABASES LIKE 'ENTITY360_UC';                 -- revisar que sea la catalog-linked
+DROP DATABASE IF EXISTS ENTITY360_UC;               -- Gold no se toca: el SP no tiene MODIFY en Unity Catalog
+SHOW CATALOG INTEGRATIONS LIKE 'ENTITY360_UNITY';
+DROP CATALOG INTEGRATION IF EXISTS ENTITY360_UNITY;
+```
+Después Terraform:
 ```powershell
 cd infra\snowflake
-terraform plan -destroy        # monitor, warehouse, integración, bases (incluida ENTITY360_UC), roles
+terraform plan -destroy        # monitor, warehouse, roles, base de marts, external volume (A2)
 terraform destroy
 ```
 Después, en `infra/databricks`, `fase9_snowflake = false` y `apply` (SP `entity360-snowflake` y sus

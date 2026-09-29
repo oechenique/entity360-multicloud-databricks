@@ -17,13 +17,14 @@ El spike lo probó con el token del usuario (4e). Acá se prueba con el principa
 No escribe nada: la protección de escritura es que el SP no tiene MODIFY. No usa el SQL warehouse (la
 metadata sale de la API de Unity Catalog y los datos, de S3), así que no consume la cuota diaria.
 
-Credenciales del SP por entorno, nunca en disco: E360_SF_CLIENT_ID y E360_SF_CLIENT_SECRET (el secreto
-se crea con `databricks service-principal-secrets-proxy create`, docs/fase9-plan.md §3).
+Credenciales del SP: del llavero de Windows (servicio "entity360-snowflake", las guarda
+`snowflake/integracion.py guardar-secreto`) o, si no, de E360_SF_CLIENT_ID y E360_SF_CLIENT_SECRET.
+Nunca en disco ni en la línea de comandos.
 
-Uso (PyIceberg está en el entorno del spike):
+Uso (en el .venv de la raíz, con snowflake/requirements.txt instalado):
     $env:AWS_CONFIG_FILE = "NUL"; $env:AWS_SHARED_CREDENTIALS_FILE = "NUL"
     $env:DATABRICKS_HOST = "https://<WORKSPACE_URL>"
-    spike\\.venv\\Scripts\\python.exe snowflake\\validar_vending.py --filas-esperadas 1136
+    .venv\\Scripts\\python.exe snowflake\\validar_vending.py --filas-esperadas 1136
 Sale 0 si todo pasa, 1 si algo falla, 2 si no se pudo aislar de las credenciales locales de AWS.
 """
 
@@ -44,6 +45,15 @@ def credenciales_locales_aws() -> list[str]:
         if ruta.upper() != "NUL" and os.path.exists(os.path.expanduser(ruta)):
             fuga.append(var)
     return fuga
+
+
+def credenciales_sp() -> tuple[str, str]:
+    try:
+        import keyring
+        cid, sec = (keyring.get_password("entity360-snowflake", k) for k in ("client_id", "client_secret"))
+    except ImportError:
+        cid = sec = None
+    return cid or os.environ["E360_SF_CLIENT_ID"], sec or os.environ["E360_SF_CLIENT_SECRET"]
 
 
 class Pasos:
@@ -77,9 +87,10 @@ def main() -> int:
     uri = f"{host}/api/2.1/unity-catalog/iceberg-rest"
     paso = Pasos()
 
+    client_id, secreto = credenciales_sp()
+
     def token():
-        r = requests.post(f"{host}/oidc/v1/token", timeout=60,
-                          auth=(os.environ["E360_SF_CLIENT_ID"], os.environ["E360_SF_CLIENT_SECRET"]),
+        r = requests.post(f"{host}/oidc/v1/token", timeout=60, auth=(client_id, secreto),
                           data={"grant_type": "client_credentials", "scope": "all-apis"})
         r.raise_for_status()
         return r.json()["access_token"]

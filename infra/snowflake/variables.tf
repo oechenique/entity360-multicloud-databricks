@@ -5,7 +5,7 @@ variable "snowflake_profile" {
 }
 
 variable "camino" {
-  description = "A (Iceberg REST + vended credentials), A2 (Iceberg REST + external volume) o B (sync)."
+  description = "A (Iceberg REST + vended credentials), A2 (Iceberg REST + external volume) o B (sync). La integración la crea snowflake/integracion.py (ADR 0012)."
   type        = string
   default     = "A"
 
@@ -19,27 +19,6 @@ variable "creditos_mensuales" {
   description = "Tope del resource monitor, en créditos por mes (docs/fase9-plan.md §6)."
   type        = number
   default     = 20
-}
-
-# --- Caminos A y A2: catalog integration contra Unity Catalog ---------------------------------
-
-variable "databricks_workspace_url" {
-  description = "URL del workspace, con https:// (en terraform.tfvars, fuera de git): <WORKSPACE_URL>."
-  type        = string
-  default     = ""
-}
-
-variable "uc_sp_client_id" {
-  description = "application_id del SP entity360-snowflake (output de infra/databricks)."
-  type        = string
-  default     = ""
-}
-
-variable "uc_sp_client_secret" {
-  description = "Secreto OAuth del SP. Solo por TF_VAR_uc_sp_client_secret, nunca en tfvars (termina en el state local)."
-  type        = string
-  default     = ""
-  sensitive   = true
 }
 
 # --- Camino A2: external volume sobre el bucket del catálogo ----------------------------------

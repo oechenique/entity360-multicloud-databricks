@@ -1,16 +1,15 @@
 # Gold de Unity Catalog en Snowflake, sin copiar (Caminos A y A2, docs/fase9-plan.md §2).
 #
-# A:  la catalog integration pide a Unity Catalog la metadata y credenciales S3 temporales (vended
-#     credentials). Exige external_access_enabled en el metastore y EXTERNAL_USE_SCHEMA en gold.
-# A2: la misma integración para la metadata, pero Snowflake lee S3 con su external volume (un rol IAM
-#     de solo lectura sobre el bucket del catálogo). No depende del vending.
+# La catalog integration ICEBERG_REST y la base catalog-linked ENTITY360_UC NO están en Terraform
+# (ADR 0012): la integración lleva el secreto OAuth del SP de Databricks y todo lo que un recurso
+# recibe termina en el state. Las crea snowflake/integracion.py, idempotente, con el secreto leído del
+# llavero de Windows.
 #
-# El secreto OAuth del SP entra por TF_VAR_uc_sp_client_secret y queda en el state local (ignorado por
-# git, marcado sensitive): es el costo de declarar la integración en Terraform. Se rota con el SP.
+# Acá queda lo que no tiene secretos: el external volume del Camino A2 (Snowflake lee S3 con un rol IAM
+# propio de solo lectura, infra/aws/snowflake_a2.tf). El script lo referencia por nombre.
 
 locals {
-  zero_copy = contains(["A", "A2"], var.camino) ? 1 : 0
-  a2        = var.camino == "A2" ? 1 : 0
+  a2 = var.camino == "A2" ? 1 : 0
 }
 
 resource "snowflake_external_volume" "gold" {
@@ -27,39 +26,7 @@ resource "snowflake_external_volume" "gold" {
   }
 }
 
-resource "snowflake_catalog_integration_iceberg_rest" "unity" {
-  count   = local.zero_copy
-  name    = "ENTITY360_UNITY"
-  enabled = true
-  # Cada cuánto Snowflake vuelve a pedir la metadata: dbt reescribe Gold una vez por día.
-  refresh_interval_seconds = 300
-  comment                  = "Unity Catalog de entity360 por Iceberg REST (camino ${var.camino})."
-
-  rest_config {
-    catalog_uri            = "${var.databricks_workspace_url}/api/2.1/unity-catalog/iceberg-rest"
-    catalog_name           = "entity360"
-    access_delegation_mode = var.camino == "A" ? "VENDED_CREDENTIALS" : "EXTERNAL_VOLUME_CREDENTIALS"
-  }
-
-  oauth_rest_authentication {
-    oauth_token_uri      = "${var.databricks_workspace_url}/oidc/v1/token"
-    oauth_client_id      = var.uc_sp_client_id
-    oauth_client_secret  = var.uc_sp_client_secret
-    oauth_allowed_scopes = ["all-apis"]
-  }
-}
-
-# Base catalog-linked: Snowflake descubre los schemas y tablas que el SP puede ver en Unity Catalog
-# (solo gold, por los grants de infra/databricks/snowflake.tf) y los mantiene sincronizados.
-# El provider no tiene atributo LINKED_CATALOG en snowflake_database: va por SQL, con su reversión.
-resource "snowflake_execute" "gold_uc" {
-  count = local.zero_copy
-  execute = join(" ", [
-    "CREATE DATABASE IF NOT EXISTS ENTITY360_UC LINKED_CATALOG = (",
-    "CATALOG = '${snowflake_catalog_integration_iceberg_rest.unity[0].name}'",
-    local.a2 == 1 ? "EXTERNAL_VOLUME = '${snowflake_external_volume.gold[0].name}'" : "",
-    ")",
-  ])
-  revert = "DROP DATABASE IF EXISTS ENTITY360_UC"
-  query  = "SHOW DATABASES LIKE 'ENTITY360_UC'"
+output "external_volume" {
+  description = "Nombre del external volume (Camino A2), para snowflake/integracion.py --camino A2."
+  value       = local.a2 == 1 ? snowflake_external_volume.gold[0].name : null
 }

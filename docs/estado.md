@@ -53,7 +53,9 @@
   validado en `infra/snowflake`, `infra/databricks/snowflake.tf` e `infra/aws/snowflake_a2.tf` (los dos
   últimos apagados por variable: el `plan` de Databricks no suma nada de la fase). Marts en
   `dbt/models/marts` (solo target snowflake; Gold y el DAG no cambian). Sin trial y sin `apply`.
-- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+  La catalog integration y la base catalog-linked van por `snowflake/integracion.py` (secreto del
+  llavero, nunca en un state; ADR 0012), con 13 tests con mocks en `tests/snowflake`.
+- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 13 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente

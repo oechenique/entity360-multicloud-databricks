@@ -15,6 +15,6 @@ terraform {
 # paso 2): nunca credenciales en el código ni en tfvars versionados.
 provider "snowflake" {
   profile = var.snowflake_profile
-  # La catalog integration Iceberg REST y el external volume están en preview en el provider 2.21.
-  preview_features_enabled = ["snowflake_catalog_integration_iceberg_rest_resource", "snowflake_external_volume_resource"]
+  # El external volume (Camino A2) está en preview en el provider 2.21.
+  preview_features_enabled = ["snowflake_external_volume_resource"]
 }

@@ -1,9 +1,8 @@
-# Copiar a terraform.tfvars (ignorado por git). El secreto del SP NO va acá: TF_VAR_uc_sp_client_secret.
+# Copiar a terraform.tfvars (ignorado por git). Sin secretos: la catalog integration (con el secreto del SP
+# de Databricks) la crea snowflake/integracion.py desde el llavero (ADR 0012).
 snowflake_profile        = "entity360"
 camino                   = "A"            # A | A2 | B (docs/fase9-plan.md §5)
 creditos_mensuales       = 20
-databricks_workspace_url = "https://<WORKSPACE_URL>"
-uc_sp_client_id          = "<application_id de entity360-snowflake>"
 # Solo Camino A2:
 # a2_bucket_url = "s3://entity360-uc-<AWS_ACCOUNT_ID>/catalogs/entity360/"
 # a2_role_arn   = "arn:aws:iam::<AWS_ACCOUNT_ID>:role/entity360-snowflake-a2"

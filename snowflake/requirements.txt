@@ -1,0 +1,7 @@
+# Fase 9 (docs/fase9-plan.md): scripts de snowflake/. Entorno: el .venv de la raíz.
+# integracion.py: catalog integration y base catalog-linked, secreto desde el llavero (ADR 0012).
+snowflake-connector-python==4.7.5
+keyring==25.7.0
+# validar_vending.py: Iceberg REST de Unity Catalog con el SP (misma versión que validó el spike).
+pyiceberg[pyarrow]==0.12.0
+requests==2.34.2

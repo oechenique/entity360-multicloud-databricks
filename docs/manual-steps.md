@@ -211,3 +211,36 @@ variables de entorno; el token es el OAuth de vida corta de la CLI. Ver `dbt/REA
    ```
 4. `.\airflow\levantar.ps1` (ver `airflow/README.md`). Anotar el secreto en la tabla de secretos
    vigentes (§5). Rotarlo: volver a correr el paso 3 y `levantar.ps1`.
+
+## Snowflake (fase 9, `docs/fase9-plan.md`)
+Orden: §13 (antes del trial) → abrir el trial → §14 → `terraform apply` en `infra/snowflake` → §15.
+Ningún secreto pasa por un state de Terraform (ADR 0012).
+
+### 13. SP de Snowflake y validación del vending (antes del trial)
+1. `fase9_snowflake = true` en `infra/databricks/terraform.tfvars`, `plan` (3 recursos: SP y dos grants) y
+   `apply` con OK.
+2. Secreto OAuth del SP (90 días) al llavero de Windows (servicio `entity360-snowflake`, con el host y el
+   client_id); imprime solo el vencimiento:
+   ```powershell
+   .venv\Scripts\python.exe -m pip install -r snowflake\requirements.txt
+   .venv\Scripts\python.exe snowflake\integracion.py guardar-secreto --dias 90
+   ```
+   Anotarlo en la tabla de secretos vigentes (§5).
+3. Validación del vending (`docs/fase9-plan.md` §1): si falla, ver el criterio del §5 del plan antes de
+   abrir el trial.
+
+### 14. Trial y usuario de Terraform de Snowflake
+1. Abrir el trial en **AWS us-east-2** (la región del bucket del catálogo). **Fecha de alta: ______**
+   (vence a los 30 días o al agotar el crédito).
+2. En Snowsight, con ACCOUNTADMIN: usuarios de servicio `ENTITY360_TF` (Terraform y el script) y
+   `ENTITY360_DBT_SVC` (dbt), con key pair y sin contraseña. Las claves privadas, fuera del repo.
+3. Conexión `entity360` en `~/.snowflake/connections.toml` (la usan Terraform y `integracion.py`).
+
+### 15. Catalog integration y base catalog-linked (ADR 0012)
+Después del `terraform apply` de `infra/snowflake` (necesita los roles y, en el A2, el external volume):
+```powershell
+.venv\Scripts\python.exe snowflake\integracion.py crear --camino A
+# Camino A2: crear --camino A2 --external-volume ENTITY360_GOLD_VOL
+.venv\Scripts\python.exe snowflake\integracion.py crear --camino A   # segunda vez: "sin cambios"
+```
+Rotar el secreto: `guardar-secreto` y `crear --camino A --rotar-secreto`.

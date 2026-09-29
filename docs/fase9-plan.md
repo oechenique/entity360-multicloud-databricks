@@ -2,7 +2,9 @@
 
 Estado (2026-09-29): **plan y código listos, nada creado.** Sin trial abierto, sin `apply`, sin
 recursos en Databricks, AWS ni Snowflake. El Terraform está escrito y pasa `terraform validate`; los
-recursos de Databricks y AWS de la fase quedan detrás de variables apagadas por defecto.
+recursos de Databricks y AWS de la fase quedan detrás de variables apagadas por defecto. **Ningún secreto
+pasa por un state de Terraform** (ADR 0012): la catalog integration y la base catalog-linked las crea un
+script que lee el secreto del SP del llavero.
 
 Fuentes: `reglas/11-snowflake.md`; spike 3b, 3c, 4a–4e y decisiones D7, D8 (`spike/INFORME.md`); ADR 0001
 (consumo por principal dedicado) y ADR 0005 (Gold en Iceberg gestionado); documentación de Snowflake
@@ -11,7 +13,8 @@ Fuentes: `reglas/11-snowflake.md`; spike 3b, 3c, 4a–4e y decisiones D7, D8 (`s
 | Pieza | Archivo | Estado |
 |---|---|---|
 | SP y grants de Databricks | `infra/databricks/snowflake.tf` | escrito, apagado (`fase9_snowflake = false`); `plan` sin cambios de la fase |
-| Warehouse, resource monitor, catalog integration, base catalog-linked, roles, marts | `infra/snowflake/*.tf` | escrito, validado, sin `apply` |
+| Warehouse, resource monitor, roles, base de marts, external volume (A2) | `infra/snowflake/*.tf` | escrito, validado, sin `apply` |
+| Catalog integration, base catalog-linked, grants de lectura de Gold, secreto del SP | `snowflake/integracion.py` (ADR 0012) | escrito, 13 tests con mocks, sin correr |
 | Rol IAM de solo lectura para el Camino A2 | `infra/aws/snowflake_a2.tf` | escrito, apagado (`snowflake_a2 = false`) |
 | Validación del vending con el SP | `snowflake/validar_vending.py` | escrito, sin correr (necesita el SP) |
 | Target `snowflake` y marts | `dbt/profiles.yml.example`, `dbt/models/marts/` | escrito; Gold solo con target Databricks, marts solo con Snowflake |
@@ -21,7 +24,7 @@ Fuentes: `reglas/11-snowflake.md`; spike 3b, 3c, 4a–4e y decisiones D7, D8 (`s
 |---|---|---|---|
 | 1 | SP + grants en Databricks y **validación del vending con el SP** (§1, §3) | no | no (API de Unity Catalog + S3) |
 | 2 | Si §1 pasa: abrir el trial (región **AWS us-east-2**) y anotar la fecha en `manual-steps.md` | **sí** | no |
-| 3 | `infra/snowflake` con `camino = "A"`, `SYSTEM$VERIFY_CATALOG_INTEGRATION`, primera sincronización | sí | no |
+| 3 | `infra/snowflake` con `camino = "A"` y después `snowflake/integracion.py crear --camino A` (integración, base catalog-linked, grants, `SYSTEM$VERIFY_CATALOG_INTEGRATION`) | sí | no |
 | 4 | dbt `--target snowflake`: marts y tests (§4) | sí | no |
 | 5 | DAG: tarea de marts después de `dbt_gold` y corrida 25/25 medida | sí | sí (la corrida diaria de siempre) |
 
@@ -33,16 +36,16 @@ el trial.
 1. En `infra/databricks/terraform.tfvars`: `fase9_snowflake = true` (camino `A` por defecto). `plan`
    esperado: 3 recursos nuevos (SP `entity360-snowflake`, grant de catálogo, grant de gold) y nada más.
 2. `apply` (con OK) y secreto OAuth del SP, fuera de Terraform (como los demás SP, ADR 0002):
-   `databricks service-principal-secrets-proxy create <id del SP> -p entity360-free`. El secreto va al
-   llavero de Windows (servicio `entity360-snowflake`), nunca a un archivo.
+   `.venv\Scripts\python.exe snowflake\integracion.py guardar-secreto --dias 90`. Lo crea con la CLI de
+   Databricks y lo guarda en el llavero de Windows (servicio `entity360-snowflake`) con el host y el
+   client_id; imprime solo el vencimiento.
 3. Chequeos previos: `external_access_enabled = true` en el metastore (`manual-steps.md` §4, activo
    desde el spike) y Gold en el S3 propio (`storage_root` del catálogo, fase 1).
 4. Correr con las credenciales de AWS ocultas y el conteo de Databricks:
    ```powershell
    $env:AWS_CONFIG_FILE = "NUL"; $env:AWS_SHARED_CREDENTIALS_FILE = "NUL"
    $env:DATABRICKS_HOST = "https://<WORKSPACE_URL>"
-   $env:E360_SF_CLIENT_ID = "<application_id>"; $env:E360_SF_CLIENT_SECRET = "<del llavero>"
-   spike\.venv\Scripts\python.exe snowflake\validar_vending.py --filas-esperadas 1136
+   .venv\Scripts\python.exe snowflake\validar_vending.py --filas-esperadas 1136   # lee el SP del llavero
    ```
    Pasa si: (1) el SP obtiene token; (2) `config` responde; (3) `loadTable` de `gold.dim_entity` trae
    credenciales S3 temporales; (4) el scan con PyIceberg da las mismas filas que Databricks; (5) el SP
@@ -54,32 +57,48 @@ SQL warehouse, así que se puede hacer aunque la cuota diaria esté agotada.
 
 ## 2. Terraform del lado de Snowflake (`infra/snowflake/`)
 Provider `snowflakedb/snowflake` ~> 2.21, auth por perfil de `~/.snowflake/connections.toml` con key pair
-(nada en el repo). Recursos:
+(nada en el repo). En Terraform queda **todo lo que no lleva secretos**; la catalog integration y la base
+catalog-linked van por `snowflake/integracion.py` (ADR 0012).
 
 | Recurso | Qué | Por qué |
 |---|---|---|
 | `snowflake_resource_monitor.entity360` | 20 créditos por mes (variable), avisos al 50/75/90 %, suspende al 100 % y corta todo al 110 % | Principio 5 en Snowflake: el tope existe antes que el warehouse |
 | `snowflake_warehouse.entity360` | `XSMALL`, `AUTO_SUSPEND = 60`, `auto_resume`, arranca suspendido, un solo cluster, 15 min por statement, con el monitor asignado | Regla 11; una consulta desbocada no quema el mes |
-| `snowflake_catalog_integration_iceberg_rest.unity` | `CATALOG_URI = <WORKSPACE_URL>/api/2.1/unity-catalog/iceberg-rest`, catálogo `entity360`, OAuth M2M del SP (`/oidc/v1/token`, scope `all-apis`), `ACCESS_DELEGATION_MODE = VENDED_CREDENTIALS` (A) o `EXTERNAL_VOLUME_CREDENTIALS` (A2), refresco cada 300 s | Zero-copy: Snowflake lee los archivos Iceberg de Gold donde están |
-| `snowflake_execute.gold_uc` | `CREATE DATABASE ENTITY360_UC LINKED_CATALOG = (CATALOG = 'ENTITY360_UNITY' [, EXTERNAL_VOLUME = ...])`, revert `DROP DATABASE` | Base catalog-linked: descubre las tablas que el SP ve (solo gold) y las sincroniza. El provider no tiene `LINKED_CATALOG` en `snowflake_database` |
 | `snowflake_external_volume.gold` | Solo A2: `s3://entity360-uc-<AWS_ACCOUNT_ID>/catalogs/entity360/`, `allow_writes = false` | Acceso a S3 sin vending |
 | `snowflake_database.marts` + `snowflake_schema.marts` | `ENTITY360_MARTS.MARTS` | Lo que construye dbt para los modelers |
 | `snowflake_account_role` `ENTITY360_DBT` y `ENTITY360_MODELER` + grants | dbt crea en `MARTS`; los modelers leen (future grants) y usan el warehouse | Mínimo privilegio |
 | `snowflake_database.sync` | Solo Camino B: `ENTITY360_SYNC.GOLD` | Destino de la copia |
 
+Por script (`snowflake/integracion.py crear --camino A|A2`), idempotente:
+
+| Objeto | Qué | Idempotencia |
+|---|---|---|
+| Catalog integration `ENTITY360_UNITY` | `CATALOG_URI = <WORKSPACE_URL>/api/2.1/unity-catalog/iceberg-rest`, catálogo `entity360`, OAuth M2M del SP (`/oidc/v1/token`, scope `all-apis`), `ACCESS_DELEGATION_MODE = VENDED_CREDENTIALS` (A) o `EXTERNAL_VOLUME_CREDENTIALS` (A2), refresco cada 300 s | `CREATE ... IF NOT EXISTS`. Si existe y `DESC` coincide (URI, catálogo, modo, client_id), no la toca; si difiere, falla sin cambiar nada (recrearla es un `DROP`, a mano). `--rotar-secreto`: solo `ALTER ... SET REST_AUTHENTICATION` |
+| Base catalog-linked `ENTITY360_UC` | `CREATE DATABASE IF NOT EXISTS ENTITY360_UC LINKED_CATALOG = (CATALOG = 'ENTITY360_UNITY' [, EXTERNAL_VOLUME = 'ENTITY360_GOLD_VOL'])` | `IF NOT EXISTS`; el provider tampoco tiene `LINKED_CATALOG` en `snowflake_database` |
+| Grants de lectura | `USAGE` en la base y sus schemas, `SELECT` en las tablas Iceberg actuales y futuras, para `ENTITY360_DBT` y `ENTITY360_MODELER` | Solo cuando la base es nueva o con `--reaplicar-grants` |
+| Verificación | `SYSTEM$VERIFY_CATALOG_INTEGRATION('ENTITY360_UNITY')` | Siempre |
+
+El secreto sale del llavero, no se imprime ni se loguea (el logger del conector queda en WARNING, que no
+muestra el SQL), y si Snowflake devuelve un error que cita el statement, el script lo propaga con el
+secreto reemplazado por `***` (también en su forma escapada). Tests: `tests/snowflake/test_integracion.py`.
+**A verificar en el primer uso:** si `QUERY_HISTORY` guarda el texto del `CREATE CATALOG INTEGRATION`
+con el secreto a la vista o enmascarado. Si lo guarda a la vista, rotar no lo resuelve (el `ALTER` también
+lo lleva): se deja anotado en el ADR 0012 como exposición residual, visible solo para quien lee el
+historial de la cuenta (ACCOUNTADMIN por defecto), y el secreto vence a los 90 días.
+
 Pasos, con el trial abierto:
 1. **Bootstrap manual** (nuevo `manual-steps.md` §13): en Snowsight, con ACCOUNTADMIN, crear el usuario
    de servicio `ENTITY360_TF` (y `ENTITY360_DBT_SVC`) con key pair; clave privada fuera del repo; perfil
    `entity360` en `~/.snowflake/connections.toml`. Anotar la fecha de alta del trial.
-2. `terraform.tfvars` desde el `.example` (URL del workspace, `application_id` del SP). El secreto solo
-   por `$env:TF_VAR_uc_sp_client_secret`, leído del llavero. **Queda en el state local** (ignorado por
-   git, marcado sensitive): es el costo de declarar la integración en Terraform; se rota con el SP.
-3. `terraform plan` → revisar → `apply` con OK.
-4. `SELECT SYSTEM$VERIFY_CATALOG_INTEGRATION('ENTITY360_UNITY');` y
-   `SHOW TABLES IN DATABASE ENTITY360_UC;`: tienen que aparecer las 5 tablas de `gold` y ninguna otra.
-5. Grants de lectura sobre la base catalog-linked para `ENTITY360_DBT` y `ENTITY360_MODELER` (SQL: las
-   tablas las descubre Snowflake, Terraform no las conoce). Conteos iguales a Databricks en las 5 tablas.
-6. Tipos a verificar en la primera sincronización: `fuentes` (array), `procedencia` (map) y la
+2. `terraform.tfvars` desde el `.example` (sin secretos: perfil, camino, créditos) → `terraform plan`
+   → revisar → `apply` con OK. Crea monitor, warehouse, roles y la base de marts.
+3. `pip install -r snowflake\requirements.txt` en el `.venv` y
+   `.venv\Scripts\python.exe snowflake\integracion.py crear --camino A`: integración, base
+   catalog-linked, grants de lectura y `SYSTEM$VERIFY_CATALOG_INTEGRATION`. Correrlo dos veces tiene que
+   decir "sin cambios" la segunda.
+4. `SHOW TABLES IN DATABASE ENTITY360_UC;`: tienen que aparecer las 5 tablas de `gold` y ninguna otra.
+   Conteos iguales a Databricks en las 5 tablas.
+5. Tipos a verificar en la primera sincronización: `fuentes` (array), `procedencia` (map) y la
    capitalización de los nombres (los marts asumen minúscula entre comillas).
 
 ## 3. SP y grants de Databricks (`infra/databricks/snowflake.tf`)
@@ -130,7 +149,13 @@ Pasos, con el trial abierto:
 
 "Camino A2" es la variante documentada por Snowflake para Unity Catalog cuando no se usa el vending. No
 estaba en la regla 11: se agrega como paso intermedio porque sigue siendo zero-copy y solo cambia quién
-da las credenciales de S3.
+da las credenciales de S3. En el A2, `integracion.py crear --camino A2 --external-volume
+ENTITY360_GOLD_VOL` usa el volume de Terraform.
+
+**Alternativa descartada para el A2:** external volume propio + catalog integration `OBJECT_STORE`
+(Snowflake lee los `metadata.json` de Iceberg directo de S3) con un refresh disparado desde Airflow. Se
+descarta porque no usa el catálogo de Unity Catalog (se pierden sus grants y el descubrimiento de
+tablas) y obliga a mantener un refresh por tabla después de cada `dbt build`.
 
 **Criterio para pasar de uno a otro:**
 1. **§1 falla en el paso 1 o 2** (el SP no obtiene token o el endpoint REST no responde): el problema es
@@ -181,7 +206,9 @@ cómputo diario.
   de la primera semana, en `snowflake/evidencia/consumo.md`.
 
 ## Destroy
-`docs/destroy.md`, sección Snowflake: se completa al crear los recursos. Orden: `terraform destroy` en
-`infra/snowflake` (monitor, warehouse, integración, bases, roles), después `fase9_snowflake = false` y
-`apply` en `infra/databricks` (SP y grants) y, si se usó A2, `snowflake_a2 = false` en `infra/aws`. El
-trial se suspende solo al vencer.
+`docs/destroy.md`, sección Snowflake. Orden: primero, con SQL y OK, `DROP DATABASE ENTITY360_UC` y
+`DROP CATALOG INTEGRATION ENTITY360_UNITY` (no son de Terraform); después `terraform destroy` en
+`infra/snowflake` (monitor, warehouse, roles, base de marts, external volume); después
+`fase9_snowflake = false` y `apply` en `infra/databricks` (SP y grants) y, si se usó A2,
+`snowflake_a2 = false` en `infra/aws`. Por último, borrar el servicio `entity360-snowflake` del llavero.
+El trial se suspende solo al vencer.

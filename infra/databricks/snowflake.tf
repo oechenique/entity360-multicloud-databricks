@@ -52,6 +52,11 @@ resource "databricks_grant" "snowflake_gold" {
   var.snowflake_camino == "A" ? ["EXTERNAL_USE_SCHEMA"] : [])
 }
 
+output "snowflake_sp_id" {
+  description = "id del SP de Snowflake: snowflake/integracion.py le crea el secreto OAuth."
+  value       = local.snowflake_sp == 1 ? databricks_service_principal.snowflake[0].id : null
+}
+
 output "snowflake_sp_application_id" {
   description = "client_id del SP de Snowflake (OAuth M2M). Su secreto se crea aparte y no pasa por el state."
   value       = local.snowflake_sp == 1 ? databricks_service_principal.snowflake[0].application_id : null

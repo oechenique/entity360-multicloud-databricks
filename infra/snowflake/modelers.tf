@@ -94,8 +94,8 @@ resource "snowflake_grant_privileges_to_account_role" "marts_modeler_lectura" {
 }
 
 # Gold (catalog-linked en A/A2, o la copia del Camino B): los grants sobre la base catalog-linked y las
-# tablas que descubre se dan con SQL después de la primera sincronización (docs/fase9-plan.md §2,
-# paso 5): Terraform no conoce esas tablas.
+# tablas que descubre los da snowflake/integracion.py después de crearla (docs/fase9-plan.md §2):
+# Terraform no conoce esas tablas.
 
 resource "snowflake_grant_account_role" "modeler_a_sysadmin" {
   role_name        = snowflake_account_role.modeler.name

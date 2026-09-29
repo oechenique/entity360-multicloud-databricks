@@ -185,7 +185,7 @@ Para bajarlo todo: `docs/destroy.md`.
 | | |
 |---|---|
 | `docs/estado.md` | Dónde está el proyecto hoy y qué falta |
-| `docs/adr/` | Decisiones de arquitectura (0001–0011) |
+| `docs/adr/` | Decisiones de arquitectura (0001–0012) |
 | `docs/fuentes.md` | Fuentes, licencias y atribuciones |
 | `docs/manual-steps.md`, `docs/destroy.md` | Lo que no es Terraform, y cómo bajar todo |
 | `reglas/` | Las reglas del proyecto, una por fase |
