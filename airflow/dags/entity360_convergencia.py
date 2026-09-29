@@ -9,6 +9,9 @@
 4. medallion: dispara el job entity360-medallion (bronze -> silver -> resolucion) y espera.
 5. dbt_gold: los modelos Gold con Cosmos, un task por modelo y sus tests después de cada uno.
 6. frescura: dbt source freshness (fuentes y resolución). Un `error` falla la tarea y alerta.
+7. resultado: la hoja del DAG. Corre solo si ni dbt_gold ni frescura fallaron; si no, queda
+   upstream_failed y la corrida termina `failed`. Sin ella, la única hoja era frescura (all_done), y una
+   corrida con dbt caído figuraba `success` (2026-09-29).
 La sincronización con Snowflake (paso 6 de la regla) se suma en la fase 9.
 
 Credenciales: variables de entorno del container (airflow/levantar.ps1, ADR 0007). Nada en el DAG.
@@ -22,6 +25,7 @@ from pathlib import Path
 import pendulum
 from airflow.providers.databricks.operators.databricks import DatabricksRunNowOperator
 from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.sensors.python import PythonSensor
 from airflow.sdk import DAG
 from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, RenderConfig
@@ -133,4 +137,7 @@ with DAG(
         execution_timeout=timedelta(minutes=10),
     )
 
+    resultado = EmptyOperator(task_id="resultado", trigger_rule="none_failed")
+
     list(sensores.values()) >> contratos >> medallion >> dbt_gold >> frescura
+    [dbt_gold, frescura] >> resultado

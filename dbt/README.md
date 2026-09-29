@@ -35,6 +35,8 @@ copy dbt\profiles.yml.example dbt\profiles.yml     # ignorado por git; lee todo 
 $env:DATABRICKS_HOST = "<WORKSPACE_URL>"            # sin https://
 $env:DATABRICKS_HTTP_PATH = "/sql/1.0/warehouses/<WAREHOUSE_ID>"
 $env:DATABRICKS_TOKEN = (databricks auth token -p entity360-free | ConvertFrom-Json).access_token   # OAuth, 1 h
+# Gold queda a nombre del SP del orquestador aunque corras vos (dbt/macros/duenio_gold.sql, ADR 0007):
+$env:E360_GOLD_OWNER = terraform -chdir=infra/databricks output -raw orquestador_sp_application_id
 cd dbt
 $env:DBT_PROFILES_DIR = "."
 ..\dbt\.venv\Scripts\dbt build               # modelos + tests

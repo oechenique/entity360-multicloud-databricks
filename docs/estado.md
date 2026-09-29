@@ -1,9 +1,9 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 15:45 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 17:45 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón); sigue aligerar Airflow. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
+**Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
@@ -32,6 +32,12 @@
   `ops.calidad_resolucion` (ADR 0008). 5 preguntas reales probadas: 5/5 correctas tras documentar el JSON
   del CDC (la primera corrida falló la 4). Detalle: `databricks/consumo/README.md`. Falta del cierre:
   README completo, capturas y video, destroy probado.
+- **Aligerar Airflow (parcial, 2026-09-29):** stack liviano en `airflow/docker-compose.yml` (4 tareas a
+  la vez, parseo cada 5 min, techo de CPU y memoria por container, sin triggerer porque no hay tareas
+  diferibles) y `.wslconfig` aplicado (6 procesadores, 5,8 GB, 2 GB de swap). En reposo: 7,6 % de CPU y
+  2,1 GB contra 10,1 % y 2,4 GB (`airflow/evidencia/consumo.md`). dbt deja Gold a nombre del SP del
+  orquestador (`dbt/macros/duenio_gold.sql`, variable `E360_GOLD_OWNER`) y el DAG tiene la tarea final
+  `resultado`: una corrida con dbt caído ya no figura `success` (24 tareas).
 - Tests: 3 en `tests/airflow`, 114 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
@@ -48,11 +54,28 @@
    08:45 está **pausado**: el job lo dispara Airflow (fase 8). Cuarentena probada de punta a punta
    (`contracts/evidencia/cuarentena-punta-a-punta.txt`).
 4. ~~Borrar `gold.prueba_contrato`~~ **hecho** (2026-09-27).
-5. **Aligerar el stack de Airflow:** la corrida del DAG saturó la CPU de la PC. Más adelante: seguir
-   con LocalExecutor, límites de CPU y memoria por contenedor en `airflow/docker-compose.yml` y un techo
-   para WSL2 en `.wslconfig` (`processors`, `memory`).
+5. **Aligerar Airflow, lo que falta (cuando vuelva el warehouse):**
+   1. **Devolver Gold al SP** (OK de Gastón ya dado): dos `dbt build` locales del 2026-09-29 dejaron las
+      5 tablas a nombre del usuario y la corrida del DAG de ese día falló en dbt con `PERMISSION_DENIED`.
+      ``ALTER TABLE entity360.gold.<tabla> OWNER TO `<application_id del SP>` `` en `dim_entity`,
+      `bridge_entity_source`, `fct_news_signal`, `fct_risk_flags`, `fct_entity_changes`.
+   2. Reactivar el DAG (`airflow dags unpause entity360_convergencia`), correrlo y medirlo:
+      `python airflow\medir.py --minutos 90 --run-id <run_id> --salida airflow\evidencia\corrida-liviano.csv`.
+      Esperado: 24/24.
+   3. Techo de 2 GB al SQL Server del legacy (`legacy/docker-compose.yml`) si aprieta la memoria durante
+      la corrida. En reposo usa 1,25 GB.
+   4. Informe de consumo final en `airflow/evidencia/consumo.md`.
 6. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
+
+## Restricciones del proyecto
+- **Cuota diaria de cómputo serverless de Free Edition.** Cuando se agota, el SQL warehouse no arranca
+  (`Cannot create the resource, please try again later`) y no corren ni dbt, ni el dashboard, ni Genie, ni
+  el job. Pasó el 2026-09-29 ~17:10 UTC, después de un día con varias corridas de la resolución,
+  `dbt build`, validación del dashboard, pruebas de Genie y una corrida del DAG. Plan: agrupar el trabajo
+  que usa el warehouse, no validar consulta por consulta si alcanza con una pasada, y dejar la corrida
+  diaria del DAG como el consumo principal. Silver incremental (reprocesa todo aunque Bronze no traiga
+  nada) es la primera optimización.
 
 ## Estado del entorno al cerrar
 - `dbt source freshness` (2026-09-29 15:32 UTC): GDELT (43 h) y OpenSanctions (49 h) en warn. No es un
@@ -61,8 +84,10 @@
 - `main` = `origin/main`.
 - **Airflow detenido** (`docker compose -p entity360-airflow stop`) y **SQL Server del legacy
   detenido** (`docker compose -f legacy\docker-compose.yml stop`), con los volúmenes intactos.
-  El DAG queda activo en la base de Airflow: con Airflow prendido corre a las 08:45. Para retomar:
-  `docker compose -f legacy\docker-compose.yml start` y `.\airflow\levantar.ps1`.
+  **El DAG queda pausado** (2026-09-29): con Gold a nombre del usuario, la corrida de las 08:45 fallaría.
+  Para retomar: `docker compose -f legacy\docker-compose.yml start`, `.\airflow\levantar.ps1` y, después
+  de devolver Gold al SP, `airflow dags unpause entity360_convergencia`.
+- El warehouse no arrancaba al cerrar (cuota diaria de Free Edition).
 - El job de Databricks no corre solo (schedule pausado, ADR 0006): sin Airflow no se procesa nada nuevo
   (los productores siguen aterrizando lotes).
 - Entornos locales: `.venv` (fase 6), `contracts\.venv` (Soda), `dbt\.venv` (dbt), todos ignorados.

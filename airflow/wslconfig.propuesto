@@ -1,0 +1,20 @@
+# Propuesta de %UserProfile%\.wslconfig para la PC de desarrollo (NO aplicada: la decide Gastón).
+# Techo para la VM de WSL2 donde corre Docker Desktop. Hoy no hay .wslconfig: WSL toma la mitad de la RAM
+# (8 GB de 15,6) y los 16 procesadores lógicos, así que una corrida pesada compite con todo Windows.
+#
+# Cuenta: los límites de airflow/docker-compose.yml suman 4,5 CPU y 4,1 GB (postgres 0,5/384m, apiserver
+# 1/768m, scheduler 2/2g, dag-processor 1/1g; airflow-init es corto) y el SQL Server del legacy usa
+# ~1,4 GB sin límite. 6 procesadores y 6 GB dejan margen para Docker Desktop y dejan a Windows 10 hilos
+# y ~9,5 GB.
+#
+# Aplicar: copiar a %UserProfile%\.wslconfig, cerrar Docker Desktop, `wsl --shutdown`, abrir Docker Desktop.
+# Revertir: borrar el archivo y repetir `wsl --shutdown`.
+
+[wsl2]
+memory=6GB
+processors=6
+swap=2GB
+
+[experimental]
+# Devuelve a Windows la memoria que la VM ya no usa (por defecto la retiene la caché de Linux).
+autoMemoryReclaim=gradual

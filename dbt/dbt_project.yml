@@ -25,7 +25,11 @@ models:
       +persist_docs:          # descripciones como comentarios en Unity Catalog (las usa Genie)
         relation: true
         columns: true
-      +post-hook: "{{ aplicar_contrato_iceberg() }}"
+      +pre-hook: "{{ exigir_duenio_gold() }}"
+      # Primero el contrato (el dueño actual lo aplica); al final, la tabla pasa al SP del orquestador.
+      +post-hook:
+        - "{{ aplicar_contrato_iceberg() }}"
+        - "{{ asignar_duenio_gold() }}"
 
 flags:
   # table_format: iceberg sin este flag crea Delta con UniForm. Con el flag, Iceberg gestionado, como

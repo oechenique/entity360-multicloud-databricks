@@ -2,6 +2,11 @@
 # Levantar con airflow\levantar.ps1: lee las credenciales del llavero de Windows y las pasa como
 # variables de entorno (ADR 0007). `docker compose` directo falla sin ellas (`:?`).
 # UI: http://localhost:8080 (solo localhost; todos los usuarios son admin, uso local).
+#
+# Stack liviano (2026-09-29): la primera corrida del DAG saturó la CPU de la PC. LocalExecutor (las tareas,
+# dbt incluido, corren como procesos del scheduler), sin triggerer (ninguna tarea es diferible: los
+# sensores usan mode=reschedule), a lo sumo 4 tareas a la vez, el DAG se reparsea cada 5 min y cada
+# container tiene techo de CPU y memoria. Medición: airflow/evidencia/consumo.md.
 name: entity360-airflow
 
 x-airflow: &airflow
@@ -17,7 +22,15 @@ x-airflow: &airflow
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
     AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
     AIRFLOW__API_AUTH__JWT_SECRET: ${E360_JWT_SECRET:?correr airflow\levantar.ps1}
-    AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "60"
+    # Concurrencia: por defecto 32 tareas (16 por DAG). Con 4, dbt corre de a cuatro modelos o tests.
+    AIRFLOW__CORE__PARALLELISM: "4"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "4"
+    # Parseo: un solo proceso, y cada 5 min (por defecto 2 procesos, cada 30 s). Cosmos hashea la
+    # carpeta de dbt en cada parseo; un DAG que cambia poco no necesita más.
+    AIRFLOW__DAG_PROCESSOR__PARSING_PROCESSES: "1"
+    AIRFLOW__DAG_PROCESSOR__MIN_FILE_PROCESS_INTERVAL: "300"
+    AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "300"
+    AIRFLOW__API__WORKERS: "1"
     # Cosmos corre `dbt ls` al parsear el DAG (sobre un bind mount de Windows): 30 s no alcanzan.
     AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: "120"
     AIRFLOW__DAG_PROCESSOR__DAG_FILE_PROCESSOR_TIMEOUT: "180"
@@ -31,6 +44,8 @@ x-airflow: &airflow
     DATABRICKS_CLIENT_SECRET: ${E360_ORQ_CLIENT_SECRET:?}
     DATABRICKS_HTTP_PATH: ${E360_WAREHOUSE_HTTP_PATH:?}
     E360_MEDALLION_JOB_ID: ${E360_MEDALLION_JOB_ID:?}
+    # dbt deja Gold a nombre del SP (dbt/macros/duenio_gold.sql): en Airflow es el mismo SP.
+    E360_GOLD_OWNER: ${E360_ORQ_CLIENT_ID:?}
     # Extractor CDC: su propio SP (ADR 0002) y el login de solo lectura del SQL Server del legacy.
     CDC_DATABRICKS_HOST: ${CDC_DATABRICKS_HOST:?}
     CDC_DATABRICKS_CLIENT_ID: ${CDC_DATABRICKS_CLIENT_ID:?}
@@ -66,6 +81,8 @@ x-airflow: &airflow
 services:
   postgres:
     image: postgres:16
+    cpus: 0.5
+    mem_limit: 384m
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow # solo en la red interna de compose, sin puerto publicado
@@ -81,6 +98,8 @@ services:
   airflow-init:
     <<: *airflow
     command: ["bash", "-c", "airflow db migrate"]
+    cpus: 1.0
+    mem_limit: 1g
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +108,8 @@ services:
   airflow-apiserver:
     <<: *airflow
     command: api-server
+    cpus: 1.0
+    mem_limit: 768m
     ports:
       - "127.0.0.1:8080:8080"
     healthcheck:
@@ -97,14 +118,19 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Con LocalExecutor el scheduler ejecuta las tareas: dbt, Soda, el extractor CDC. El techo más alto.
   airflow-scheduler:
     <<: *airflow
     command: scheduler
+    cpus: 2.0
+    mem_limit: 2g
     restart: unless-stopped
 
   airflow-dag-processor:
     <<: *airflow
     command: dag-processor
+    cpus: 1.0
+    mem_limit: 1g
     restart: unless-stopped
 
 volumes:
