@@ -144,3 +144,14 @@ def test_un_error_del_conector_sale_sin_el_secreto(falla_en, capsys, caplog):
 def test_ocultar_tapa_el_secreto_tal_cual_y_escapado():
     assert I.ocultar(f"a {SECRETO} b {I._escapar(SECRETO)}", SECRETO) == f"a {I.OCULTO} b {I.OCULTO}"
     assert I.ocultar("sin nada", None) == "sin nada"
+
+
+def test_simular_solo_lee_y_lista_lo_demas_sin_el_secreto(capsys):
+    c = Cursor(NADA)
+    sim = I.Simulador(c)
+    I.crear(sim, CFG, SECRETO, decir=lambda _: None)
+    assert all(s.split()[0] in ("SHOW", "DESC") for s in c.ejecutadas)      # a Snowflake solo llegó lectura
+    assert sim.pendientes[0].startswith("CREATE CATALOG INTEGRATION IF NOT EXISTS")
+    assert any(p.startswith("CREATE DATABASE IF NOT EXISTS ENTITY360_UC") for p in sim.pendientes)
+    sin_secreto(*sim.pendientes, capsys.readouterr().out)
+    assert any(I.OCULTO in p for p in sim.pendientes)

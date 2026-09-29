@@ -39,3 +39,9 @@ variable "dbt_rsa_public_key" {
   description = "Clave PÚBLICA del usuario ENTITY360_DBT_SVC (base64 DER, snowflake/cuenta.py claves). No es un secreto."
   type        = string
 }
+
+variable "creditos_cuenta" {
+  description = "Tope mensual de toda la cuenta (warehouses), en créditos. Incluye los 20 de ENTITY360_WH."
+  type        = number
+  default     = 25
+}

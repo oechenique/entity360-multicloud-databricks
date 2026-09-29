@@ -76,6 +76,12 @@
   Usuario de servicio con ACCOUNTADMIN solo durante el proyecto (ADR 0013).
   - **Otro trial, abierto por error en sa-east-1** (otra organización, sin tarjeta): no se usa y no se
     toca; vence solo. Sin recursos del proyecto.
+- **`infra/snowflake` aplicado (2026-09-29, con OK):** 18 recursos (`ENTITY360_MONITOR` 20 créditos,
+  `ENTITY360_WH` XSMALL suspendido, roles, `ENTITY360_MARTS.MARTS`, `ENTITY360_DBT_SVC`). Pendientes de OK:
+  un segundo plan de 3 recursos (monitor de cuenta `ENTITY360_CUENTA` de 25 créditos asignado con
+  `ALTER ACCOUNT`, y `COMPUTE_WH` con `AUTO_SUSPEND = 60`) y `integracion.py crear --camino A` (simulado
+  con `--simular`). Medición diaria de lo que no frenan los monitores (serverless, catalog-linked) en
+  `snowflake/evidencia/consumo.md`.
   - **Incidente:** la primera corrida imprimió el token OAuth del SP (1 h de vida, solo lectura de gold):
     el paso 1 devolvía el token y `Pasos` imprimía el resultado. Corregido (el paso devuelve una
     descripción y `Pasos` oculta el secreto y el token en todo lo que imprime), con 5 tests que fallan

@@ -121,6 +121,10 @@ def sql_grants() -> list[str]:
     for rol in ROLES_LECTURA:
         out += [f"GRANT USAGE ON DATABASE {BASE} TO ROLE {rol}",
                 f"GRANT USAGE ON ALL SCHEMAS IN DATABASE {BASE} TO ROLE {rol}",
+                # La base catalog-linked se sincroniza sola, después del CREATE: los schemas y las tablas
+                # pueden no existir todavía. Los FUTURE cubren lo que aparezca (a verificar en una base
+                # catalog-linked; si no aplican, `crear --reaplicar-grants` después de la sincronización).
+                f"GRANT USAGE ON FUTURE SCHEMAS IN DATABASE {BASE} TO ROLE {rol}",
                 f"GRANT SELECT ON ALL ICEBERG TABLES IN DATABASE {BASE} TO ROLE {rol}",
                 f"GRANT SELECT ON FUTURE ICEBERG TABLES IN DATABASE {BASE} TO ROLE {rol}"]
     return out
@@ -156,13 +160,31 @@ class Ejecutor:
             raise RuntimeError(ocultar(f"{type(e).__name__}: {e}", secreto)) from None
 
 
+class Simulador(Ejecutor):
+    """`crear --simular`: corre de verdad solo lo que lee (SHOW, DESC) y anota lo demás sin ejecutarlo."""
+
+    LECTURA = ("SHOW ", "DESC ")
+
+    def __init__(self, cursor):
+        super().__init__(cursor)
+        self.pendientes: list[str] = []
+
+    def __call__(self, sql: str, secreto: str | None = None) -> list[tuple]:
+        if sql.startswith(self.LECTURA):
+            return super().__call__(sql, secreto)
+        self.pendientes.append(ocultar(sql, secreto))
+        return []
+
+
 def crear(ejecutar, cfg: Config, secreto: str, rotar: bool = False, reaplicar_grants: bool = False,
           decir=print) -> list[str]:
-    """Deja la integración, la base y los grants como tienen que estar. Devuelve qué hizo."""
+    """Deja la integración, la base y los grants como tienen que estar. Devuelve qué hizo (o, simulando,
+    qué haría)."""
     hecho = []
+    creada = "se crearía" if isinstance(ejecutar, Simulador) else "creada"
     if not ejecutar(f"SHOW CATALOG INTEGRATIONS LIKE '{INTEGRACION}'"):
         ejecutar(sql_crear_integracion(cfg, secreto), secreto)
-        hecho.append(f"integración {INTEGRACION} creada (camino {cfg.camino})")
+        hecho.append(f"integración {INTEGRACION} {creada} (camino {cfg.camino})")
     else:
         faltan = diferencias(ejecutar(f"DESC CATALOG INTEGRATION {INTEGRACION}"), cfg)
         if faltan:
@@ -178,7 +200,7 @@ def crear(ejecutar, cfg: Config, secreto: str, rotar: bool = False, reaplicar_gr
     base_nueva = not ejecutar(f"SHOW DATABASES LIKE '{BASE}'")
     if base_nueva:
         ejecutar(sql_crear_base(cfg))
-        hecho.append(f"base catalog-linked {BASE} creada")
+        hecho.append(f"base catalog-linked {BASE} {creada}")
     else:
         hecho.append(f"base {BASE} ya existe: sin cambios")
     if base_nueva or reaplicar_grants:
@@ -249,6 +271,7 @@ def main() -> int:
     c.add_argument("--rotar-secreto", action="store_true")
     c.add_argument("--reaplicar-grants", action="store_true")
     c.add_argument("--conexion", default="entity360")
+    c.add_argument("--simular", action="store_true", help="solo lee; lista lo que ejecutaría (secreto oculto)")
     v = sub.add_parser("verificar")
     v.add_argument("--conexion", default="entity360")
     a = ap.parse_args()
@@ -257,7 +280,7 @@ def main() -> int:
         return guardar_secreto(a.dias)
     con = conectar(a.conexion)
     try:
-        ejecutar = Ejecutor(con.cursor())
+        ejecutar = Simulador(con.cursor()) if getattr(a, "simular", False) else Ejecutor(con.cursor())
         if a.accion == "verificar":
             print(verificar(ejecutar))
             return 0
@@ -268,6 +291,10 @@ def main() -> int:
         except IntegracionDesalineada as e:
             print(f"ERROR: {ocultar(e, secreto)}", file=sys.stderr)
             return 1
+        if isinstance(ejecutar, Simulador):
+            print("\nSIMULACIÓN: no se ejecutó nada de esto (el secreto va como ***):")
+            for sql in ejecutar.pendientes:
+                print(f"  {sql};")
         return 0
     finally:
         con.close()
