@@ -239,8 +239,24 @@ terraform destroy
 ```
 Después, en `infra/databricks`, `fase9_snowflake = false` y `apply` (SP `entity360-snowflake` y sus
 grants) y, si se usó el Camino A2, `snowflake_a2 = false` y `apply` en `infra/aws`. Borrar el secreto del
-SP del llavero (servicio `entity360-snowflake`) y la clave privada del usuario de Terraform de Snowflake.
-El trial se suspende solo al vencer.
+SP del llavero (servicio `entity360-snowflake`).
+
+**Al final del destroy de Snowflake** (ADR 0013), los usuarios de servicio y lo local. Los `DROP USER` van
+en Snowsight con ACCOUNTADMIN, con un usuario de persona (no con `ENTITY360_TF`, que se estaría borrando
+a sí mismo), una sentencia por línea:
+```sql
+DROP USER IF EXISTS ENTITY360_DBT_SVC;
+DROP USER IF EXISTS ENTITY360_TF;
+```
+(Si `terraform destroy` ya borró `ENTITY360_DBT_SVC`, el primero no hace nada.) Después, en la PC:
+```powershell
+Remove-Item -Recurse -Force $HOME\.snowflake\keys
+# Sacar la sección [entity360] de ~/.snowflake/config y de ~/.snowflake/connections.toml (o borrar los
+# archivos si no tienen otras secciones): tienen la clave privada y el account identifier.
+notepad $HOME\.snowflake\config; notepad $HOME\.snowflake\connections.toml
+```
+El trial se suspende solo al vencer. El trial abierto por error en otra región (otra organización, sin
+tarjeta; `docs/estado.md`) no tiene recursos del proyecto y también vence solo.
 
 ## Limpieza local
 Lo que queda en la PC después de los destroy. Nada está en git (`.gitignore`). Con OK:

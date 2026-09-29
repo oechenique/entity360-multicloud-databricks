@@ -34,7 +34,10 @@ def test_sql_de_snowsight_solo_con_la_publica(home, capsys):
     out = capsys.readouterr().out
     pub = C.publica(C.ruta_clave("tf"))
     assert f"RSA_PUBLIC_KEY = '{pub}'" in out and "CREATE USER IF NOT EXISTS ENTITY360_TF" in out
-    assert "TYPE = SERVICE" in out and "PASSWORD" not in out.upper().replace("HAS_PASSWORD", "")
+    assert "TYPE = SERVICE" in out and "PASSWORD =" not in out.upper()
+    # Snowsight no corre bloques de varias líneas: una sentencia por línea, en ASCII.
+    sql = C.sql_bootstrap(pub)
+    assert all(l.endswith(";") for l in sql.strip().splitlines()) and sql.isascii()
     assert f'dbt_rsa_public_key = "{C.publica(C.ruta_clave("dbt"))}"' in out
 
 

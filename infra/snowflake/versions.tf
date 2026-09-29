@@ -15,6 +15,4 @@ terraform {
 # paso 2): nunca credenciales en el código ni en tfvars versionados.
 provider "snowflake" {
   profile = var.snowflake_profile
-  # El external volume (Camino A2) está en preview en el provider 2.21.
-  preview_features_enabled = ["snowflake_external_volume_resource"]
 }

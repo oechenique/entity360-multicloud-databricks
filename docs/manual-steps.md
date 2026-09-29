@@ -67,6 +67,8 @@ borrar el secreto viejo cuando el nuevo esté en uso.
 | `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | `88a521b9…` | GitHub Secrets del repo (`DATABRICKS_CLIENT_SECRET`, junto con `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` y `USER_AGENT`) | 2026-09-26 22:57 | **2026-12-25 22:57** | `producers\container_enrichment\credenciales.py cargar --dias 90` |
 | `entity360-producer-gdelt` | Productor GDELT en GitHub Actions (fase 4) | `88a530ee…` | GitHub Secrets del repo (`GDELT_DATABRICKS_CLIENT_SECRET`, junto con `GDELT_DATABRICKS_CLIENT_ID`; `DATABRICKS_HOST` es compartido) | 2026-09-26 23:33 | **2026-12-25 23:33** | `producers\gcp_gdelt\credenciales.py cargar --dias 90` |
 | `entity360-snowflake` | Catalog integration de Snowflake y validación del vending (fase 9, ADR 0012) | `c61a7428…` | Administrador de credenciales de Windows, servicio `entity360-snowflake` (con `databricks_host` y `client_id`) | 2026-09-29 18:41 | **2026-12-28 18:41** | `snowflake\integracion.py guardar-secreto --dias 90` y, si la integración ya existe, `crear --camino A --rotar-secreto` |
+| Usuario de Snowflake `ENTITY360_TF` (ACCOUNTADMIN, ADR 0013) | Terraform `infra/snowflake` y `snowflake/integracion.py` (fase 9) | key pair RSA 2048, fingerprint `SHA256:/O7a+qlk…` | `~/.snowflake/keys/entity360_tf.p8` y perfil `[entity360]` de `~/.snowflake/config` (icacls: solo el usuario de Windows) | 2026-09-29 | **no vence** | a mano: `ALTER USER ENTITY360_TF SET RSA_PUBLIC_KEY_2 = '<nueva>'`, cambiar la clave local, `UNSET RSA_PUBLIC_KEY` |
+| Usuario de Snowflake `ENTITY360_DBT_SVC` (rol `ENTITY360_DBT`) | dbt, target `snowflake` (fase 9) | key pair RSA 2048 | `~/.snowflake/keys/entity360_dbt_svc.p8` (icacls); la pública en `infra/snowflake/terraform.tfvars` | 2026-09-29 | **no vence** | a mano: nueva clave con `cuenta.py`, `dbt_rsa_public_key` y `terraform apply` |
 
 Mantener esta tabla al día en cada creación, rotación o borrado. Para listar los secretos reales
 de un SP (ids y vencimientos, nunca los valores):
@@ -238,8 +240,9 @@ Cada paso que crea algo en Snowflake se muestra antes y corre con OK.
 
 **Gastón (UI, lo mínimo):**
 1. Abrir el trial: **Enterprise, AWS us-east-2** (la región del bucket del catálogo). **Fecha de alta:
-   ______** (vence a los 30 días o al agotar el crédito). Pasar el account identifier `<ORG>-<CUENTA>`.
-2. Snowsight → hoja SQL nueva, rol ACCOUNTADMIN → pegar el SQL que imprimió
+   2026-09-29** (vence a los 30 días o al agotar el crédito). Pasar el account identifier `<ORG>-<CUENTA>`.
+2. Snowsight → hoja SQL nueva, rol ACCOUNTADMIN → pegar, **una sentencia por línea** (un bloque de
+   varias líneas no corre), el SQL que imprimió
    `snowflake\cuenta.py claves` (crea `ENTITY360_TF`, `TYPE = SERVICE`, solo con la clave **pública**, sin
    contraseña) y verificar con `DESC USER ENTITY360_TF` (`HAS_PASSWORD = false`).
 3. Verificar el mail del perfil (Snowsight → perfil): los avisos del resource monitor van a los

@@ -75,14 +75,14 @@ def publica(ruta: Path) -> str:
 
 
 def sql_bootstrap(publica_tf: str) -> str:
-    return (f"USE ROLE ACCOUNTADMIN;\n"
-            f"CREATE USER IF NOT EXISTS {USUARIOS['tf']}\n"
-            f"  TYPE = SERVICE\n"
-            f"  DEFAULT_ROLE = ACCOUNTADMIN\n"
-            f"  RSA_PUBLIC_KEY = '{publica_tf}'\n"
-            f"  COMMENT = 'entity360: Terraform (infra/snowflake) y snowflake/integracion.py. Key pair, sin contraseña.';\n"
-            f"GRANT ROLE ACCOUNTADMIN TO USER {USUARIOS['tf']};\n"
-            f"-- Verificación: DESC USER {USUARIOS['tf']};  (RSA_PUBLIC_KEY_FP con valor, HAS_PASSWORD = false)\n")
+    """Una sentencia por línea: Snowsight no corrió un bloque de varias líneas (2026-09-29). Solo ASCII."""
+    return "\n".join([
+        "USE ROLE ACCOUNTADMIN;",
+        f"CREATE USER IF NOT EXISTS {USUARIOS['tf']} TYPE = SERVICE DEFAULT_ROLE = ACCOUNTADMIN "
+        f"RSA_PUBLIC_KEY = '{publica_tf}' COMMENT = 'entity360: Terraform e integracion.py. Key pair, sin password.';",
+        f"GRANT ROLE ACCOUNTADMIN TO USER {USUARIOS['tf']};",
+        f"DESC USER {USUARIOS['tf']};",
+    ]) + "\n"
 
 
 def cuenta_valida(cuenta: str) -> tuple[str, str]:

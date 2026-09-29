@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 19:10 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 19:30 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -68,7 +68,14 @@
   en `infra/snowflake/terraform.tfvars` (ignorado). Orden exacto en `manual-steps.md` §14–15: Gastón corre
   un solo SQL en Snowsight (usuario `ENTITY360_TF` con la clave pública); después, con OK en cada paso,
   `cuenta.py conexiones`, `terraform plan`/`apply` de `infra/snowflake`, `integracion.py crear --camino A`
-  y dbt de los marts. Nada creado en Snowflake todavía.
+  y dbt de los marts.
+- **Trial de Snowflake abierto el 2026-09-29** (Enterprise, AWS us-east-2; vence a los 30 días o al
+  agotar el crédito). Account identifier solo en archivos locales (`~/.snowflake/`), `<ORG>-<CUENTA>` en el
+  repo. `ENTITY360_TF` creado por Gastón en Snowsight (servicio, sin contraseña, key pair; fingerprint
+  verificado contra la clave local). Conexión probada: `ENTITY360_TF`, `ACCOUNTADMIN`, `AWS_US_EAST_2`.
+  Usuario de servicio con ACCOUNTADMIN solo durante el proyecto (ADR 0013).
+  - **Otro trial, abierto por error en sa-east-1** (otra organización, sin tarjeta): no se usa y no se
+    toca; vence solo. Sin recursos del proyecto.
   - **Incidente:** la primera corrida imprimió el token OAuth del SP (1 h de vida, solo lectura de gold):
     el paso 1 devolvía el token y `Pasos` imprimía el resultado. Corregido (el paso devuelve una
     descripción y `Pasos` oculta el secreto y el token en todo lo que imprime), con 5 tests que fallan
