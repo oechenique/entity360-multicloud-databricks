@@ -5,7 +5,8 @@
   filas). Si la tabla no existe, avisa y no falla: registrar resultados no puede tumbar una corrida.
 #}
 {% macro registrar_resultados(results) %}
-  {%- if execute and results -%}
+  {#- Solo Databricks: ops.dbt_resultado vive en Unity Catalog. -#}
+  {%- if execute and results and target.type == 'databricks' -%}
     {%- set tabla = adapter.get_relation(database=target.catalog, schema='ops', identifier='dbt_resultado') -%}
     {%- if tabla is none -%}
       {{ log("ops.dbt_resultado no existe: no se registran los resultados", info=true) }}

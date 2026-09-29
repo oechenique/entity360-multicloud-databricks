@@ -15,3 +15,19 @@ entity360:
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       token: "{{ env_var('DATABRICKS_TOKEN') }}"
       threads: 4
+    # Fase 9 (docs/fase9-plan.md §4): marts en Snowflake. Key pair del usuario de servicio ENTITY360_DBT_SVC,
+    # sin contraseña; todo por variables de entorno.
+    #   $env:SNOWFLAKE_ACCOUNT          = "<ORG>-<CUENTA>"
+    #   $env:SNOWFLAKE_USER             = "ENTITY360_DBT_SVC"
+    #   $env:SNOWFLAKE_PRIVATE_KEY_PATH = "<ruta a la clave privada, fuera del repo>"
+    #   dbt build --target snowflake --vars '{snowflake_gold_database: ENTITY360_UC}'   # ENTITY360_SYNC en el Camino B
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      role: ENTITY360_DBT
+      warehouse: ENTITY360_WH
+      database: ENTITY360_MARTS
+      schema: MARTS
+      threads: 4

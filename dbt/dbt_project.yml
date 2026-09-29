@@ -12,9 +12,13 @@ macro-paths: ["macros"]
 on-run-end:
   - "{{ registrar_resultados(results) }}"
 
+# Dos plataformas, un proyecto (fase 9, docs/fase9-plan.md §4): Gold se construye solo en Databricks
+# (target databricks o airflow) y los marts solo en Snowflake (target snowflake). Cosmos renderiza con el
+# target airflow: el DAG no ve los marts.
 models:
   entity360:
     gold:
+      +enabled: "{{ target.type == 'databricks' }}"
       +materialized: table
       +table_format: iceberg     # Camino A de Snowflake (regla 11): Gold se lee por Iceberg REST
       +contract:
@@ -30,6 +34,11 @@ models:
       +post-hook:
         - "{{ aplicar_contrato_iceberg() }}"
         - "{{ asignar_duenio_gold() }}"
+
+    marts:
+      +enabled: "{{ target.type == 'snowflake' }}"
+      +materialized: table
+      +tags: ["marts"]
 
 flags:
   # table_format: iceberg sin este flag crea Delta con UniForm. Con el flag, Iceberg gestionado, como

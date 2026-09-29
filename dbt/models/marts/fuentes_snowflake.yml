@@ -1,0 +1,25 @@
+version: 2
+
+# Gold visto desde Snowflake (fase 9, docs/fase9-plan.md §4):
+# - Caminos A y A2: la base catalog-linked ENTITY360_UC, que Snowflake sincroniza con Unity Catalog.
+# - Camino B: la copia ENTITY360_SYNC.GOLD que carga Airflow.
+# Unity Catalog guarda los nombres en minúscula: en la base catalog-linked van entre comillas (a
+# verificar en la primera sincronización; si Snowflake los expone en mayúscula, se apaga el quoting).
+
+sources:
+  - name: gold_uc
+    description: Gold de entity360 (Unity Catalog), leído desde Snowflake sin copiar o copiado por Airflow.
+    config:
+      enabled: "{{ target.type == 'snowflake' }}"
+    database: "{{ var('snowflake_gold_database', 'ENTITY360_UC') }}"
+    schema: gold
+    quoting:
+      database: false
+      schema: true
+      identifier: true
+    tables:
+      - name: dim_entity
+      - name: bridge_entity_source
+      - name: fct_news_signal
+      - name: fct_risk_flags
+      - name: fct_entity_changes

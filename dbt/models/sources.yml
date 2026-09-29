@@ -5,6 +5,7 @@ sources:
     description: Resolución de identidades (tarea `resolucion` del job entity360-medallion, regla 08).
     schema: resolution
     config:
+      enabled: "{{ target.type == 'databricks' }}"   # fuentes de Unity Catalog: solo con target Databricks
       loaded_at_field: corrida_utc
       freshness:
         warn_after: {count: 26, period: hour}
@@ -21,6 +22,8 @@ sources:
 
   - name: silver
     schema: silver
+    config:
+      enabled: "{{ target.type == 'databricks' }}"
     tables:
       - name: gdelt_mencion
         description: Menciones de entidades del universo en noticias (GDELT GKG).
@@ -39,6 +42,7 @@ sources:
     description: Lotes aterrizados por fuente (ops.ingestion_log).
     schema: ops
     config:
+      enabled: "{{ target.type == 'databricks' }}"
       loaded_at_field: aterrizado_utc
     tables:
       - name: lotes_sqlserver_cdc

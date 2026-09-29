@@ -1,0 +1,5 @@
+# Fase 9 (docs/fase9-plan.md §4): adapter de Snowflake para el target `snowflake` (marts).
+# Aparte de requirements.txt para no sumarlo a la imagen de Airflow hasta que el DAG corra los marts.
+# dbt-snowflake 1.12.1 es compatible con dbt-core 1.12.3 (verificado el 2026-09-29 con dbt ls).
+-r requirements.txt
+dbt-snowflake==1.12.1

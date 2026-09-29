@@ -219,9 +219,18 @@ de `infra/databricks`. Borrar también las credenciales del llavero de Windows (
 `entity360-airflow`, en el Administrador de credenciales) y revocar su secreto si no se destruye el SP.
 
 ## Snowflake (fase 9)
-La fase 9 no está hecha: todavía no hay recursos de Snowflake ni `infra/snowflake`. Esta sección se
-completa con la fase, junto con la infra (principio 7). Va antes que `infra/databricks`: el Camino A lee
-Gold por Iceberg REST con credenciales que da Unity Catalog.
+La fase 9 está planificada (`docs/fase9-plan.md`) y su Terraform escrito, pero **no hay recursos**: ni
+trial abierto ni `apply`. Cuando existan, antes que `infra/databricks` (Snowflake lee Gold con el SP de
+Databricks), con OK:
+```powershell
+cd infra\snowflake
+terraform plan -destroy        # monitor, warehouse, integración, bases (incluida ENTITY360_UC), roles
+terraform destroy
+```
+Después, en `infra/databricks`, `fase9_snowflake = false` y `apply` (SP `entity360-snowflake` y sus
+grants) y, si se usó el Camino A2, `snowflake_a2 = false` y `apply` en `infra/aws`. Borrar el secreto del
+SP del llavero (servicio `entity360-snowflake`) y la clave privada del usuario de Terraform de Snowflake.
+El trial se suspende solo al vencer.
 
 ## Limpieza local
 Lo que queda en la PC después de los destroy. Nada está en git (`.gitignore`). Con OK:

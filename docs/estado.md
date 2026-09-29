@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 19:00 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 18:30 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -47,6 +47,12 @@
   nombres reemplazadas por padre; SCD2 sin cambios. Tests de equivalencia con el recálculo completo en
   `tests/medallion/test_incremental.py`. **Sin desplegar:** la validación en el workspace está en
   `databricks/evidencia/silver-incremental-validacion.md`.
+- **Fase 9 preparada, nada creado (2026-09-29):** `docs/fase9-plan.md` (validación del vending con el SP
+  primero, Terraform de Snowflake, grants de Databricks, target y marts de dbt, Caminos A2 y B con el
+  criterio para pasar de uno a otro, consumo estimado ~13–15 créditos al mes). Terraform escrito y
+  validado en `infra/snowflake`, `infra/databricks/snowflake.tf` e `infra/aws/snowflake_a2.tf` (los dos
+  últimos apagados por variable: el `plan` de Databricks no suma nada de la fase). Marts en
+  `dbt/models/marts` (solo target snowflake; Gold y el DAG no cambian). Sin trial y sin `apply`.
 - Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
