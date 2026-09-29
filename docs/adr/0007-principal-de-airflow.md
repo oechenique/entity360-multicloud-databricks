@@ -48,3 +48,12 @@ catálogo (principio 4).
 - **En un workspace pago:** el mismo SP, con los grants a través de un grupo de cuenta
   `entity360-orquestacion`, y el secreto en el secret manager de la nube donde corra Airflow
   (por ejemplo, MWAA con AWS Secrets Manager).
+
+## Actualización (2026-09-29): el dueño de Gold no depende de quién corra dbt
+Dos `dbt build` corridos desde la PC con el perfil del usuario recrearon Gold a su nombre y la corrida del
+DAG de ese día falló en dbt con `PERMISSION_DENIED: User does not have MANAGE`. Además el DAG figuró
+`success`, porque su única hoja (`frescura`) corre con `all_done`.
+- dbt ahora exige `E360_GOLD_OWNER` (pre-hook) y, al final de cada modelo de Gold, hace `ALTER TABLE ...
+  OWNER TO` el SP (post-hook, `dbt/macros/duenio_gold.sql`). En Airflow la variable es el mismo SP.
+- El DAG tiene una hoja `resultado` (`none_failed`) aguas abajo de `dbt_gold` y `frescura`: una corrida
+  con dbt caído termina `failed`.

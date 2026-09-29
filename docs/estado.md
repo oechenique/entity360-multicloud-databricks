@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 17:45 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 19:00 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -30,8 +30,12 @@
   panorama, salud de la plataforma) por Terraform; espacio de Genie "Entity 360" por
   `databricks/consumo/genie.py`; resultados de dbt en `ops.dbt_resultado` (hook) y precisión/recall en
   `ops.calidad_resolucion` (ADR 0008). 5 preguntas reales probadas: 5/5 correctas tras documentar el JSON
-  del CDC (la primera corrida falló la 4). Detalle: `databricks/consumo/README.md`. Falta del cierre:
-  README completo, capturas y video, destroy probado.
+  del CDC (la primera corrida falló la 4). Detalle: `databricks/consumo/README.md`.
+- **Cierre del repo (2026-09-29):** `README.md` completo (problema, historia, diagrama Mermaid, porqué de
+  cada pieza, métricas v1 y v2.1 con IC, errores conocidos, limitaciones de Free Edition, cómo
+  levantarlo); ADR 0009 (push al landing), 0010 (resolución por reglas), 0011 (Silver incremental) y la
+  actualización del 0007; `docs/destroy.md` con el orden completo, Snowflake, limpieza local y
+  verificación final. Falta del cierre: capturas y video, y **ejecutar** el destroy (solo con OK).
 - **Aligerar Airflow (parcial, 2026-09-29):** stack liviano en `airflow/docker-compose.yml` (4 tareas a
   la vez, parseo cada 5 min, techo de CPU y memoria por container, sin triggerer porque no hay tareas
   diferibles) y `.wslconfig` aplicado (6 procesadores, 5,8 GB, 2 GB de swap). En reposo: 7,6 % de CPU y

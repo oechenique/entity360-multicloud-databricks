@@ -3,17 +3,34 @@
 Principio 7: el destroy se escribe junto con la infra. **Todo con confirmación explícita**
 (regla 00): nada de esto se corre sin OK de Gastón.
 
-## Orden
-0. Productores que usan los SP (`infra/aws/sec_edgar`, el container de enriquecimiento y el productor
-   GDELT con `infra/gcp`, ver sus secciones).
-1. Databricks (`infra/databricks`): suelta la external location, que depende del bucket.
-2. Vaciar el bucket del catálogo a propósito (ver abajo).
-3. AWS (`infra/aws`): bucket y rol IAM.
+## Estado: qué se probó
+- **Probado de punta a punta:** el destroy del spike (Databricks, AWS y SQL Server local; `spike/INFORME.md`,
+  "Estado final"), con verificación después de cada paso. De ahí salen el orden y los aprendizajes de
+  este documento (`force_destroy` en la external location, Genie a la papelera).
+- **Escrito junto con cada stack, sin ejecutar todavía sobre el proyecto:** todo lo de abajo. Ejecutarlo
+  es el último paso del cierre (regla 12) y necesita OK explícito.
 
-No se toca:
-- El flag del metastore `external_access_enabled` (ver `manual-steps.md` §3): se revierte solo
-  si se abandona el Camino A.
-- Los secretos OAuth del SP: se borran solos con el SP (y vencen a la hora).
+## Orden completo
+Primero lo que usa las identidades de Databricks (los SP), después Databricks, después las nubes y al
+final lo local. Cada paso tiene su sección más abajo.
+
+| # | Qué | Sección |
+|---|---|---|
+| 1 | Airflow: detener el DAG y los containers | [Airflow](#airflow-fase-8) |
+| 2 | Productores: GDELT (`infra/gcp`), enriquecimiento (GitHub Actions + GHCR), SEC EDGAR (`infra/aws/sec_edgar`) | [GDELT](#productor-gdelt-fase-4-infragcp), [enriquecimiento](#container-de-enriquecimiento-fase-5), [SEC EDGAR](#productor-sec-edgar-fase-3-us-east-1) |
+| 3 | Snowflake (fase 9), cuando exista | [Snowflake](#snowflake-fase-9) |
+| 4 | Genie a la papelera y `infra/databricks` (catálogo, job, SP, dashboard, tablas de `ops`) | [1. Databricks](#1-databricks) |
+| 5 | Vaciar el bucket del catálogo a propósito | [2. Vaciar el bucket](#2-vaciar-el-bucket-a-propósito) |
+| 6 | `infra/aws`: bucket y rol IAM del catálogo | [3. AWS](#3-aws) |
+| 7 | Legacy: SQL Server, credenciales y checkpoint del extractor | [Legacy](#legacy-fase-2) |
+| 8 | Limpieza local | [Limpieza local](#limpieza-local) |
+
+No se toca (a propósito):
+- El flag del metastore `external_access_enabled` (`manual-steps.md` §4): se revierte solo si se
+  abandona el Camino A de Snowflake.
+- Los presupuestos de AWS (50 y 100 USD, `manual-steps.md` §2): son de la cuenta, no del proyecto.
+- El proyecto de GCP (sandbox, sin facturación): lo crea y lo borra el dueño de la cuenta.
+- Los secretos OAuth de los SP: se borran con los SP (y los M2M vencen a la hora).
 
 ## 1. Databricks
 El espacio de Genie (fase 10) no es de Terraform: se manda a la papelera antes, por su título.
@@ -200,3 +217,38 @@ docker image rm entity360-airflow:3.3.2
 El SP `entity360-orquestador`, sus grants y el permiso sobre el job se borran con el `terraform destroy`
 de `infra/databricks`. Borrar también las credenciales del llavero de Windows (servicio
 `entity360-airflow`, en el Administrador de credenciales) y revocar su secreto si no se destruye el SP.
+
+## Snowflake (fase 9)
+La fase 9 no está hecha: todavía no hay recursos de Snowflake ni `infra/snowflake`. Esta sección se
+completa con la fase, junto con la infra (principio 7). Va antes que `infra/databricks`: el Camino A lee
+Gold por Iceberg REST con credenciales que da Unity Catalog.
+
+## Limpieza local
+Lo que queda en la PC después de los destroy. Nada está en git (`.gitignore`). Con OK:
+```powershell
+# Entornos de Python
+Remove-Item -Recurse -Force .venv, contracts\.venv, dbt\.venv, spike\.venv
+# Datos descargados por el spike (~950 MB) y artefactos de dbt
+Remove-Item -Recurse -Force spike\data, dbt\target, dbt\logs, airflow\logs
+# Imágenes de Docker del proyecto
+docker image rm entity360-airflow:3.3.2 entity360-enrichment:local entity360-gdelt
+# Variables y states locales (revisar antes: el state vacío confirma el destroy)
+Get-ChildItem -Recurse -Include terraform.tfvars, *.tfstate*, *.tfplan, .env, profiles.yml -File |
+  Where-Object { $_.FullName -notmatch '\.venv\' } | Select-Object FullName
+```
+- **Llavero de Windows:** servicios `entity360-cdc-extractor` y `entity360-airflow` (Administrador de
+  credenciales) y el perfil `entity360-free` de `~/.databrickscfg` con su token OAuth
+  (`databricks auth logout -p entity360-free`, o borrar la sección a mano).
+- **`.wslconfig`** (fase 8, `airflow/wslconfig.propuesto`): es de la PC, no del proyecto. Si ya no se
+  quiere el techo de WSL, borrar `%UserProfile%\.wslconfig` y correr `wsl --shutdown`.
+
+## Verificación final
+- `terraform state list` vacío en `infra/databricks`, `infra/aws`, `infra/aws/sec_edgar` e `infra/gcp`.
+- `databricks catalogs list -p entity360-free` sin `entity360`; `databricks service-principals list` sin
+  `entity360-*`; `databricks genie list-spaces` sin "Entity 360"; el dashboard no figura en
+  `/Shared/entity360`.
+- `aws s3 ls --profile tesseract` sin buckets `entity360-*`; `aws lambda list-functions` sin
+  `entity360-*`.
+- `gh workflow list` con los workflows de GDELT y enriquecimiento deshabilitados (o borrados) y
+  `gh secret list` sin los secretos del proyecto.
+- `docker ps -a` y `docker volume ls` sin `entity360-*`.
