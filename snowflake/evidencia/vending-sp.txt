@@ -1,0 +1,22 @@
+# Fase 9, paso 1: credential vending de Unity Catalog con el SP entity360-snowflake (2026-09-29)
+# snowflake/validar_vending.py --filas-esperadas 1136, con credenciales locales de AWS ocultas.
+# Saneado: host del workspace y bucket reemplazados. Sin SQL warehouse (API de Unity Catalog + S3).
+
+credenciales locales de AWS: ocultas (OK)
+
+=== 1. Token OAuth M2M del SP ===
+OK: token obtenido (no se imprime), scope all-apis, vence en 3600 s
+
+=== 2. GET /v1/config ===
+OK: HTTP 200 {"defaults":{"snapshot-loading-mode":"refs","rest-page-size":"1000","s3.delete-enabled":"false"},"overrides":{"prefix":"catalogs/entity360"},"endpoints":["GET /v1/{prefix}/namespaces","GET /v1/{prefix}/namespaces/{namespace}","POST /v1/{prefix}/namespaces","POST /v1/{prefix}/namespaces/{namespace}/p
+
+=== 3. loadTable gold.dim_entity (vended-credentials) ===
+OK: HTTP 200; claves de config=['client.region', 's3.access-key-id', 's3.secret-access-key', 's3.session-token', 's3.session-token-expires-at-ms']; storage-credentials=0
+
+=== 4. PyIceberg load_table + scan de gold.dim_entity ===
+OK: 1136 filas, igual que Databricks; snapshot 7458155380108295516
+
+=== 5. Mínimo privilegio: silver.sec_emisor no se puede cargar ===
+OK: HTTP 403 (esperado: sin acceso)
+
+RESULTADO: todo OK: Camino A habilitado para abrir el trial

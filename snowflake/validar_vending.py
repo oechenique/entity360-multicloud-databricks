@@ -57,17 +57,27 @@ def credenciales_sp() -> tuple[str, str]:
 
 
 class Pasos:
+    """Corre cada chequeo e imprime su resultado. Nada de lo que imprime puede llevar el secreto del SP ni
+    el token: se ocultan en todo (resultados y errores). El 2026-09-29 el paso 1 imprimió el token."""
+
     def __init__(self):
         self.fallas = []
+        self.ocultos: set[str] = set()
+
+    def ocultar(self, texto) -> str:
+        texto = str(texto)
+        for s in self.ocultos:
+            texto = texto.replace(s, "***")
+        return texto
 
     def __call__(self, nombre, fn):
         print(f"\n=== {nombre} ===")
         try:
             r = fn()
-            print(f"OK: {r}")
+            print(f"OK: {self.ocultar(r)}")
             return r
         except Exception as e:  # noqa: BLE001 - se registra cualquier falla y se sigue
-            print(f"FALLA: {traceback.format_exception_only(type(e), e)[-1].strip()[:800]}")
+            print(f"FALLA: {self.ocultar(traceback.format_exception_only(type(e), e)[-1].strip()[:800])}")
             self.fallas.append(nombre)
             return None
 
@@ -88,17 +98,23 @@ def main() -> int:
     paso = Pasos()
 
     client_id, secreto = credenciales_sp()
+    paso.ocultos.add(secreto)
+    obtenido = {}
 
     def token():
+        """Devuelve una descripción, nunca el token: Pasos imprime lo que devuelve cada paso."""
         r = requests.post(f"{host}/oidc/v1/token", timeout=60, auth=(client_id, secreto),
                           data={"grant_type": "client_credentials", "scope": "all-apis"})
         r.raise_for_status()
-        return r.json()["access_token"]
+        cuerpo = r.json()
+        obtenido["token"] = cuerpo["access_token"]
+        paso.ocultos.add(obtenido["token"])
+        return f"token obtenido (no se imprime), scope {cuerpo.get('scope')}, vence en {cuerpo.get('expires_in')} s"
 
-    tok = paso("1. Token OAuth M2M del SP", token)
+    paso("1. Token OAuth M2M del SP", token)
+    tok = obtenido.get("token")
     if not tok:
         return 1
-    print("(token obtenido; no se imprime)")
     h = {"Authorization": f"Bearer {tok}"}
 
     def config():

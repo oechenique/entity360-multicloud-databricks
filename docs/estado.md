@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 18:30 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 18:55 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -55,7 +55,19 @@
   `dbt/models/marts` (solo target snowflake; Gold y el DAG no cambian). Sin trial y sin `apply`.
   La catalog integration y la base catalog-linked van por `snowflake/integracion.py` (secreto del
   llavero, nunca en un state; ADR 0012), con 13 tests con mocks en `tests/snowflake`.
-- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 13 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+- **Fase 9, paso 1: vending validado con el SP (2026-09-29).** SP `entity360-snowflake` y sus grants
+  creados (`apply` con `-target`, camino A: `USE_CATALOG`; `USE_SCHEMA`, `SELECT` y `EXTERNAL_USE_SCHEMA`
+  en gold); `fase9_snowflake = true` en `terraform.tfvars` para que un `plan` normal no lo destruya.
+  Secreto en el llavero (`entity360-snowflake`, vence 2026-12-28 18:41 UTC). `validar_vending.py` 5/5:
+  token del SP, `config`, credenciales S3 temporales en `loadTable` de `gold.dim_entity`, scan de 1136
+  filas (igual que la última resolución) y 403 en `silver.sec_emisor`. **Camino A.** Evidencia:
+  `snowflake/evidencia/vending-sp.txt`. El trial sigue sin abrir (espera OK).
+  - **Incidente:** la primera corrida imprimió el token OAuth del SP (1 h de vida, solo lectura de gold):
+    el paso 1 devolvía el token y `Pasos` imprimía el resultado. Corregido (el paso devuelve una
+    descripción y `Pasos` oculta el secreto y el token en todo lo que imprime), con 5 tests que fallan
+    con la versión vieja. El token vence a la hora de emitido (19:41 UTC del 2026-09-29) y no se puede revocar
+    por separado; los archivos locales con la salida, borrados.
+- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 18 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente

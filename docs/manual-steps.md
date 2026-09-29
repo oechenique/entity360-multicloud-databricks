@@ -66,6 +66,7 @@ borrar el secreto viejo cuando el nuevo esté en uso.
 | `entity360-producer-sec-edgar` | Lambda de entrega SEC EDGAR (fase 3) | `871133f2…` | AWS Secrets Manager `entity360/databricks/producer-sec-edgar` (us-east-1) | 2026-09-25 22:14 | **2026-12-24 22:14** | `producers\aws_sec_edgar\credenciales.py cargar --dias 90` |
 | `entity360-producer-enrichment` | Container de enriquecimiento (fase 5) | `88a521b9…` | GitHub Secrets del repo (`DATABRICKS_CLIENT_SECRET`, junto con `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` y `USER_AGENT`) | 2026-09-26 22:57 | **2026-12-25 22:57** | `producers\container_enrichment\credenciales.py cargar --dias 90` |
 | `entity360-producer-gdelt` | Productor GDELT en GitHub Actions (fase 4) | `88a530ee…` | GitHub Secrets del repo (`GDELT_DATABRICKS_CLIENT_SECRET`, junto con `GDELT_DATABRICKS_CLIENT_ID`; `DATABRICKS_HOST` es compartido) | 2026-09-26 23:33 | **2026-12-25 23:33** | `producers\gcp_gdelt\credenciales.py cargar --dias 90` |
+| `entity360-snowflake` | Catalog integration de Snowflake y validación del vending (fase 9, ADR 0012) | `c61a7428…` | Administrador de credenciales de Windows, servicio `entity360-snowflake` (con `databricks_host` y `client_id`) | 2026-09-29 18:41 | **2026-12-28 18:41** | `snowflake\integracion.py guardar-secreto --dias 90` y, si la integración ya existe, `crear --camino A --rotar-secreto` |
 
 Mantener esta tabla al día en cada creación, rotación o borrado. Para listar los secretos reales
 de un SP (ids y vencimientos, nunca los valores):
@@ -217,6 +218,9 @@ Orden: §13 (antes del trial) → abrir el trial → §14 → `terraform apply` 
 Ningún secreto pasa por un state de Terraform (ADR 0012).
 
 ### 13. SP de Snowflake y validación del vending (antes del trial)
+**Hecho el 2026-09-29:** SP creado (`apply` con `-target` del SP y sus grants; `fase9_snowflake = true` y
+`snowflake_camino = "A"` en `terraform.tfvars`), secreto en el llavero y vending validado 5/5
+(`snowflake/evidencia/vending-sp.txt`). Camino A.
 1. `fase9_snowflake = true` en `infra/databricks/terraform.tfvars`, `plan` (3 recursos: SP y dos grants) y
    `apply` con OK.
 2. Secreto OAuth del SP (90 días) al llavero de Windows (servicio `entity360-snowflake`, con el host y el
