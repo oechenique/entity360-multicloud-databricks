@@ -38,7 +38,12 @@
   2,1 GB contra 10,1 % y 2,4 GB (`airflow/evidencia/consumo.md`). dbt deja Gold a nombre del SP del
   orquestador (`dbt/macros/duenio_gold.sql`, variable `E360_GOLD_OWNER`) y el DAG tiene la tarea final
   `resultado`: una corrida con dbt caído ya no figura `success` (24 tareas).
-- Tests: 3 en `tests/airflow`, 114 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+- **Silver incremental (código, 2026-09-29):** cada fuente procesa solo los lotes de Bronze que Silver no
+  procesó (`silver._lotes_procesados`); capa 3 por MERGE si el registro nuevo no es más viejo; tablas de
+  nombres reemplazadas por padre; SCD2 sin cambios. Tests de equivalencia con el recálculo completo en
+  `tests/medallion/test_incremental.py`. **Sin desplegar:** la validación en el workspace está en
+  `databricks/evidencia/silver-incremental-validacion.md`.
+- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente
@@ -65,7 +70,9 @@
    3. Techo de 2 GB al SQL Server del legacy (`legacy/docker-compose.yml`) si aprieta la memoria durante
       la corrida. En reposo usa 1,25 GB.
    4. Informe de consumo final en `airflow/evidencia/consumo.md`.
-6. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
+6. **Silver incremental:** desplegar y validar con las huellas de
+   `databricks/evidencia/silver-incremental-validacion.md` (pasos 1 a 5), cuando vuelva la cuota.
+7. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
 
 ## Restricciones del proyecto
