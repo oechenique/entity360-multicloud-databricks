@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 20:40 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 20:50 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -139,6 +139,14 @@
    `databricks/evidencia/silver-incremental-validacion.md` (pasos 1 a 5), cuando vuelva la cuota.
 7. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
+
+## Próximos pasos (fase 9)
+1. **Snowflake en el DAG:** rol `ENTITY360_SYNC` con mínimo privilegio para `REFRESH` y `GRANT` sobre
+   `ENTITY360_UC` (sin ACCOUNTADMIN en Airflow); tareas refrescar → grants → dbt marts → tests antes de
+   `resultado`; clave privada por archivo montado.
+2. **Verificar si los grants sobreviven al `CREATE OR REPLACE` de Gold.**
+
+Al cerrar (2026-09-29 20:50 UTC): `ENTITY360_WH` y `COMPUTE_WH` en `SUSPENDED` (verificado).
 
 ## Restricciones del proyecto
 - **Cuota diaria de cómputo serverless de Free Edition.** Cuando se agota, el SQL warehouse no arranca
