@@ -100,6 +100,25 @@ Pasos, con el trial abierto:
    decir "sin cambios" la segunda.
 4. `SHOW TABLES IN DATABASE ENTITY360_UC;`: tienen que aparecer las 5 tablas de `gold` y ninguna otra.
    Conteos iguales a Databricks en las 5 tablas.
+   **Hecho el 2026-09-29** (`snowflake/evidencia/catalog-linked.txt`): solo el schema `gold`, las 5
+   tablas, conteos iguales, array y map legibles, nombres en minúscula entre comillas.
+
+**Parámetros de la sincronización (2026-09-29):**
+- Integración: `REFRESH_INTERVAL_SECONDS = 3600` (metadata de las tablas). Gold solo cambia con el DAG,
+  una vez por día, y la sincronización no la frena ningún resource monitor.
+- Base: `ALLOWED_NAMESPACES = ('gold')` (no intenta `silver`, `bronze` ni `landing`, donde el SP recibe
+  403), `SYNC_INTERVAL_SECONDS = 3600` (descubrimiento de schemas y tablas; el default de Snowflake es
+  30 s) y `ALLOWED_WRITE_OPERATIONS = NONE`.
+- **`SYNC_INTERVAL_SECONDS` se puede cambiar sin recrear la base:**
+  `ALTER DATABASE ENTITY360_UC UPDATE LINKED_CATALOG SET SYNC_INTERVAL_SECONDS = <n>;` (probado con el
+  mismo valor). También existen `SUSPEND DISCOVERY` / `RESUME DISCOVERY` y `ADD/REMOVE ... ALLOWED_NAMESPACES`.
+- **Refresh manual después de una corrida del DAG:** `.venv\Scripts\python.exe snowflake\integracion.py
+  refrescar` (`ALTER ICEBERG TABLE ENTITY360_UC."gold"."<tabla>" REFRESH` por tabla; probado). Estado de
+  la sincronización: `SELECT SYSTEM$CATALOG_LINK_STATUS('ENTITY360_UC');`.
+- **Solo lectura del lado de Snowflake, no demostrado:** un `INSERT` de cero filas no hace commit y pasó,
+  así que no prueba `ALLOWED_WRITE_OPERATIONS = NONE`. La barrera probada es la de Unity Catalog (el SP
+  no tiene `MODIFY`); Gold quedó en el mismo snapshot. La prueba concluyente (un `INSERT` de una fila que
+  tiene que fallar) se hace solo con OK.
 5. Tipos a verificar en la primera sincronización: `fuentes` (array), `procedencia` (map) y la
    capitalización de los nombres (los marts asumen minúscula entre comillas).
 

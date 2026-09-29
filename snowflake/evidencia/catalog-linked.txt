@@ -1,0 +1,50 @@
+# Fase 9, paso 3: catalog integration y base catalog-linked (2026-09-29, Camino A)
+# Saneado: sin account identifier, workspace ni client_id.
+
+## integracion.py crear --camino A (primera corrida)
+integración ENTITY360_UNITY creada (camino A)
+base catalog-linked ENTITY360_UC creada
+grants de lectura para ENTITY360_DBT, ENTITY360_MODELER      # incluidos los FUTURE: no fallaron
+verificación: {"success": true, "errorCode": "", "errorMessage": ""}
+
+## integracion.py crear --camino A (segunda corrida)
+integración ENTITY360_UNITY ya existe con la misma configuración: sin cambios
+base ENTITY360_UC ya existe: sin cambios
+verificación: {"success": true, "errorCode": "", "errorMessage": ""}
+
+## Base: CREATE DATABASE IF NOT EXISTS ENTITY360_UC LINKED_CATALOG = (CATALOG = 'ENTITY360_UNITY',
+##   ALLOWED_NAMESPACES = ('gold'), ALLOWED_WRITE_OPERATIONS = NONE, SYNC_INTERVAL_SECONDS = 3600)
+## Integración: REFRESH_INTERVAL_SECONDS = 3600, VENDED_CREDENTIALS
+SYSTEM$CATALOG_LINK_STATUS('ENTITY360_UC'): {"failureDetails":[],"executionState":"RUNNING"}
+  (la primera sincronización ya había corrido antes del primer SHOW)
+SHOW SCHEMAS IN DATABASE ENTITY360_UC: gold (is_nested false), INFORMATION_SCHEMA   -> solo gold
+SHOW ICEBERG TABLES IN DATABASE ENTITY360_UC (catálogo ENTITY360_UNITY, sin external volume):
+  gold.bridge_entity_source  gold.dim_entity  gold.fct_entity_changes  gold.fct_news_signal  gold.fct_risk_flags
+
+## Conteos con el rol ENTITY360_DBT y ENTITY360_WH
+## (Gold del 2026-09-29, sin cambios desde el dbt build de las 15:48 UTC)
+dim_entity             1136  (Gold: 1136) OK
+bridge_entity_source   1268  (Gold: 1268) OK
+fct_risk_flags           52  (Gold:   52) OK
+fct_news_signal          10  (Gold:   10) OK
+fct_entity_changes     4036  (Gold: 4036) OK
+Tipos: fuentes (array) con ARRAY_SIZE y procedencia (map) como OBJECT, legibles. Nombres en minúscula
+entre comillas: ENTITY360_UC."gold"."dim_entity" (como asumen los marts).
+
+## Escritura
+INSERT INTO ENTITY360_UC."gold"."dim_entity" SELECT * ... WHERE FALSE  ->  (0,)   NO CONCLUYENTE
+  Un INSERT de cero filas no hace commit: no prueba ALLOWED_WRITE_OPERATIONS = NONE. Gold intacto:
+  gold.dim_entity sigue en el snapshot 7458155380108295516 (uno solo), leído con el SP por la API.
+  La barrera probada es la de Unity Catalog: el SP no tiene MODIFY.
+
+## ALTER (no destructivo, mismo valor)
+ALTER DATABASE ENTITY360_UC UPDATE LINKED_CATALOG SET SYNC_INTERVAL_SECONDS = 3600  ->  Statement executed successfully.
+
+## Refresh manual (integracion.py refrescar = ALTER ICEBERG TABLE ... REFRESH por tabla)
+gold.dim_entity: Table 'dim_entity' has already been refreshed to snapshot '7458155380108295516'.   (= snapshot de UC)
+Las otras 4 tablas igual: ya estaban en su snapshot actual.
+
+## Consumo del día (ACCOUNT_USAGE hasta las 20:00 UTC; latencia de horas)
+WAREHOUSE_METERING_HISTORY: ENTITY360_WH 0.0012, COMPUTE_WH 0.0002, CLOUD_SERVICES_ONLY 0.0028
+METERING_HISTORY: CORTEX_CODE_SNOWSIGHT 0.0032 (asistente de Snowsight, serverless)
+SHOW RESOURCE MONITORS: ENTITY360_CUENTA 0.00 de 25, ENTITY360_MONITOR 0.00 de 20

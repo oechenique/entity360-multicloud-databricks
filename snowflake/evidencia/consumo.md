@@ -7,7 +7,7 @@ Estimación del plan: ~13–15 créditos por mes (`docs/fase9-plan.md` §6). Ac�
 |---|---|---|
 | `ENTITY360_MONITOR` (20 créditos/mes, nivel warehouse) | `ENTITY360_WH` (dbt de los marts, modelers) | todo lo demás |
 | `ENTITY360_CUENTA` (25 créditos/mes, nivel cuenta) | todos los warehouses de la cuenta: `COMPUTE_WH` (Snowsight), `SNOWFLAKE_LEARNING_WH` y los que aparezcan | cómputo serverless y cloud services |
-| **Nada** (solo se mide) | — | **la sincronización de la base catalog-linked** (`ENTITY360_UC`, cada 300 s), tareas serverless, Snowpipe, clustering automático, cloud services por encima del 10 % diario |
+| **Nada** (solo se mide) | — | **la sincronización de la base catalog-linked** (`ENTITY360_UC`: descubrimiento y metadata cada 3600 s), el asistente de Snowsight (`CORTEX_CODE_SNOWSIGHT`), tareas serverless, Snowpipe, clustering automático, cloud services por encima del 10 % diario |
 
 Los resource monitors solo controlan warehouses; la documentación de Snowflake recomienda un *budget*
 para lo serverless. Por eso lo serverless se mide a mano, a diario, mientras dure el trial.
@@ -34,4 +34,4 @@ SHOW RESOURCE MONITORS LIKE 'ENTITY360%';
 ## Registro
 | Día (UTC) | Warehouses | Serverless (catalog-linked y otros) | Cloud services facturados | Total | Acumulado | Nota |
 |---|---|---|---|---|---|---|
-| 2026-09-29 | | | | | | alta del trial, Terraform, integración (a medir el 2026-09-30) |
+| 2026-09-29 (parcial, hasta 20:00 UTC) | 0,0014 (`ENTITY360_WH` 0,0012; `COMPUTE_WH` 0,0002) | 0,0032 (`CORTEX_CODE_SNOWSIGHT`: el asistente de Snowsight) | 0,0028 (`CLOUD_SERVICES_ONLY`, dentro del 10 % gratis) | **~0,007** | ~0,007 | alta, Terraform, integración, conteos. Monitores: 0,00 de 20 y 0,00 de 25. Completar el 2026-09-30 |

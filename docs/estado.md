@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 19:30 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 20:15 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -82,6 +82,15 @@
   `ALTER ACCOUNT`, y `COMPUTE_WH` con `AUTO_SUSPEND = 60`) y `integracion.py crear --camino A` (simulado
   con `--simular`). Medición diaria de lo que no frenan los monitores (serverless, catalog-linked) en
   `snowflake/evidencia/consumo.md`.
+- **Monitor de cuenta y `COMPUTE_WH` aplicados** (3 recursos): `ENTITY360_CUENTA` a nivel `ACCOUNT` (25
+  créditos), `COMPUTE_WH` con `AUTO_SUSPEND = 60`.
+- **Catalog integration y base catalog-linked creadas (2026-09-29, Camino A):** `integracion.py crear`
+  (segunda corrida: sin cambios), `SYSTEM$VERIFY_CATALOG_INTEGRATION` OK, solo `gold` con sus 5 tablas y
+  conteos iguales a Gold (1136 / 1268 / 52 / 10 / 4036) leyendo con `ENTITY360_DBT` en `ENTITY360_WH`.
+  Refresh y descubrimiento cada 3600 s; `SYNC_INTERVAL_SECONDS` se cambia con `ALTER` sin recrear.
+  Consumo del día (parcial): ~0,007 créditos. Solo lectura del lado de Snowflake **no demostrado** (el
+  `INSERT` de cero filas no hace commit); la barrera es el SP sin `MODIFY`. Evidencia:
+  `snowflake/evidencia/catalog-linked.txt`. **Sigue:** dbt de los marts (OK pendiente).
   - **Incidente:** la primera corrida imprimió el token OAuth del SP (1 h de vida, solo lectura de gold):
     el paso 1 devolvía el token y `Pasos` imprimía el resultado. Corregido (el paso devuelve una
     descripción y `Pasos` oculta el secreto y el token en todo lo que imprime), con 5 tests que fallan
@@ -91,7 +100,7 @@
     expuesto. Verificado (`git log -p --all`, 68 commits, y el working tree): el token nunca entró a un
     commit. Fuera del repo quedó en el transcript local de la sesión de Claude Code; los archivos de
     salida del scratchpad, borrados.
-- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 23 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+- Tests: 3 en `tests/airflow`, 120 en `tests/medallion`, 25 en `tests/snowflake`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente

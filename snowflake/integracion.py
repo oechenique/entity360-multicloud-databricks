@@ -11,6 +11,8 @@ Windows (servicio "entity360-snowflake"), no lo imprime ni lo loguea, y es idemp
   con CREATE DATABASE IF NOT EXISTS, los grants de lectura para los roles de dbt y de los modelers
   (solo cuando la base es nueva, o con `--reaplicar-grants`) y SYSTEM$VERIFY_CATALOG_INTEGRATION.
 - `verificar`: solo SYSTEM$VERIFY_CATALOG_INTEGRATION.
+- `refrescar`: `ALTER ICEBERG TABLE ... REFRESH` de cada tabla de la base catalog-linked, para ver una
+  corrida del DAG sin esperar el refresco automático (cada hora).
 - `guardar-secreto`: crea un secreto OAuth para el SP (outputs de infra/databricks) y lo guarda en el
   llavero junto con el host y el client_id. Imprime solo el vencimiento.
 
@@ -36,7 +38,11 @@ SERVICIO = "entity360-snowflake"
 INTEGRACION = "ENTITY360_UNITY"
 BASE = "ENTITY360_UC"
 CATALOGO_UC = "entity360"
-REFRESCO_S = 300
+# Metadata de las tablas: Gold solo cambia con el DAG (una vez por día) y la sincronización no la frena
+# ningún resource monitor. Después de una corrida del DAG se puede forzar (docs/fase9-plan.md §2).
+REFRESCO_S = 3600
+NAMESPACES = ("gold",)          # solo gold: en silver, bronze o landing el SP recibe 403
+SYNC_S = 3600                   # descubrimiento de schemas y tablas de la base (default de Snowflake: 30 s)
 ROLES_LECTURA = ("ENTITY360_DBT", "ENTITY360_MODELER")
 RAIZ = Path(__file__).resolve().parents[1]
 PERFIL_DATABRICKS = "entity360-free"
@@ -110,8 +116,14 @@ def sql_rotar_secreto(cfg: Config, secreto: str) -> str:
 
 
 def sql_crear_base(cfg: Config) -> str:
+    # Sintaxis de la referencia de CREATE DATABASE (catalog-linked): parámetros del catálogo separados por
+    # coma dentro de LINKED_CATALOG; EXTERNAL_VOLUME va afuera.
+    permitidos = ", ".join(_literal(n) for n in NAMESPACES)
     volumen = f" EXTERNAL_VOLUME = {_literal(cfg.external_volume)}" if cfg.camino == "A2" else ""
-    return (f"CREATE DATABASE IF NOT EXISTS {BASE} LINKED_CATALOG = (CATALOG = {_literal(INTEGRACION)}{volumen}) "
+    # Solo lectura también del lado de Snowflake (además de que el SP no tiene MODIFY en Unity Catalog).
+    return (f"CREATE DATABASE IF NOT EXISTS {BASE} LINKED_CATALOG = (CATALOG = {_literal(INTEGRACION)}, "
+            f"ALLOWED_NAMESPACES = ({permitidos}), ALLOWED_WRITE_OPERATIONS = NONE, "
+            f"SYNC_INTERVAL_SECONDS = {SYNC_S}){volumen} "
             f"COMMENT = 'Gold de Unity Catalog sin copiar (catalog-linked). snowflake/integracion.py'")
 
 
@@ -214,6 +226,20 @@ def crear(ejecutar, cfg: Config, secreto: str, rotar: bool = False, reaplicar_gr
     return hecho
 
 
+def refrescar(ejecutar, decir=print) -> list[str]:
+    """Refresco manual de la metadata de las tablas de la base catalog-linked, después de una corrida del
+    DAG (el automático es cada REFRESCO_S). Probado el 2026-09-29: `ALTER ICEBERG TABLE ... REFRESH`."""
+    salida = []
+    filas = ejecutar(f"SHOW ICEBERG TABLES IN DATABASE {BASE}")
+    for f in filas:
+        esquema, tabla = f[3], f[1]             # SHOW ICEBERG TABLES: created_on, name, database_name, schema_name
+        r = ejecutar(f'ALTER ICEBERG TABLE {BASE}."{esquema}"."{tabla}" REFRESH')
+        salida.append(f"{esquema}.{tabla}: {r[0][0] if r else 'ok'}")
+    for linea in salida:
+        decir(linea)
+    return salida
+
+
 def verificar(ejecutar, secreto: str | None = None) -> str:
     filas = ejecutar(f"SELECT SYSTEM$VERIFY_CATALOG_INTEGRATION('{INTEGRACION}')")
     return ocultar(filas[0][0] if filas else "(sin respuesta)", secreto)
@@ -274,6 +300,8 @@ def main() -> int:
     c.add_argument("--simular", action="store_true", help="solo lee; lista lo que ejecutaría (secreto oculto)")
     v = sub.add_parser("verificar")
     v.add_argument("--conexion", default="entity360")
+    r = sub.add_parser("refrescar", help="refresca la metadata de las tablas de gold (después del DAG)")
+    r.add_argument("--conexion", default="entity360")
     a = ap.parse_args()
 
     if a.accion == "guardar-secreto":
@@ -283,6 +311,9 @@ def main() -> int:
         ejecutar = Simulador(con.cursor()) if getattr(a, "simular", False) else Ejecutor(con.cursor())
         if a.accion == "verificar":
             print(verificar(ejecutar))
+            return 0
+        if a.accion == "refrescar":
+            refrescar(ejecutar)
             return 0
         host, client_id, secreto = leer_llavero()
         try:

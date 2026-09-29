@@ -75,6 +75,8 @@ def test_si_no_existe_crea_integracion_base_y_grants():
     assert creadas[0].startswith("CREATE CATALOG INTEGRATION IF NOT EXISTS ENTITY360_UNITY")
     assert "ACCESS_DELEGATION_MODE = VENDED_CREDENTIALS" in creadas[0]
     assert creadas[1].startswith("CREATE DATABASE IF NOT EXISTS ENTITY360_UC LINKED_CATALOG")
+    assert "ALLOWED_NAMESPACES = ('gold')" in creadas[1] and "REFRESH_INTERVAL_SECONDS = 3600" in creadas[0]
+    assert "ALLOWED_WRITE_OPERATIONS = NONE" in creadas[1] and "SYNC_INTERVAL_SECONDS = 3600" in creadas[1]
     assert all(s.startswith("GRANT") for s in creadas[2:]) and len(creadas[2:]) == len(I.sql_grants())
     assert not any(s.startswith(("DROP", "ALTER")) for s in c.ejecutadas)
 
@@ -103,7 +105,9 @@ def test_rotar_secreto_es_solo_un_alter():
 def test_camino_a2_usa_el_external_volume():
     cfg = I.Config(CFG.host, CFG.client_id, "A2", "ENTITY360_GOLD_VOL")
     assert "ACCESS_DELEGATION_MODE = EXTERNAL_VOLUME_CREDENTIALS" in I.sql_crear_integracion(cfg, SECRETO)
-    assert "EXTERNAL_VOLUME = 'ENTITY360_GOLD_VOL'" in I.sql_crear_base(cfg)
+    base = I.sql_crear_base(cfg)
+    assert "EXTERNAL_VOLUME = 'ENTITY360_GOLD_VOL'" in base
+    assert base.index("EXTERNAL_VOLUME") > base.index("SYNC_INTERVAL_SECONDS = 3600)")   # fuera de LINKED_CATALOG
     with pytest.raises(ValueError):
         I.Config(CFG.host, CFG.client_id, "A2")
     with pytest.raises(ValueError):
@@ -155,3 +159,12 @@ def test_simular_solo_lee_y_lista_lo_demas_sin_el_secreto(capsys):
     assert any(p.startswith("CREATE DATABASE IF NOT EXISTS ENTITY360_UC") for p in sim.pendientes)
     sin_secreto(*sim.pendientes, capsys.readouterr().out)
     assert any(I.OCULTO in p for p in sim.pendientes)
+
+
+def test_refrescar_cada_tabla_de_la_base():
+    tablas = [("2026-09-29", "dim_entity", "ENTITY360_UC", "gold"), ("2026-09-29", "fct_news_signal", "ENTITY360_UC", "gold")]
+    c = Cursor({"SHOW ICEBERG TABLES": tablas, "ALTER ICEBERG TABLE": [("refrescada",)]})
+    salida = I.refrescar(I.Ejecutor(c), decir=lambda _: None)
+    assert c.ejecutadas[1:] == ['ALTER ICEBERG TABLE ENTITY360_UC."gold"."dim_entity" REFRESH',
+                                'ALTER ICEBERG TABLE ENTITY360_UC."gold"."fct_news_signal" REFRESH']
+    assert salida == ["gold.dim_entity: refrescada", "gold.fct_news_signal: refrescada"]
