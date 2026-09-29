@@ -1,9 +1,9 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-27, 23:55 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 15:45 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fases 6 a 8 cerradas. Sigue la fase 9 (Snowflake): espera el OK de Gastón (abre el trial de 30 días).**
+**Fases 6 a 8 cerradas; resolución v2.1 aplicada. En curso: fase 10 (consumo y observabilidad), adelantada a pedido de Gastón. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
@@ -12,8 +12,9 @@
 - **Fase 6 (regla 08):**
   - Job `entity360-medallion`: bronze → silver → resolucion, schedule diario 08:45 (Buenos Aires).
     Consumo: 0,6–1,2 DBU por corrida (`databricks/evidencia/pasos1-3-primeras-corridas.txt`).
-  - Resolución de identidades (`databricks/medallion/identidades.py`, v2): 1268 registros → 1137
-    entidades; 51 casos a revisar y 11 conflictos en `resolution.revision`.
+  - Resolución de identidades (`databricks/medallion/identidades.py`, v2.1): 1268 registros → 1136
+    entidades; 20 casos a revisar, 11 conflictos y 8 empates en `resolution.revision`. Integridad:
+    `databricks/resolucion/integridad.py` (7 chequeos).
   - Set de validación etiquetado: parte A (59 registros) y parte B (60 pares), en
     `databricks/resolucion/validacion/`. Resolución v2: 1137 entidades.
 - **Fase 7 (regla 09):**
@@ -25,7 +26,7 @@
 - **Fase 8 (regla 10):** Airflow 3.3 local en Docker (`airflow/`), DAG `entity360_convergencia` a las
   08:45: extractor CDC → sensores de llegada por fuente → contratos → job de Databricks → dbt con
   Cosmos → frescura. SP propio `entity360-orquestador` (ADR 0007). Primera corrida completa en verde.
-- Tests: 3 en `tests/airflow`, 99 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
+- Tests: 3 en `tests/airflow`, 114 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 
 ## Pendiente
@@ -33,9 +34,10 @@
 2. ~~Calibración~~ **v2 aplicada al job (2026-09-27).** Las 4 correcciones (GDELT sin país, alias
    genéricos y ≥ 2 tokens, gemelo de LEI y empates a revisión, Wikidata como señal) con los mismos pesos
    (umbral 70). Evaluación: v1 ciega 0,913/0,955; v2 1,000/1,000 (no ciega). Restricciones de integridad
-   verificadas y Gold refrescado. **Queda por decidir:** la v2 perdió Cresud (A006) y Banco Galicia
-   (A059) en la mitad de calibración; hay dos ajustes propuestos en
-   `databricks/resolucion/calibracion/INFORME.md`, sin aplicar.
+   verificadas y Gold refrescado. **v2.1 aplicada (2026-09-29):** token único raro por idf (≥ 5,7) y
+   país heredado en GDELT por CIK/LEI. Recupera Cresud (A006); Banco Galicia (A059) queda en revisión
+   por decisión (sin identificador no hereda país): error conocido en el `README.md`. Set completo
+   45/0/1 (P 1,000, R 0,978), no ciega.
 3. ~~Lotes sin veredicto~~ **resuelto (ADR 0006):** Bronze exige el veredicto y el schedule de las
    08:45 está **pausado**: el job lo dispara Airflow (fase 8). Cuarentena probada de punta a punta
    (`contracts/evidencia/cuarentena-punta-a-punta.txt`).
@@ -47,6 +49,9 @@
    a stderr.
 
 ## Estado del entorno al cerrar
+- `dbt source freshness` (2026-09-29 15:32 UTC): GDELT (43 h) y OpenSanctions (49 h) en warn. No es un
+  productor caído: Airflow está apagado desde el 27, Bronze no corrió y `ops.ingestion_log` no registró
+  los lotes nuevos del landing.
 - `main` = `origin/main`.
 - **Airflow detenido** (`docker compose -p entity360-airflow stop`) y **SQL Server del legacy
   detenido** (`docker compose -f legacy\docker-compose.yml stop`), con los volúmenes intactos.

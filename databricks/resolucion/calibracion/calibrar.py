@@ -22,8 +22,8 @@ el puntaje son identidades.senales / identidades.decidir: el mismo código que c
 
 Versiones: v1 = resolución inicial (commit 51ee671, medición ciega); v2 = con las correcciones de la
 calibración (sin país supuesto en GDELT, alias genéricos, gemelo de LEI y empates a revisión,
-identificadores de Wikidata como señal). La mitad de evaluación no es ciega para la v2: sus errores se
-miraron para diagnosticar.
+identificadores de Wikidata como señal); v2.1 = v2 + token único raro por idf y país heredado en GDELT.
+La mitad de evaluación no es ciega para la v2 ni para la v2.1: sus errores se miraron para diagnosticar.
 
 Uso (desde la raíz del repo, después de correr la tarea `resolucion` con el código de la versión):
     .venv\\Scripts\\python.exe databricks\\resolucion\\calibracion\\calibrar.py --version v2
@@ -183,6 +183,15 @@ def blocking(us: list[dict], pares: set, sen: dict) -> dict:
             "conectado": conectado, "conectado_ic95": metricas.wilson(conectado, n)}
 
 
+def errores(us: list[dict], raices: dict[str, str], regs: list[dict]) -> list[str]:
+    """Unidades con algún falso positivo o falso negativo."""
+    gleif: dict[str, set] = {}
+    for r in regs:
+        if r["fuente"] == "gleif":
+            gleif.setdefault(raices[r["clave"]], set()).add(r["clave"])
+    return [u["id"] for u in us if (lambda c: c["fp"] or c["fn"])(contar([u], raices, gleif))]
+
+
 def evaluar(regs, pares, sen, p, us):
     raices = resolver(regs, pares, sen, p)
     gleif: dict[str, set] = {}
@@ -196,7 +205,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", default="v2")
     version = ap.parse_args().version
-    regs = registros_de_silver()
+    regs = I.preparar(registros_de_silver())
     pares_bl, resumen = I.pares_candidatos(regs)
     pares = set(pares_bl) | I.pares_por_identificador(regs)
     por_clave = {r["clave"]: r for r in regs}
@@ -231,6 +240,7 @@ def main() -> int:
            "evaluacion_por_parte": {parte: {"iniciales": evaluar(regs, pares, sen, ini, [u for u in ev if u["parte"] == parte])[0],
                                             "calibrados": evaluar(regs, pares, sen, p_cal, [u for u in ev if u["parte"] == parte])[0]}
                                     for parte in "AB"},
+           "errores_con_iniciales": errores(us, raices_ini, regs),
            "blocking_evaluacion": blocking(ev, pares, sen), "blocking_todo_a": blocking(us, pares, sen),
            "resumen_blocking": resumen}
     (AQUI / f"resultados_{version}.json").write_text(json.dumps(res, indent=2, ensure_ascii=False, default=list) + "\n", encoding="utf-8")

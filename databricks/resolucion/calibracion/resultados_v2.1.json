@@ -1,0 +1,197 @@
+{
+  "version": "v2.1",
+  "entidades_con_iniciales": 1136,
+  "semilla": 20260927,
+  "unidades": {
+    "calibracion": 62,
+    "evaluacion": 57
+  },
+  "pesos_iniciales": {
+    "nombre": 60,
+    "nombre_piso": 70,
+    "pais_igual": 10,
+    "pais_distinto": -20,
+    "fondo_vs_no_fondo": -30,
+    "numeros_distintos": -20,
+    "umbral_aceptar": 70,
+    "id_debil": 30
+  },
+  "pesos_calibrados": {
+    "nombre": 60,
+    "nombre_piso": 70,
+    "pais_igual": 10,
+    "pais_distinto": -20,
+    "id_debil": 30,
+    "fondo_vs_no_fondo": -30,
+    "numeros_distintos": -20,
+    "umbral_aceptar": 60
+  },
+  "calibracion_con_calibrados": {
+    "vp": 24,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "precision_ic95": [
+      0.8620237953250198,
+      1.0
+    ],
+    "recall": 1.0,
+    "recall_ic95": [
+      0.8620237953250198,
+      1.0
+    ],
+    "f1": 1.0
+  },
+  "calibracion_con_iniciales": {
+    "vp": 23,
+    "fp": 0,
+    "fn": 1,
+    "precision": 1.0,
+    "precision_ic95": [
+      0.8568833815495731,
+      1.0
+    ],
+    "recall": 0.9583333333333334,
+    "recall_ic95": [
+      0.7975819352134406,
+      0.9926065438344942
+    ],
+    "f1": 0.9787234042553191
+  },
+  "evaluacion_con_iniciales": {
+    "vp": 22,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "precision_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "recall": 1.0,
+    "recall_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "f1": 1.0
+  },
+  "evaluacion_con_calibrados": {
+    "vp": 22,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "precision_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "recall": 1.0,
+    "recall_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "f1": 1.0
+  },
+  "evaluacion_por_parte": {
+    "A": {
+      "iniciales": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      },
+      "calibrados": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      }
+    },
+    "B": {
+      "iniciales": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      },
+      "calibrados": {
+        "vp": 11,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "recall": 1.0,
+        "recall_ic95": [
+          0.7411670330319684,
+          1.0
+        ],
+        "f1": 1.0
+      }
+    }
+  },
+  "errores_con_iniciales": [
+    "A059"
+  ],
+  "blocking_evaluacion": {
+    "n": 11,
+    "directo": 11,
+    "directo_ic95": [
+      0.7411670330319684,
+      1.0
+    ],
+    "conectado": 11,
+    "conectado_ic95": [
+      0.7411670330319684,
+      1.0
+    ]
+  },
+  "blocking_todo_a": {
+    "n": 22,
+    "directo": 22,
+    "directo_ic95": [
+      0.8513451253913791,
+      1.0
+    ],
+    "conectado": 22,
+    "conectado_ic95": [
+      0.8513451253913791,
+      1.0
+    ]
+  },
+  "resumen_blocking": {
+    "bloques": 2577,
+    "bloques_descartados_por_tamano": 0,
+    "pares": 4910
+  }
+}

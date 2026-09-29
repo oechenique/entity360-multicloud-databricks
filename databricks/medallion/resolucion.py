@@ -95,7 +95,8 @@ def registros() -> list[dict]:
     for e in json.loads(ALIAS.read_text(encoding="utf-8"))["entidades"]:
         nombre = re.sub(r"\s*\(.*\)\s*$", "", e["nombre"])          # "(subsidiaria de GGAL, ...)"
         # Sin país: el diccionario no lo dice y suponer AR sumaba puntos falsos (la clave VIST, de la
-        # matriz mexicana, quedaba unida a la filial argentina; calibración v1, 2026-09-27).
+        # matriz mexicana, quedaba unida a la filial argentina; calibración v1, 2026-09-27). Lo hereda
+        # del registro con el que comparte CIK (identidades.heredar_paises, v2.1).
         out.append(registro("gdelt", e["clave"], [nombre, *(a["forma"] for a in e["alias"])],
                             ciks=[e["cik"]] if e.get("cik") else []))
     return out
@@ -134,7 +135,7 @@ def previos() -> dict[str, str]:
 
 def main():
     corrida = datetime.now(timezone.utc).replace(microsecond=0)
-    regs = registros()
+    regs = I.preparar(registros())
     pares, resumen_bloqueo = I.pares_candidatos(regs)
     for p in I.pares_por_identificador(regs):
         pares.setdefault(p, set()).add("identificador")
@@ -159,7 +160,9 @@ def main():
                    "<fuente>:<id> que usa el set de validación.", "resolution",
                    {"clave": "<fuente>:<id>: gleif:<LEI>, sec_edgar:<CIK>, opensanctions:<id>, wikidata:<QID>, "
                              "gdelt:<clave de alias.json>.",
-                    "lei_firme": "Solo GLEIF: dígito de control válido y registro no ANNULLED ni DUPLICATE."})
+                    "lei_firme": "Solo GLEIF: dígito de control válido y registro no ANNULLED ni DUPLICATE.",
+                    "paises": "Países ISO del registro. En GDELT, heredados del registro con el que comparte CIK o "
+                              "LEI (vacío si no comparte ninguno)."})
 
     par_df = spark.createDataFrame(
         [(p["clave_a"], p["clave_b"], p["bloques"], p["puntaje"], p["similitud_nombre"], p["contribuciones"],

@@ -25,11 +25,15 @@ validación, D11):
   pares van a revisión: nunca se une por el orden de las claves.
 - **Blocking:** país + prefijo del nombre, tokens poco frecuentes e identificadores débiles (ticker,
   dominio). Solo se comparan pares dentro de un bloque.
+- **Nombres de un solo token (v2.1):** token_set_ratio solo si el token es raro en el universo (idf).
+- **País de GDELT (v2.1):** las claves del diccionario heredan el país del registro con el que comparten
+  CIK o LEI; sin identificador compartido quedan sin país.
 - **Pares que se comparan:** de fuentes distintas, o dos registros de GLEIF si uno no es firme (el
   duplicado de GLEIF). Dos LEI firmes o dos CIK distintos no se comparan: la restricción ya decide.
 """
 
 import hashlib
+import math
 import re
 from itertools import combinations
 
@@ -63,7 +67,12 @@ FUENTES_SENAL = {"wikidata"}   # sus identificadores son señal, no unión ni ve
 # Alias que no identifican a nadie: OpenSanctions los lista para UTEs y consorcios ("Ute", "The Joint
 # Venture"). Un nombre hecho solo de estos tokens se ignora.
 TOKENS_GENERICOS = {"UTE", "JOINT", "VENTURE", "CONSORCIO", "CONSORTIUM"}
-MIN_TOKENS_CONJUNTO = 2        # token_set_ratio solo si los dos nombres tienen 2 tokens significativos
+MIN_TOKENS_CONJUNTO = 2        # token_set_ratio solo si los dos nombres tienen 2 tokens significativos...
+# ...o si el nombre es un solo token raro en el universo: idf = ln(N / df) >= 5,7, con N registros y df
+# los registros que tienen el token. Con N = 1268 (2026-09-29) admite df <= 4: CRESUD (df 3) entra con un
+# registro de margen. Todo umbral en (5,54; 6,05] da los mismos clusters; en 5,54 entra GLOBANT (df 5) y
+# empata con las Globant de GLEIF (v2.1, calibracion/INFORME.md). Los tokens genéricos nunca cuentan.
+IDF_MIN_TOKEN_UNICO = 5.7
 FONDO = {"FCI", "FONDO", "FIDEICOMISO", "FF"}
 ROMANOS = re.compile(r"^[IVXLC]+$")
 
@@ -92,14 +101,22 @@ def _significativos(tokens: str) -> int:
     return sum(1 for t in tokens.split() if t not in TOKENS_GENERICOS)
 
 
-def similitud(a: list[tuple[str, str]], b: list[tuple[str, str]]) -> float:
+def _conjunto_ok(tokens: str, raros: frozenset) -> bool:
+    """Un nombre admite token_set_ratio si tiene MIN_TOKENS_CONJUNTO tokens significativos o si es un
+    solo token raro en el universo (CRESUD sí; BANCO o UTE nunca)."""
+    sig = [t for t in tokens.split() if t not in TOKENS_GENERICOS]
+    return len(sig) >= MIN_TOKENS_CONJUNTO or (len(sig) == 1 and sig[0] in raros)
+
+
+def similitud(a: list[tuple[str, str]], b: list[tuple[str, str]],
+              raros_a: frozenset = frozenset(), raros_b: frozenset = frozenset()) -> float:
     """Máximo sobre pares de variantes de max(token_set_ratio de tokens, ratio del nombre).
 
-    token_set_ratio da 100 cuando un nombre está contenido en el otro: solo se usa si los dos tienen al
-    menos MIN_TOKENS_CONJUNTO tokens significativos (si no, "UTE" empataba con cualquier UTE)."""
+    token_set_ratio da 100 cuando un nombre está contenido en el otro: solo se usa si los dos nombres lo
+    admiten (_conjunto_ok). raros_x son los tokens raros del registro (marcar_raros)."""
     def par(ta, sa, tb, sb):
         r = fuzz.ratio(sa, sb)
-        if min(_significativos(ta), _significativos(tb)) >= MIN_TOKENS_CONJUNTO:
+        if _conjunto_ok(ta, raros_a) and _conjunto_ok(tb, raros_b):
             r = max(r, fuzz.token_set_ratio(ta, tb))
         return r
     return max((par(ta, sa, tb, sb) for ta, sa in a for tb, sb in b), default=0.0)
@@ -188,6 +205,48 @@ def frecuencias(registros: list[dict]) -> dict[str, int]:
     return f
 
 
+def idf(df: int, n: int) -> float:
+    return math.log(n / df) if df else math.inf
+
+
+def marcar_raros(registros: list[dict], umbral: float | None = None) -> None:
+    """Guarda en cada registro (`_raros`) sus tokens con idf >= IDF_MIN_TOKEN_UNICO en el universo."""
+    umbral = IDF_MIN_TOKEN_UNICO if umbral is None else umbral
+    frec, n = frecuencias(registros), len(registros)
+    for r in registros:
+        r["_raros"] = frozenset(t for t in _tokens(r["nombres"]) if idf(frec[t], n) >= umbral)
+
+
+def heredar_paises(registros: list[dict]) -> None:
+    """Las claves de GDELT no traen país: heredan el de los registros con los que comparten CIK o LEI
+    (SEC, GLEIF firme, OpenSanctions; Wikidata no, es señal). Sin identificador compartido quedan sin
+    país: nunca se supone uno. `pais_heredado_de` guarda de dónde sale."""
+    por_id: dict[str, list[dict]] = {}
+    for r in registros:
+        if r["fuente"] in FUENTES_SENAL or r["fuente"] == "gdelt":
+            continue
+        for l in leis_firmes(r):
+            por_id.setdefault(f"lei:{l}", []).append(r)
+        for c in ciks_firmes(r):
+            por_id.setdefault(f"cik:{c}", []).append(r)
+    for r in registros:
+        if r["fuente"] != "gdelt" or r["paises"]:
+            continue
+        origen = sorted({o["clave"]: o for k in [*(f"lei:{l}" for l in r["leis"]), *(f"cik:{c}" for c in r["ciks"])]
+                         for o in por_id.get(k, [])}.items())
+        paises = list(dict.fromkeys(p for _, o in origen for p in o["paises"]))
+        if paises:
+            r["paises"], r["pais_heredado_de"] = paises, [k for k, _ in origen]
+
+
+def preparar(registros: list[dict]) -> list[dict]:
+    """Lo que la resolución calcula sobre el universo antes de comparar pares (v2.1): país heredado de
+    GDELT y tokens raros. El job y calibrar.py lo llaman igual."""
+    heredar_paises(registros)
+    marcar_raros(registros)
+    return registros
+
+
 def claves_bloqueo(r: dict, frec: dict[str, int]) -> set[str]:
     claves = set()
     for n in r["nombres"]:
@@ -228,7 +287,8 @@ def pares_candidatos(registros: list[dict]) -> tuple[dict[tuple[str, str], set[s
 def senales(a: dict, b: dict) -> dict:
     """Lo que el puntaje mira de un par, sin pesos (calibrar.py las calcula una vez y prueba pesos)."""
     pa, pb = set(a["paises"]), set(b["paises"])
-    return {"veto": veto(a, b), "ident": comparte_id(a, b), "sim": similitud(_var(a), _var(b)),
+    sim = similitud(_var(a), _var(b), a.get("_raros", frozenset()), b.get("_raros", frozenset()))
+    return {"veto": veto(a, b), "ident": comparte_id(a, b), "sim": sim,
             "pais": None if not (pa and pb) else bool(pa & pb),
             "ciudad": bool(a.get("ciudad")) and a.get("ciudad") == b.get("ciudad"),
             "ticker": bool(set(a["tickers"]) & set(b["tickers"])),

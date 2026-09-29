@@ -272,3 +272,93 @@ def test_v2_lei_de_wikidata_es_senal_no_union():
     assert I.leis_firmes(flow) == set()                 # tampoco veta ni cuenta para la restricción
     otro = reg("gleif", "529900T8BM49AURSDO55", ["FLOW SA"], leis=["529900T8BM49AURSDO55"])
     assert I.puntuar(flow, otro)["decision"] != "veto"
+
+
+# ------------------------------------------------------------------ v2.1 (2026-09-29)
+
+def _universo(*propios, n=1268):
+    """Los registros del caso más relleno hasta n: el idf depende del tamaño del universo."""
+    relleno = [reg("gleif", f"R{i:04d}", [f"RELLENO {i:04d} S.A."], leis=[f"R{i:04d}"])
+               for i in range(n - len(propios))]
+    return I.preparar([*propios, *relleno])
+
+
+def _cresud():
+    return (reg("sec_edgar", "1034957", ["CRESUD INC"], paises=["AR"], ciudad="BUENOS AIRES", ciks=[1034957],
+                tickers=["CRESY"]),
+            reg("gleif", "529900OJF9C0NUFNN613",
+                ["Cresud S.A. Comercial Industrial Financiera y Agropecuaria"], ciudad="BUENOS AIRES",
+                leis=["529900OJF9C0NUFNN613"]),
+            reg("gdelt", "CRESY", ["Cresud", "cresud"], paises=[], ciks=[1034957]))
+
+
+def test_v21_token_unico_raro_une_cresud():
+    """A006: "CRESUD INC" es un solo token; en la v2 no había token_set_ratio y el nombre sumaba 0."""
+    sec, gleif, gdelt = _cresud()
+    _universo(sec, gleif, gdelt)
+    assert "CRESUD" in sec["_raros"]
+    p = I.puntuar(sec, gleif)
+    assert p["similitud_nombre"] == 100 and p["decision"] == "aceptado"
+    pares = [{"clave_a": a["clave"], "clave_b": b["clave"], **I.puntuar(a, b)}
+             for a, b in ((sec, gleif), (gdelt, gleif), (gdelt, sec))]
+    raices, _ = I.clusters([sec, gleif, gdelt], pares)
+    assert len({raices[r["clave"]] for r in (sec, gleif, gdelt)}) == 1
+
+
+def test_v21_sin_universo_un_token_sigue_sin_token_set():
+    sec, gleif, _ = _cresud()
+    assert I.puntuar(sec, gleif)["decision"] != "aceptado"      # sin preparar() no hay tokens raros
+
+
+def test_v21_token_unico_frecuente_no_usa_token_set():
+    """Un token en muchos registros no es raro: "SIEMENS" no absorbe a "SIEMENS ENERGY"."""
+    siemens = [reg("gleif", f"S{i}", [f"SIEMENS {x} S.A."], leis=[f"S{i}"])
+               for i, x in enumerate(["ENERGY", "HEALTHINEERS", "MOBILITY", "LOGISTICS", "IT", "FINANCE"])]
+    solo = reg("sec_edgar", "1", ["SIEMENS AG"], ciks=[1])
+    _universo(solo, *siemens)
+    assert I.idf(7, 1268) < I.IDF_MIN_TOKEN_UNICO and "SIEMENS" not in solo["_raros"]
+    assert I.puntuar(solo, siemens[0])["similitud_nombre"] < 100
+
+
+def test_v21_genericos_nunca_son_raros():
+    ute = reg("opensanctions", "X", ["Ute"])
+    _universo(ute)
+    assert I.variantes(ute["nombres"]) == []
+
+
+def test_v21_gdelt_hereda_pais_del_cik():
+    sec, gleif, gdelt = _cresud()
+    I.heredar_paises([sec, gleif, gdelt])
+    assert gdelt["paises"] == ["AR"] and gdelt["pais_heredado_de"] == ["sec_edgar:1034957"]
+
+
+def test_v21_gdelt_hereda_pais_real_no_supuesto():
+    """VIST comparte CIK con Vista Energy S.A.B. de C.V. (México): hereda MX y la filial argentina resta."""
+    sec = reg("sec_edgar", "1762506", ["Vista Energy, S.A.B. de C.V."], paises=["MX"], ciks=[1762506])
+    vist = reg("gdelt", "VIST", ["Vista Energy", "vista energy", "vista oil gas"], paises=[], ciks=[1762506])
+    filial = reg("gleif", "549300FE4UJNCG1DB123", ["VISTA ENERGY ARGENTINA S.A.U"], leis=["549300FE4UJNCG1DB123"])
+    I.heredar_paises([sec, vist, filial])
+    assert vist["paises"] == ["MX"]
+    p = I.puntuar(vist, filial)
+    assert p["contribuciones"]["pais"] == I.PESOS["pais_distinto"] and p["decision"] == "rechazado"
+
+
+def test_v21_wikidata_no_presta_pais():
+    wd = reg("wikidata", "Q1", ["Cresud"], paises=["AR"], ciks=[1034957])
+    gdelt = reg("gdelt", "CRESY", ["Cresud"], paises=[], ciks=[1034957])
+    I.heredar_paises([wd, gdelt])
+    assert gdelt["paises"] == [] and "pais_heredado_de" not in gdelt
+
+
+def test_v21_banco_galicia_sin_identificador_queda_en_revision():
+    """A059: la clave BANCO_GALICIA no trae CIK ni LEI. No hereda país (nunca se supone) y queda en
+    revisión con 60 puntos: el nombre coincide, pero sin país no llega a 70."""
+    bg = reg("gdelt", "BANCO_GALICIA", ["Banco de Galicia y Buenos Aires", "bank galicia", "banco galicia"],
+             paises=[])
+    gleif = reg("gleif", "579100KKDHKDFFKKB072",
+                ["BANCO DE GALICIA Y BUENOS AIRES S. A.", "Banco de Galicia y Buenos Aires S.A.U."],
+                ciudad="BUENOS AIRES", leis=["579100KKDHKDFFKKB072"])
+    _universo(bg, gleif)
+    assert bg["paises"] == []
+    p = I.puntuar(bg, gleif)
+    assert "pais" not in p["contribuciones"] and p["decision"] == "revisar" and p["puntaje"] == 60
