@@ -38,6 +38,7 @@ infra/aws/sec_edgar/build/
 
 # Fase 7: artefactos de dbt
 dbt/target/
+dbt/target_*/
 dbt/logs/
 dbt/dbt_packages/
 dbt/.user.yml

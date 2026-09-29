@@ -11,7 +11,8 @@ select
     r."esquema" as esquema,
     r."sancionada" as sancionada,
     r."sanciones" as sanciones,
-    array_to_string(r."datasets", ', ') as listas,
+    -- Iceberg trae un ARRAY estructurado (ARRAY(VARCHAR)); ARRAY_TO_STRING pide el semiestructurado.
+    array_to_string(r."datasets"::array, ', ') as listas,
     iff(r."lei_coincide", 'LEI', 'nombre') as vinculo,
     r."primera_vez" as primera_vez,
     r."ultimo_cambio" as ultimo_cambio,

@@ -115,10 +115,20 @@ Pasos, con el trial abierto:
 - **Refresh manual después de una corrida del DAG:** `.venv\Scripts\python.exe snowflake\integracion.py
   refrescar` (`ALTER ICEBERG TABLE ENTITY360_UC."gold"."<tabla>" REFRESH` por tabla; probado). Estado de
   la sincronización: `SELECT SYSTEM$CATALOG_LINK_STATUS('ENTITY360_UC');`.
-- **Solo lectura del lado de Snowflake, no demostrado:** un `INSERT` de cero filas no hace commit y pasó,
-  así que no prueba `ALLOWED_WRITE_OPERATIONS = NONE`. La barrera probada es la de Unity Catalog (el SP
-  no tiene `MODIFY`); Gold quedó en el mismo snapshot. La prueba concluyente (un `INSERT` de una fila que
-  tiene que fallar) se hace solo con OK.
+- **Solo lectura del lado de Snowflake, probado:** `CREATE ICEBERG TABLE` en `ENTITY360_UC."gold"` falla con
+  `ENTITY360_DBT` (sin privilegio) y con ACCOUNTADMIN (`Unsupported operation 'CREATE_TABLE' for
+  Catalog-Linked Database. The specified allowed write operations: 'NONE'`). Más la barrera de Unity
+  Catalog (el SP no tiene `MODIFY`).
+- **Grants de la base catalog-linked:** los que corren justo después del `CREATE DATABASE` cubren solo las
+  tablas ya descubiertas, y los `FUTURE` (se registran sin error) no se aplicaron a las que la
+  sincronización descubrió después. Hace falta `integracion.py crear --reaplicar-grants` después de la
+  primera sincronización. **A verificar después de la próxima corrida del DAG:** dbt recrea Gold con
+  `CREATE OR REPLACE`; si Snowflake lo ve como tablas nuevas, se pierden los grants y hay que reaplicarlos
+  (el DAG correría `refrescar` y `--reaplicar-grants` antes de los marts).
+- **Verificar grants sin trampa:** con `ENTITY360_TF`, `USE ROLE <rol>` conserva los roles secundarios
+  (ACCOUNTADMIN); hace falta `USE SECONDARY ROLES NONE`.
+- **Tipos:** Iceberg llega como tipos estructurados (`ARRAY(VARCHAR)`); algunas funciones (como
+  `ARRAY_TO_STRING`) piden el semiestructurado: `::array`.
 5. Tipos a verificar en la primera sincronización: `fuentes` (array), `procedencia` (map) y la
    capitalización de los nombres (los marts asumen minúscula entre comillas).
 

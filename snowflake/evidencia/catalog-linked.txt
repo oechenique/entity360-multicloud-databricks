@@ -22,6 +22,9 @@ SHOW ICEBERG TABLES IN DATABASE ENTITY360_UC (catálogo ENTITY360_UNITY, sin ext
   gold.bridge_entity_source  gold.dim_entity  gold.fct_entity_changes  gold.fct_news_signal  gold.fct_risk_flags
 
 ## Conteos con el rol ENTITY360_DBT y ENTITY360_WH
+## CORRECCIÓN (paso 4): estos conteos los corrió ENTITY360_TF con USE ROLE, que conserva sus roles
+## secundarios (ACCOUNTADMIN): no probaban los grants. Repetidos con USE SECONDARY ROLES NONE después
+## de --reaplicar-grants, con el mismo resultado (snowflake/evidencia/marts-dbt.txt).
 ## (Gold del 2026-09-29, sin cambios desde el dbt build de las 15:48 UTC)
 dim_entity             1136  (Gold: 1136) OK
 bridge_entity_source   1268  (Gold: 1268) OK
@@ -31,7 +34,14 @@ fct_entity_changes     4036  (Gold: 4036) OK
 Tipos: fuentes (array) con ARRAY_SIZE y procedencia (map) como OBJECT, legibles. Nombres en minúscula
 entre comillas: ENTITY360_UC."gold"."dim_entity" (como asumen los marts).
 
-## Escritura
+## Escritura (prueba concluyente, paso 4): CREATE ICEBERG TABLE ENTITY360_UC."gold"."zz_prueba_escritura" (id INT)
+ENTITY360_DBT -> 003001 (42501): SQL access control error: Insufficient privileges to operate on schema
+  'gold'. Your primary role ENTITY360_DBT must have CREATE ICEBERG TABLE granted on SCHEMA ENTITY360_UC."gold".
+ACCOUNTADMIN  -> 004205 (XX000): SQL Execution Error: Unsupported operation 'CREATE_TABLE' for
+  Catalog-Linked Database. The specified allowed write operations: 'NONE'.
+No se creó nada: SHOW ICEBERG TABLES sigue con las 5 tablas de gold. ALLOWED_WRITE_OPERATIONS = NONE, probado.
+
+## Escritura (primer intento, no concluyente)
 INSERT INTO ENTITY360_UC."gold"."dim_entity" SELECT * ... WHERE FALSE  ->  (0,)   NO CONCLUYENTE
   Un INSERT de cero filas no hace commit: no prueba ALLOWED_WRITE_OPERATIONS = NONE. Gold intacto:
   gold.dim_entity sigue en el snapshot 7458155380108295516 (uno solo), leído con el SP por la API.

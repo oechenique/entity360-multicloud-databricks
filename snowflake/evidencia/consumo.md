@@ -35,3 +35,4 @@ SHOW RESOURCE MONITORS LIKE 'ENTITY360%';
 | Día (UTC) | Warehouses | Serverless (catalog-linked y otros) | Cloud services facturados | Total | Acumulado | Nota |
 |---|---|---|---|---|---|---|
 | 2026-09-29 (parcial, hasta 20:00 UTC) | 0,0014 (`ENTITY360_WH` 0,0012; `COMPUTE_WH` 0,0002) | 0,0032 (`CORTEX_CODE_SNOWSIGHT`: el asistente de Snowsight) | 0,0028 (`CLOUD_SERVICES_ONLY`, dentro del 10 % gratis) | **~0,007** | ~0,007 | alta, Terraform, integración, conteos. Monitores: 0,00 de 20 y 0,00 de 25. Completar el 2026-09-30 |
+| 2026-09-29, 20:00–21:00 UTC | 0,0364 (`ENTITY360_WH`: 3 corridas de dbt de los marts y verificaciones) | a medir | a medir | ≥ 0,036 | monitores: 0,07 de 20 y 0,07 de 25 | dbt de los marts: 15,6 s la corrida buena |

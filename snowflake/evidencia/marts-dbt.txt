@@ -1,0 +1,45 @@
+# Fase 9, paso 4: dbt build --target snowflake --select marts (2026-09-29)
+# Usuario ENTITY360_DBT_SVC (key pair), rol ENTITY360_DBT, warehouse ENTITY360_WH.
+# --vars "{snowflake_gold_database: ENTITY360_UC}". Saneado: account identifier como <ORG>-<CUENTA>.
+
+## Corrida 1 (20:18 UTC): 2 errores de permisos
+Object 'ENTITY360_UC."gold"."fct_news_signal"' does not exist or not authorized. Your primary role
+ENTITY360_DBT or one of your secondary roles must have at least one privilege granted on TABLE ...
+Causa: los grants de integracion.py corrieron justo después del CREATE DATABASE, cuando la sincronización
+solo había descubierto fct_risk_flags. ALL ICEBERG TABLES cubrió esa sola tabla y los FUTURE (registrados,
+sin error) no se aplicaron a las otras cuatro, descubiertas después.
+Arreglo: integracion.py crear --camino A --reaplicar-grants -> SELECT en las 5 tablas para ENTITY360_DBT
+y ENTITY360_MODELER (SHOW GRANTS TO ROLE).
+Nota: los conteos "con el rol ENTITY360_DBT" del paso 3 los corrió ENTITY360_TF con USE ROLE, que conserva
+los roles secundarios (ACCOUNTADMIN): no probaban los grants. Repetidos con USE SECONDARY ROLES NONE
+(CURRENT_SECONDARY_ROLES() vacío): 1136 / 1268 / 52 / 10 / 4036, iguales a Gold.
+
+## Corrida 2 (20:19 UTC): mart_riesgo
+Invalid argument types for function 'ARRAY_TO_STRING': (ARRAY(VARCHAR(134217728)), VARCHAR(2))
+Causa: Iceberg llega como ARRAY estructurado; ARRAY_TO_STRING pide el semiestructurado.
+Arreglo: array_to_string(r."datasets"::array, ', ') en mart_riesgo.sql.
+
+## Corrida 3 (20:20 UTC): todo en verde
+ 1 of 12 OK created sql table model MARTS.mart_noticias_diarias ....... [SUCCESS 10 in 3.03s]
+ 2 of 12 OK created sql table model MARTS.mart_empresa ................ [SUCCESS 1136 in 4.63s]
+10 of 12 OK created sql table model MARTS.mart_riesgo ................. [SUCCESS 52 in 1.32s]
+Tests (9, todos PASS):
+  combinacion_unica_mart_noticias_diarias_entity_id__fecha ............ 1.36s
+  not_null_mart_empresa_nombre ........................................ 0.38s
+  rango_mart_empresa_fuentes__1 ....................................... 0.43s
+  rango_mart_empresa_tono_30d__100___100 .............................. 0.52s
+  relationships_mart_noticias_diarias_entity_id__entity_id__ref_mart_empresa_ 0.53s
+  unique_mart_empresa_entity_id ....................................... 0.58s
+  not_null_mart_empresa_entity_id ..................................... 1.16s
+  relationships_mart_riesgo_entity_id__entity_id__ref_mart_empresa_ ... 0.46s
+  combinacion_unica_mart_riesgo_entity_id__opensanctions_id ........... 0.60s
+Hook on-run-end: OK (no hace nada fuera de Databricks).
+Finished running 1 project hook, 3 table models, 9 data tests in 15.57 seconds.
+Done. PASS=13 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=13
+ENTITY360_MARTS.INFORMATION_SCHEMA.TABLES: MART_EMPRESA 1136, MART_NOTICIAS_DIARIAS 10, MART_RIESGO 52
+
+## Créditos
+INFORMATION_SCHEMA.WAREHOUSE_METERING_HISTORY, ENTITY360_WH, hora 20:00-21:00 UTC: 0.0364 créditos
+  (las tres corridas de dbt y las consultas de verificación).
+SHOW RESOURCE MONITORS: ENTITY360_MONITOR 0.07 de 20, ENTITY360_CUENTA 0.07 de 25 (acumulado del día).
+Estado final: ENTITY360_WH SUSPENDED, COMPUTE_WH SUSPENDED.

@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 20:15 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-09-29, 20:40 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -88,9 +88,17 @@
   (segunda corrida: sin cambios), `SYSTEM$VERIFY_CATALOG_INTEGRATION` OK, solo `gold` con sus 5 tablas y
   conteos iguales a Gold (1136 / 1268 / 52 / 10 / 4036) leyendo con `ENTITY360_DBT` en `ENTITY360_WH`.
   Refresh y descubrimiento cada 3600 s; `SYNC_INTERVAL_SECONDS` se cambia con `ALTER` sin recrear.
-  Consumo del día (parcial): ~0,007 créditos. Solo lectura del lado de Snowflake **no demostrado** (el
-  `INSERT` de cero filas no hace commit); la barrera es el SP sin `MODIFY`. Evidencia:
-  `snowflake/evidencia/catalog-linked.txt`. **Sigue:** dbt de los marts (OK pendiente).
+  Evidencia: `snowflake/evidencia/catalog-linked.txt`.
+- **Solo lectura probado:** `CREATE ICEBERG TABLE` en la base falla con `ENTITY360_DBT` y con
+  ACCOUNTADMIN (`allowed write operations: 'NONE'`); no se creó nada.
+- **Marts de dbt en Snowflake (2026-09-29):** `dbt build --target snowflake --select marts` 13/13 (3
+  modelos: `mart_empresa` 1136, `mart_noticias_diarias` 10, `mart_riesgo` 52; 9 tests) en 15,6 s, con
+  `ENTITY360_DBT_SVC`. Antes, dos arreglos: grants reaplicados (los de después del `CREATE` solo cubrieron
+  la tabla ya descubierta y los `FUTURE` no se aplicaron) y `::array` en `mart_riesgo`. Corrección: los
+  conteos del paso 3 "con `ENTITY360_DBT`" no probaban los grants (roles secundarios); repetidos sin
+  roles secundarios, iguales. Créditos: 0,036 en la hora de dbt; monitores en 0,07 de 20 y de 25.
+  `ENTITY360_WH` y `COMPUTE_WH` suspendidos. Evidencia: `snowflake/evidencia/marts-dbt.txt`.
+  **A verificar tras la próxima corrida del DAG:** si los grants sobreviven al `CREATE OR REPLACE` de Gold.
   - **Incidente:** la primera corrida imprimió el token OAuth del SP (1 h de vida, solo lectura de gold):
     el paso 1 devolvía el token y `Pasos` imprimía el resultado. Corregido (el paso devuelve una
     descripción y `Pasos` oculta el secreto y el token en todo lo que imprime), con 5 tests que fallan
