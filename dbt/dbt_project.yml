@@ -8,6 +8,10 @@ model-paths: ["models"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
 
+# Fase 10: cada invocación deja sus resultados en ops.dbt_resultado (panel de salud del dashboard).
+on-run-end:
+  - "{{ registrar_resultados(results) }}"
+
 models:
   entity360:
     gold:

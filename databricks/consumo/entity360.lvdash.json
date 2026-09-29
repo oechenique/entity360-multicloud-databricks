@@ -1,0 +1,5116 @@
+{
+  "datasets": [
+    {
+      "name": "buscador",
+      "displayName": "Buscador de empresas",
+      "queryLines": [
+        "SELECT concat(nombre, ' · ', entity_id) AS empresa, nombre, pais, registros\n",
+        "FROM entity360.gold.dim_entity\n"
+      ]
+    },
+    {
+      "name": "ficha",
+      "displayName": "Golden record",
+      "queryLines": [
+        "SELECT orden, atributo, valor, procedencia FROM (\n",
+        "  SELECT stack(13,\n",
+        "    1, 'Nombre', nombre, procedencia['nombre'],\n",
+        "    2, 'País', pais, procedencia['pais'],\n",
+        "    3, 'Ciudad', ciudad, procedencia['ciudad'],\n",
+        "    4, 'LEI', lei, procedencia['lei'],\n",
+        "    5, 'CIK (SEC)', cast(cik AS string), procedencia['cik'],\n",
+        "    6, 'Ticker', ticker, procedencia['ticker'],\n",
+        "    7, 'Sitio web', sitio_web, procedencia['sitio_web'],\n",
+        "    8, 'Forma jurídica', forma_juridica, procedencia['forma_juridica'],\n",
+        "    9, 'Estado de la entidad (GLEIF)', estado_entidad, procedencia['estado_entidad'],\n",
+        "    10, 'Estado del LEI (GLEIF)', estado_registro, procedencia['estado_registro'],\n",
+        "    11, 'Sancionada', CASE WHEN sancionada THEN 'sí' ELSE 'no' END, 'opensanctions',\n",
+        "    12, 'En listas de riesgo', CASE WHEN en_listas_de_riesgo THEN 'sí' ELSE 'no' END, 'opensanctions',\n",
+        "    13, 'entity_id', entity_id, registro_ancla\n",
+        "  ) AS (orden, atributo, valor, procedencia)\n",
+        "  FROM entity360.gold.dim_entity WHERE entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1))\n",
+        "ORDER BY orden\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "resumen_entidad",
+      "displayName": "Resumen de la empresa",
+      "queryLines": [
+        "SELECT d.registros, size(d.fuentes) AS fuentes, d.duplicados_en_gleif,\n",
+        "       coalesce((SELECT sum(menciones) FROM entity360.gold.fct_news_signal n\n",
+        "                 WHERE n.entity_id = d.entity_id AND n.fecha >= date_sub(current_date(), 30)), 0) AS menciones_30d,\n",
+        "       (SELECT count(*) FROM entity360.gold.fct_risk_flags r WHERE r.entity_id = d.entity_id) AS listas_de_riesgo\n",
+        "FROM entity360.gold.dim_entity d WHERE d.entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fuentes",
+      "displayName": "Fuentes de la empresa",
+      "queryLines": [
+        "SELECT fuente, id_fuente, nombre_en_fuente, CASE WHEN es_ancla THEN 'ancla' ELSE '' END AS rol, registro\n",
+        "FROM entity360.gold.bridge_entity_source WHERE entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1)\n",
+        "ORDER BY es_ancla DESC, fuente, registro\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "duplicados",
+      "displayName": "Duplicados resueltos",
+      "queryLines": [
+        "SELECT p.clave_a AS registro_a, ra.nombre AS nombre_a, p.clave_b AS registro_b, rb.nombre AS nombre_b,\n",
+        "       p.decision, p.puntaje, p.similitud_nombre, to_json(p.contribuciones) AS contribuciones,\n",
+        "       coalesce(p.motivo, '') AS motivo\n",
+        "FROM entity360.resolution.par_candidato p\n",
+        "JOIN entity360.resolution.entidad_registro ea ON ea.clave = p.clave_a\n",
+        "JOIN entity360.resolution.entidad_registro eb ON eb.clave = p.clave_b\n",
+        "JOIN entity360.resolution.registro ra ON ra.clave = p.clave_a\n",
+        "JOIN entity360.resolution.registro rb ON rb.clave = p.clave_b\n",
+        "WHERE ea.entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1) AND eb.entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1)\n",
+        "  AND p.decision IN ('determinístico', 'aceptado')\n",
+        "ORDER BY p.decision DESC, p.puntaje DESC\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "revision_entidad",
+      "displayName": "Casos en revisión de la empresa",
+      "queryLines": [
+        "SELECT v.tipo, v.puntaje, v.clave_a AS registro_a, ra.nombre AS nombre_a, v.clave_b AS registro_b,\n",
+        "       rb.nombre AS nombre_b, v.motivo\n",
+        "FROM entity360.resolution.revision v\n",
+        "JOIN entity360.resolution.entidad_registro ea ON ea.clave = v.clave_a\n",
+        "JOIN entity360.resolution.entidad_registro eb ON eb.clave = v.clave_b\n",
+        "JOIN entity360.resolution.registro ra ON ra.clave = v.clave_a\n",
+        "JOIN entity360.resolution.registro rb ON rb.clave = v.clave_b\n",
+        "WHERE regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1) IN (ea.entity_id, eb.entity_id)\n",
+        "ORDER BY v.puntaje DESC\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "cambios",
+      "displayName": "Historial de cambios (CDC)",
+      "queryLines": [
+        "SELECT valido_desde, tabla_legacy, operacion, CASE WHEN vigente THEN 'vigente' ELSE 'histórica' END AS version,\n",
+        "       valido_hasta, detalle\n",
+        "FROM entity360.gold.fct_entity_changes WHERE entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1)\n",
+        "ORDER BY valido_desde DESC, tabla_legacy\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "noticias",
+      "displayName": "Señales de noticias (GDELT)",
+      "queryLines": [
+        "SELECT fecha, menciones, medios, tono_promedio, menciones_negativas\n",
+        "FROM entity360.gold.fct_news_signal WHERE entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "riesgo",
+      "displayName": "Riesgo (OpenSanctions)",
+      "queryLines": [
+        "SELECT nombre_en_lista, esquema, CASE WHEN sancionada THEN 'sí' ELSE 'no' END AS sancionada,\n",
+        "       sanciones, array_join(datasets, ', ') AS listas, array_join(paises, ', ') AS paises,\n",
+        "       CASE WHEN lei_coincide THEN 'LEI' ELSE 'nombre' END AS vinculo, primera_vez, ultimo_cambio\n",
+        "FROM entity360.gold.fct_risk_flags WHERE entity_id = regexp_extract(:empresa, '(E[0-9A-F]{12}(-[0-9]+)?)$', 1)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "empresa",
+          "keyword": "empresa",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "BANCO MACRO SOCIEDAD ANONIMA · EEC00D3885F81"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "panorama",
+      "displayName": "Panorama",
+      "queryLines": [
+        "SELECT count(*) AS entidades,\n",
+        "       count_if(registros > 1) AS con_varias_fuentes_o_registros,\n",
+        "       sum(registros) - count(*) AS registros_fusionados,\n",
+        "       sum(duplicados_en_gleif) AS duplicados_en_gleif,\n",
+        "       count_if(en_listas_de_riesgo) AS en_listas_de_riesgo,\n",
+        "       count_if(sancionada) AS sancionadas\n",
+        "FROM entity360.gold.dim_entity\n"
+      ]
+    },
+    {
+      "name": "por_fuentes",
+      "displayName": "Entidades por cantidad de fuentes",
+      "queryLines": [
+        "SELECT cast(size(fuentes) AS string) AS fuentes, count(*) AS entidades\n",
+        "FROM entity360.gold.dim_entity GROUP BY 1 ORDER BY 1\n"
+      ]
+    },
+    {
+      "name": "mas_consolidadas",
+      "displayName": "Entidades más consolidadas",
+      "queryLines": [
+        "SELECT d.nombre, d.pais, d.registros, array_join(d.fuentes, ', ') AS fuentes, d.duplicados_en_gleif, d.entity_id\n",
+        "FROM entity360.gold.dim_entity d WHERE d.registros > 1\n",
+        "ORDER BY d.registros DESC, size(d.fuentes) DESC, d.nombre\n"
+      ]
+    },
+    {
+      "name": "noticias_recientes",
+      "displayName": "Noticias recientes",
+      "queryLines": [
+        "SELECT d.nombre, sum(n.menciones) AS menciones, sum(n.menciones_negativas) AS negativas,\n",
+        "       round(sum(n.tono_promedio * n.menciones) / sum(n.menciones), 2) AS tono, max(n.fecha) AS ultima\n",
+        "FROM entity360.gold.fct_news_signal n JOIN entity360.gold.dim_entity d USING (entity_id)\n",
+        "WHERE n.fecha >= date_sub(current_date(), 30)\n",
+        "GROUP BY d.nombre ORDER BY menciones DESC\n"
+      ]
+    },
+    {
+      "name": "alertas_riesgo",
+      "displayName": "Alertas de riesgo",
+      "queryLines": [
+        "SELECT d.nombre, d.pais, r.nombre_en_lista, CASE WHEN r.sancionada THEN 'sí' ELSE 'no' END AS sancionada,\n",
+        "       array_join(r.datasets, ', ') AS listas, CASE WHEN r.lei_coincide THEN 'LEI' ELSE 'nombre' END AS vinculo\n",
+        "FROM entity360.gold.fct_risk_flags r JOIN entity360.gold.dim_entity d USING (entity_id)\n",
+        "ORDER BY r.sancionada DESC, d.nombre\n"
+      ]
+    },
+    {
+      "name": "cambios_recientes",
+      "displayName": "Cambios recientes del legacy",
+      "queryLines": [
+        "SELECT c.valido_desde, d.nombre, c.tabla_legacy, c.operacion, c.detalle\n",
+        "FROM entity360.gold.fct_entity_changes c LEFT JOIN entity360.gold.dim_entity d USING (entity_id)\n",
+        "WHERE c.operacion <> 'insert' OR c.valido_desde >= date_sub(current_date(), 7)\n",
+        "ORDER BY c.valido_desde DESC LIMIT 500\n"
+      ]
+    },
+    {
+      "name": "frescura",
+      "displayName": "Frescura por fuente",
+      "queryLines": [
+        "WITH lotes AS (\n",
+        "  SELECT fuente, max(aterrizado_utc) AS ultimo_lote FROM entity360.ops.ingestion_log\n",
+        "  WHERE estado = 'ingerido_bronze' GROUP BY fuente\n",
+        "  UNION ALL\n",
+        "  SELECT 'resolucion', max(corrida_utc) FROM entity360.resolution.golden_record),\n",
+        "dbt AS (\n",
+        "  SELECT regexp_extract(nodo, '(lotes_)?([a-z_]+)$', 2) AS fuente, estado, ejecutado_utc,\n",
+        "         row_number() OVER (PARTITION BY nodo ORDER BY ejecutado_utc DESC) AS n\n",
+        "  FROM entity360.ops.dbt_resultado WHERE tipo = 'source' AND comando = 'freshness')\n",
+        "SELECT l.fuente, l.ultimo_lote,\n",
+        "       round((unix_timestamp(current_timestamp()) - unix_timestamp(l.ultimo_lote)) / 3600, 1) AS horas,\n",
+        "       coalesce(max(d.estado), 'sin medir') AS estado_dbt, max(d.ejecutado_utc) AS medido_utc\n",
+        "FROM lotes l\n",
+        "LEFT JOIN dbt d ON d.n = 1 AND (d.fuente = l.fuente OR (l.fuente = 'resolucion' AND d.fuente = 'golden_record'))\n",
+        "GROUP BY l.fuente, l.ultimo_lote ORDER BY l.fuente\n"
+      ]
+    },
+    {
+      "name": "volumen",
+      "displayName": "Volumen por fuente",
+      "queryLines": [
+        "SELECT date(aterrizado_utc) AS dia, fuente, count(*) AS lotes, sum(registros) AS registros\n",
+        "FROM entity360.ops.ingestion_log GROUP BY ALL\n"
+      ]
+    },
+    {
+      "name": "lotes_no_ingeridos",
+      "displayName": "Lotes en cuarentena o descartados",
+      "queryLines": [
+        "SELECT aterrizado_utc, fuente, estado, registros, archivo\n",
+        "FROM entity360.ops.ingestion_log WHERE estado <> 'ingerido_bronze'\n",
+        "ORDER BY aterrizado_utc DESC\n"
+      ]
+    },
+    {
+      "name": "cuarentena_filas",
+      "displayName": "Filas en cuarentena (Silver)",
+      "queryLines": [
+        "SELECT fuente, regexp_replace(motivo, ':.*$', '') AS motivo,\n",
+        "       CASE WHEN bloqueante THEN 'bloqueante' ELSE 'descartado el dato' END AS efecto,\n",
+        "       count(*) AS filas, max(detectado_utc) AS ultima\n",
+        "FROM entity360.silver._quarantine GROUP BY ALL ORDER BY filas DESC\n"
+      ]
+    },
+    {
+      "name": "dbt_ultimo",
+      "displayName": "Último resultado de cada nodo de dbt",
+      "queryLines": [
+        "SELECT nodo, tipo, estado, fallas, comando, ejecutado_utc, mensaje FROM (\n",
+        "  SELECT *, row_number() OVER (PARTITION BY nodo ORDER BY ejecutado_utc DESC) AS n\n",
+        "  FROM entity360.ops.dbt_resultado WHERE tipo IN ('model', 'test'))\n",
+        "WHERE n = 1\n"
+      ]
+    },
+    {
+      "name": "dbt_resumen",
+      "displayName": "Tests de dbt",
+      "queryLines": [
+        "SELECT count_if(tipo = 'test' AND estado = 'pass') AS tests_ok,\n",
+        "       count_if(tipo = 'test' AND estado <> 'pass') AS tests_con_problemas,\n",
+        "       count_if(tipo = 'model' AND estado = 'success') AS modelos_ok,\n",
+        "       count_if(tipo = 'model' AND estado <> 'success') AS modelos_con_error,\n",
+        "       max(ejecutado_utc) AS ultima_corrida\n",
+        "FROM (SELECT *, row_number() OVER (PARTITION BY nodo ORDER BY ejecutado_utc DESC) AS n\n",
+        "      FROM entity360.ops.dbt_resultado WHERE tipo IN ('model', 'test'))\n",
+        "WHERE n = 1\n"
+      ]
+    },
+    {
+      "name": "decisiones",
+      "displayName": "Decisiones de la resolución",
+      "queryLines": [
+        "SELECT decision, count(*) AS pares FROM entity360.resolution.par_candidato GROUP BY decision\n"
+      ]
+    },
+    {
+      "name": "revision",
+      "displayName": "Casos en revisión",
+      "queryLines": [
+        "SELECT tipo, count(*) AS casos FROM entity360.resolution.revision GROUP BY tipo\n"
+      ]
+    },
+    {
+      "name": "calidad",
+      "displayName": "Precisión y recall de la resolución",
+      "queryLines": [
+        "SELECT version, particion, CASE WHEN ciega THEN 'sí' ELSE 'no' END AS ciega, vp, fp, fn,\n",
+        "       concat(format_number(precision, 3), '  [', format_number(precision_ic_inf, 3), ' – ',\n",
+        "              format_number(precision_ic_sup, 3), ']') AS precision_ic95,\n",
+        "       concat(format_number(recall, 3), '  [', format_number(recall_ic_inf, 3), ' – ',\n",
+        "              format_number(recall_ic_sup, 3), ']') AS recall_ic95,\n",
+        "       entidades\n",
+        "FROM entity360.ops.calidad_resolucion ORDER BY version, particion DESC\n"
+      ]
+    },
+    {
+      "name": "latencia",
+      "displayName": "Latencia de punta a punta",
+      "queryLines": [
+        "WITH bronze AS (\n",
+        "  SELECT _sha256 AS sha256, min(_ingerido_utc) AS bronze_utc FROM entity360.bronze.gdelt GROUP BY 1 UNION ALL\n",
+        "  SELECT _sha256, min(_ingerido_utc) FROM entity360.bronze.opensanctions GROUP BY 1 UNION ALL\n",
+        "  SELECT _sha256, min(_ingerido_utc) FROM entity360.bronze.sec_edgar GROUP BY 1 UNION ALL\n",
+        "  SELECT _sha256, min(_ingerido_utc) FROM entity360.bronze.sqlserver_cdc GROUP BY 1 UNION ALL\n",
+        "  SELECT _sha256, min(_ingerido_utc) FROM entity360.bronze.wikidata GROUP BY 1),\n",
+        "ultimo AS (\n",
+        "  SELECT l.*, row_number() OVER (PARTITION BY fuente ORDER BY aterrizado_utc DESC) AS n\n",
+        "  FROM entity360.ops.ingestion_log l WHERE estado = 'ingerido_bronze'),\n",
+        "res AS (SELECT max(corrida_utc) AS resolucion_utc FROM entity360.resolution.golden_record)\n",
+        "SELECT u.fuente, u.extraido_utc, b.bronze_utc, r.resolucion_utc,\n",
+        "       round((unix_timestamp(u.aterrizado_utc) - unix_timestamp(u.extraido_utc)) / 60, 1) AS min_hasta_landing,\n",
+        "       round((unix_timestamp(b.bronze_utc) - unix_timestamp(u.extraido_utc)) / 60, 1) AS min_hasta_bronze,\n",
+        "       round((unix_timestamp(r.resolucion_utc) - unix_timestamp(u.extraido_utc)) / 60, 1) AS min_hasta_golden\n",
+        "FROM ultimo u LEFT JOIN bronze b USING (sha256) CROSS JOIN res r\n",
+        "WHERE u.n = 1 ORDER BY u.fuente\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "entity360",
+      "displayName": "Entity 360",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "texto_01",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Entity 360",
+                "Una fila confiable por empresa, consolidada desde GLEIF (el legacy, por CDC), SEC EDGAR, OpenSanctions, Wikidata y GDELT. Elegí una empresa: cada atributo dice de qué registro sale."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "buscador_empresa",
+            "queries": [
+              {
+                "name": "valores_buscador_empresa",
+                "query": {
+                  "datasetName": "buscador",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "empresa",
+                      "expression": "`empresa`"
+                    },
+                    {
+                      "name": "empresa_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parametro_cambios_empresa",
+                "query": {
+                  "datasetName": "cambios",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_duplicados_empresa",
+                "query": {
+                  "datasetName": "duplicados",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_ficha_empresa",
+                "query": {
+                  "datasetName": "ficha",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_fuentes_empresa",
+                "query": {
+                  "datasetName": "fuentes",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_noticias_empresa",
+                "query": {
+                  "datasetName": "noticias",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_resumen_entidad_empresa",
+                "query": {
+                  "datasetName": "resumen_entidad",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_revision_entidad_empresa",
+                "query": {
+                  "datasetName": "revision_entidad",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parametro_riesgo_empresa",
+                "query": {
+                  "datasetName": "riesgo",
+                  "parameters": [
+                    {
+                      "name": "empresa",
+                      "keyword": "empresa"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "empresa",
+                    "displayName": "Empresa",
+                    "queryName": "valores_buscador_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_cambios_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_duplicados_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_ficha_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_fuentes_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_noticias_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_resumen_entidad_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_revision_entidad_empresa"
+                  },
+                  {
+                    "parameterName": "empresa",
+                    "queryName": "parametro_riesgo_empresa"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Empresa",
+                "showDescription": true,
+                "description": "Escribí parte del nombre: la lista busca entre las 1.136 entidades del golden record."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_02",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "resumen_entidad",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(registros)",
+                      "expression": "SUM(`registros`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(registros)",
+                  "displayName": "Registros unidos"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Registros unidos"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_03",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "resumen_entidad",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(fuentes)",
+                      "expression": "SUM(`fuentes`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(fuentes)",
+                  "displayName": "Fuentes"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Fuentes"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_04",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "resumen_entidad",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(menciones_30d)",
+                      "expression": "SUM(`menciones_30d`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(menciones_30d)",
+                  "displayName": "Menciones (30 días)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Menciones (30 días)"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_05",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ficha",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "atributo",
+                      "expression": "`atributo`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "procedencia",
+                      "expression": "`procedencia`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "atributo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Atributo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Atributo"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Valor",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "procedencia",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Sale de",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Sale de"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Golden record",
+                "showDescription": true,
+                "description": "Reglas de supervivencia por atributo (GLEIF > SEC > Wikidata > OpenSanctions > GDELT)."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 3,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_06",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fuentes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    },
+                    {
+                      "name": "id_fuente",
+                      "expression": "`id_fuente`"
+                    },
+                    {
+                      "name": "nombre_en_fuente",
+                      "expression": "`nombre_en_fuente`"
+                    },
+                    {
+                      "name": "rol",
+                      "expression": "`rol`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fuente"
+                  },
+                  {
+                    "fieldName": "id_fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Id en la fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Id en la fuente"
+                  },
+                  {
+                    "fieldName": "nombre_en_fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Nombre en la fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nombre en la fuente"
+                  },
+                  {
+                    "fieldName": "rol",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Rol",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Rol"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Fuentes de las que sale"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_07",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "riesgo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nombre_en_lista",
+                      "expression": "`nombre_en_lista`"
+                    },
+                    {
+                      "name": "sancionada",
+                      "expression": "`sancionada`"
+                    },
+                    {
+                      "name": "listas",
+                      "expression": "`listas`"
+                    },
+                    {
+                      "name": "vinculo",
+                      "expression": "`vinculo`"
+                    },
+                    {
+                      "name": "sanciones",
+                      "expression": "`sanciones`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "nombre_en_lista",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Nombre en la lista",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nombre en la lista"
+                  },
+                  {
+                    "fieldName": "sancionada",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Sancionada",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Sancionada"
+                  },
+                  {
+                    "fieldName": "listas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Listas",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Listas"
+                  },
+                  {
+                    "fieldName": "vinculo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Vínculo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Vínculo"
+                  },
+                  {
+                    "fieldName": "sanciones",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Sanciones",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Sanciones"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Riesgo (OpenSanctions)",
+                "showDescription": true,
+                "description": "Datos: OpenSanctions (opensanctions.org), CC BY-NC 4.0. Vacío = no figura en listas."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_08",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "duplicados",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "registro_a",
+                      "expression": "`registro_a`"
+                    },
+                    {
+                      "name": "nombre_a",
+                      "expression": "`nombre_a`"
+                    },
+                    {
+                      "name": "registro_b",
+                      "expression": "`registro_b`"
+                    },
+                    {
+                      "name": "nombre_b",
+                      "expression": "`nombre_b`"
+                    },
+                    {
+                      "name": "decision",
+                      "expression": "`decision`"
+                    },
+                    {
+                      "name": "puntaje",
+                      "expression": "`puntaje`"
+                    },
+                    {
+                      "name": "contribuciones",
+                      "expression": "`contribuciones`"
+                    },
+                    {
+                      "name": "motivo",
+                      "expression": "`motivo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "registro_a",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Registro A",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Registro A"
+                  },
+                  {
+                    "fieldName": "nombre_a",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Nombre A",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nombre A"
+                  },
+                  {
+                    "fieldName": "registro_b",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Registro B",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Registro B"
+                  },
+                  {
+                    "fieldName": "nombre_b",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Nombre B",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nombre B"
+                  },
+                  {
+                    "fieldName": "decision",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Decisión",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Decisión"
+                  },
+                  {
+                    "fieldName": "puntaje",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "Puntaje",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Puntaje",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "contribuciones",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100006,
+                    "title": "Señales",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Señales"
+                  },
+                  {
+                    "fieldName": "motivo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100007,
+                    "title": "Motivo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Motivo"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Duplicados resueltos",
+                "showDescription": true,
+                "description": "Pares que la resolución unió: determinístico (LEI o CIK compartido) o aceptado por puntaje (umbral 70), con la contribución de cada señal."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_09",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revision_entidad",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "tipo",
+                      "expression": "`tipo`"
+                    },
+                    {
+                      "name": "puntaje",
+                      "expression": "`puntaje`"
+                    },
+                    {
+                      "name": "registro_a",
+                      "expression": "`registro_a`"
+                    },
+                    {
+                      "name": "nombre_a",
+                      "expression": "`nombre_a`"
+                    },
+                    {
+                      "name": "registro_b",
+                      "expression": "`registro_b`"
+                    },
+                    {
+                      "name": "nombre_b",
+                      "expression": "`nombre_b`"
+                    },
+                    {
+                      "name": "motivo",
+                      "expression": "`motivo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "tipo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Tipo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Tipo"
+                  },
+                  {
+                    "fieldName": "puntaje",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Puntaje",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Puntaje",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "registro_a",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Registro A",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Registro A"
+                  },
+                  {
+                    "fieldName": "nombre_a",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Nombre A",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nombre A"
+                  },
+                  {
+                    "fieldName": "registro_b",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Registro B",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Registro B"
+                  },
+                  {
+                    "fieldName": "nombre_b",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "Nombre B",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nombre B"
+                  },
+                  {
+                    "fieldName": "motivo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100006,
+                    "title": "Motivo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Motivo"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Casos en revisión que la tocan",
+                "showDescription": true,
+                "description": "Lo que la resolución no fuerza: puntaje entre 50 y 69, conflictos y empates."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_10",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "noticias",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "fecha",
+                      "expression": "`fecha`"
+                    },
+                    {
+                      "name": "sum(menciones)",
+                      "expression": "SUM(`menciones`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "fecha",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Día"
+                },
+                "y": {
+                  "fieldName": "sum(menciones)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Menciones"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Menciones en noticias por día (GDELT)",
+                "showDescription": true,
+                "description": "Datos: The GDELT Project (gdeltproject.org)."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_11",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "noticias",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fecha",
+                      "expression": "`fecha`"
+                    },
+                    {
+                      "name": "menciones",
+                      "expression": "`menciones`"
+                    },
+                    {
+                      "name": "medios",
+                      "expression": "`medios`"
+                    },
+                    {
+                      "name": "tono_promedio",
+                      "expression": "`tono_promedio`"
+                    },
+                    {
+                      "name": "menciones_negativas",
+                      "expression": "`menciones_negativas`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "fecha",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Día",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Día",
+                    "dateTimeFormat": "YYYY-MM-DD"
+                  },
+                  {
+                    "fieldName": "menciones",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Menciones",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Menciones",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "medios",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Medios",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Medios",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "tono_promedio",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Tono",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Tono",
+                    "numberFormat": "0.00"
+                  },
+                  {
+                    "fieldName": "menciones_negativas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Negativas",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Negativas",
+                    "numberFormat": "0"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Tono de la cobertura",
+                "showDescription": true,
+                "description": "Tono V2Tone de GDELT: negativo = cobertura negativa."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 23,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_12",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "cambios",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valido_desde",
+                      "expression": "`valido_desde`"
+                    },
+                    {
+                      "name": "tabla_legacy",
+                      "expression": "`tabla_legacy`"
+                    },
+                    {
+                      "name": "operacion",
+                      "expression": "`operacion`"
+                    },
+                    {
+                      "name": "version",
+                      "expression": "`version`"
+                    },
+                    {
+                      "name": "detalle",
+                      "expression": "`detalle`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "valido_desde",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Desde",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Desde",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  },
+                  {
+                    "fieldName": "tabla_legacy",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Tabla del legacy",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Tabla del legacy"
+                  },
+                  {
+                    "fieldName": "operacion",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Operación",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Operación"
+                  },
+                  {
+                    "fieldName": "version",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Versión",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Versión"
+                  },
+                  {
+                    "fieldName": "detalle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Detalle",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Detalle"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Historial de cambios (CDC del legacy)",
+                "showDescription": true,
+                "description": "Cada versión de las filas del ERP legacy (SQL Server) que capturó el CDC."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 29,
+            "width": 6,
+            "height": 7
+          }
+        }
+      ]
+    },
+    {
+      "name": "panorama",
+      "displayName": "Panorama",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "contador_13",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "panorama",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(entidades)",
+                      "expression": "SUM(`entidades`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(entidades)",
+                  "displayName": "Entidades (golden records)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Entidades (golden records)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_14",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "panorama",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(registros_fusionados)",
+                      "expression": "SUM(`registros_fusionados`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(registros_fusionados)",
+                  "displayName": "Registros fusionados"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Registros fusionados",
+                "showDescription": true,
+                "description": "Registros de más que la resolución unió a otra entidad."
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_15",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "panorama",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(con_varias_fuentes_o_registros)",
+                      "expression": "SUM(`con_varias_fuentes_o_registros`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(con_varias_fuentes_o_registros)",
+                  "displayName": "Entidades consolidadas"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Entidades consolidadas",
+                "showDescription": true,
+                "description": "Entidades con más de un registro."
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_16",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "panorama",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(duplicados_en_gleif)",
+                      "expression": "SUM(`duplicados_en_gleif`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(duplicados_en_gleif)",
+                  "displayName": "LEI duplicados fusionados"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "LEI duplicados fusionados"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_17",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "panorama",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(en_listas_de_riesgo)",
+                      "expression": "SUM(`en_listas_de_riesgo`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(en_listas_de_riesgo)",
+                  "displayName": "En listas de riesgo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "En listas de riesgo"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_18",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "panorama",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(sancionadas)",
+                      "expression": "SUM(`sancionadas`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(sancionadas)",
+                  "displayName": "Sancionadas"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Sancionadas"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_19",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "por_fuentes",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "fuentes",
+                      "expression": "`fuentes`"
+                    },
+                    {
+                      "name": "sum(entidades)",
+                      "expression": "SUM(`entidades`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "fuentes",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Fuentes"
+                },
+                "y": {
+                  "fieldName": "sum(entidades)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Entidades"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Entidades por cantidad de fuentes"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_20",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mas_consolidadas",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nombre",
+                      "expression": "`nombre`"
+                    },
+                    {
+                      "name": "pais",
+                      "expression": "`pais`"
+                    },
+                    {
+                      "name": "registros",
+                      "expression": "`registros`"
+                    },
+                    {
+                      "name": "fuentes",
+                      "expression": "`fuentes`"
+                    },
+                    {
+                      "name": "duplicados_en_gleif",
+                      "expression": "`duplicados_en_gleif`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "nombre",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Entidad",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Entidad"
+                  },
+                  {
+                    "fieldName": "pais",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "País",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "País"
+                  },
+                  {
+                    "fieldName": "registros",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Registros",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Registros",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "fuentes",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Fuentes",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fuentes"
+                  },
+                  {
+                    "fieldName": "duplicados_en_gleif",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "LEI duplicados",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "LEI duplicados",
+                    "numberFormat": "0"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Duplicados resueltos: entidades más consolidadas"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_21",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "noticias_recientes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nombre",
+                      "expression": "`nombre`"
+                    },
+                    {
+                      "name": "menciones",
+                      "expression": "`menciones`"
+                    },
+                    {
+                      "name": "negativas",
+                      "expression": "`negativas`"
+                    },
+                    {
+                      "name": "tono",
+                      "expression": "`tono`"
+                    },
+                    {
+                      "name": "ultima",
+                      "expression": "`ultima`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "nombre",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Entidad",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Entidad"
+                  },
+                  {
+                    "fieldName": "menciones",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Menciones",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Menciones",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "negativas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Negativas",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Negativas",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "tono",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Tono",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Tono",
+                    "numberFormat": "0.00"
+                  },
+                  {
+                    "fieldName": "ultima",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Última",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Última",
+                    "dateTimeFormat": "YYYY-MM-DD"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Señales de noticias (30 días)",
+                "showDescription": true,
+                "description": "Datos: The GDELT Project."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_22",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "alertas_riesgo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nombre",
+                      "expression": "`nombre`"
+                    },
+                    {
+                      "name": "sancionada",
+                      "expression": "`sancionada`"
+                    },
+                    {
+                      "name": "listas",
+                      "expression": "`listas`"
+                    },
+                    {
+                      "name": "vinculo",
+                      "expression": "`vinculo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "nombre",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Entidad",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Entidad"
+                  },
+                  {
+                    "fieldName": "sancionada",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Sancionada",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Sancionada"
+                  },
+                  {
+                    "fieldName": "listas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Listas",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Listas"
+                  },
+                  {
+                    "fieldName": "vinculo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Vínculo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Vínculo"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Alertas de riesgo",
+                "showDescription": true,
+                "description": "Datos: OpenSanctions, CC BY-NC 4.0."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_23",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "cambios_recientes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valido_desde",
+                      "expression": "`valido_desde`"
+                    },
+                    {
+                      "name": "nombre",
+                      "expression": "`nombre`"
+                    },
+                    {
+                      "name": "tabla_legacy",
+                      "expression": "`tabla_legacy`"
+                    },
+                    {
+                      "name": "operacion",
+                      "expression": "`operacion`"
+                    },
+                    {
+                      "name": "detalle",
+                      "expression": "`detalle`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "valido_desde",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Desde",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Desde",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  },
+                  {
+                    "fieldName": "nombre",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Entidad",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Entidad"
+                  },
+                  {
+                    "fieldName": "tabla_legacy",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Tabla",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Tabla"
+                  },
+                  {
+                    "fieldName": "operacion",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Operación",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Operación"
+                  },
+                  {
+                    "fieldName": "detalle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Detalle",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Detalle"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Cambios recientes del legacy (CDC)",
+                "showDescription": true,
+                "description": "Updates y deletes, más los inserts de los últimos 7 días."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "salud",
+      "displayName": "Salud de la plataforma",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "texto_24",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Salud de la plataforma",
+                "Frescura y volumen por fuente, cuarentenas, tests de dbt y calidad de la resolución de identidades. El estado de frescura es el de la última corrida de `dbt source freshness`."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_25",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "frescura",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    },
+                    {
+                      "name": "ultimo_lote",
+                      "expression": "`ultimo_lote`"
+                    },
+                    {
+                      "name": "horas",
+                      "expression": "`horas`"
+                    },
+                    {
+                      "name": "estado_dbt",
+                      "expression": "`estado_dbt`"
+                    },
+                    {
+                      "name": "medido_utc",
+                      "expression": "`medido_utc`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fuente"
+                  },
+                  {
+                    "fieldName": "ultimo_lote",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Último lote ingerido",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Último lote ingerido",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  },
+                  {
+                    "fieldName": "horas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Horas",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Horas",
+                    "numberFormat": "0.00"
+                  },
+                  {
+                    "fieldName": "estado_dbt",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "dbt freshness",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "dbt freshness"
+                  },
+                  {
+                    "fieldName": "medido_utc",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Medido",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Medido",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Frescura por fuente"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_26",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latencia",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    },
+                    {
+                      "name": "extraido_utc",
+                      "expression": "`extraido_utc`"
+                    },
+                    {
+                      "name": "min_hasta_landing",
+                      "expression": "`min_hasta_landing`"
+                    },
+                    {
+                      "name": "min_hasta_bronze",
+                      "expression": "`min_hasta_bronze`"
+                    },
+                    {
+                      "name": "min_hasta_golden",
+                      "expression": "`min_hasta_golden`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fuente"
+                  },
+                  {
+                    "fieldName": "extraido_utc",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Extraído",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Extraído",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  },
+                  {
+                    "fieldName": "min_hasta_landing",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "→ landing (min)",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "→ landing (min)",
+                    "numberFormat": "0.00"
+                  },
+                  {
+                    "fieldName": "min_hasta_bronze",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "→ Bronze (min)",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "→ Bronze (min)",
+                    "numberFormat": "0.00"
+                  },
+                  {
+                    "fieldName": "min_hasta_golden",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "→ golden (min)",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "→ golden (min)",
+                    "numberFormat": "0.00"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Latencia de punta a punta (último lote)",
+                "showDescription": true,
+                "description": "Minutos desde la extracción en la fuente hasta cada capa. Golden: última corrida de la resolución (negativo = el lote llegó después)."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_27",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "volumen",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "dia",
+                      "expression": "`dia`"
+                    },
+                    {
+                      "name": "sum(registros)",
+                      "expression": "SUM(`registros`)"
+                    },
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "dia",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Día"
+                },
+                "y": {
+                  "fieldName": "sum(registros)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Registros"
+                },
+                "label": {
+                  "show": true
+                },
+                "color": {
+                  "fieldName": "fuente",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "fuente"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Registros aterrizados por día"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_28",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "volumen",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "dia",
+                      "expression": "`dia`"
+                    },
+                    {
+                      "name": "sum(lotes)",
+                      "expression": "SUM(`lotes`)"
+                    },
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "dia",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Día"
+                },
+                "y": {
+                  "fieldName": "sum(lotes)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Lotes"
+                },
+                "label": {
+                  "show": true
+                },
+                "color": {
+                  "fieldName": "fuente",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "fuente"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lotes por día"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_29",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "lotes_no_ingeridos",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aterrizado_utc",
+                      "expression": "`aterrizado_utc`"
+                    },
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    },
+                    {
+                      "name": "estado",
+                      "expression": "`estado`"
+                    },
+                    {
+                      "name": "registros",
+                      "expression": "`registros`"
+                    },
+                    {
+                      "name": "archivo",
+                      "expression": "`archivo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "aterrizado_utc",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Aterrizó",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Aterrizó",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  },
+                  {
+                    "fieldName": "fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fuente"
+                  },
+                  {
+                    "fieldName": "estado",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Estado",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Estado"
+                  },
+                  {
+                    "fieldName": "registros",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Registros",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Registros",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "archivo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Archivo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Archivo"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Lotes en cuarentena o descartados",
+                "showDescription": true,
+                "description": "cuarentena_contrato: el contrato de llegada (Soda) lo rechazó; duplicado: sha256 ya ingerido."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_30",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "cuarentena_filas",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fuente",
+                      "expression": "`fuente`"
+                    },
+                    {
+                      "name": "motivo",
+                      "expression": "`motivo`"
+                    },
+                    {
+                      "name": "efecto",
+                      "expression": "`efecto`"
+                    },
+                    {
+                      "name": "filas",
+                      "expression": "`filas`"
+                    },
+                    {
+                      "name": "ultima",
+                      "expression": "`ultima`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "fuente",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Fuente",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fuente"
+                  },
+                  {
+                    "fieldName": "motivo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Motivo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Motivo"
+                  },
+                  {
+                    "fieldName": "efecto",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Efecto",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Efecto"
+                  },
+                  {
+                    "fieldName": "filas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Filas",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Filas",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "ultima",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Última",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Última",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Filas en cuarentena (Silver)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 13,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_31",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbt_resumen",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(tests_ok)",
+                      "expression": "SUM(`tests_ok`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(tests_ok)",
+                  "displayName": "Tests de dbt en verde"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Tests de dbt en verde"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_32",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbt_resumen",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(tests_con_problemas)",
+                      "expression": "SUM(`tests_con_problemas`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(tests_con_problemas)",
+                  "displayName": "Tests con fallas o avisos"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Tests con fallas o avisos"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 18,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_33",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbt_resumen",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(modelos_ok)",
+                      "expression": "SUM(`modelos_ok`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(modelos_ok)",
+                  "displayName": "Modelos Gold construidos"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Modelos Gold construidos"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 20,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "contador_34",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbt_resumen",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "sum(modelos_con_error)",
+                      "expression": "SUM(`modelos_con_error`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(modelos_con_error)",
+                  "displayName": "Modelos con error"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Modelos con error"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 20,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "texto_35",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Último resultado de cada nodo, a mano o desde Airflow (hook `on-run-end` de dbt → `ops.dbt_resultado`)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_36",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbt_ultimo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nodo",
+                      "expression": "`nodo`"
+                    },
+                    {
+                      "name": "tipo",
+                      "expression": "`tipo`"
+                    },
+                    {
+                      "name": "estado",
+                      "expression": "`estado`"
+                    },
+                    {
+                      "name": "fallas",
+                      "expression": "`fallas`"
+                    },
+                    {
+                      "name": "ejecutado_utc",
+                      "expression": "`ejecutado_utc`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "nodo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Nodo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Nodo"
+                  },
+                  {
+                    "fieldName": "tipo",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Tipo",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Tipo"
+                  },
+                  {
+                    "fieldName": "estado",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Estado",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Estado"
+                  },
+                  {
+                    "fieldName": "fallas",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "Fallas",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Fallas",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "ejecutado_utc",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "Ejecutado",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Ejecutado",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Último resultado de cada modelo y test de dbt"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 18,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_37",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "decisiones",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "decision",
+                      "expression": "`decision`"
+                    },
+                    {
+                      "name": "sum(pares)",
+                      "expression": "SUM(`pares`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "decision",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Decisión"
+                },
+                "y": {
+                  "fieldName": "sum(pares)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pares"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Decisiones de la resolución (pares)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_38",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revision",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "tipo",
+                      "expression": "`tipo`"
+                    },
+                    {
+                      "name": "sum(casos)",
+                      "expression": "SUM(`casos`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "tipo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tipo"
+                },
+                "y": {
+                  "fieldName": "sum(casos)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Casos"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Casos en revisión",
+                "showDescription": true,
+                "description": "revisar: puntaje 50–69; conflicto: uniría dos LEI firmes o dos CIK; empate: mismo puntaje con LEI firmes distintos."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 23,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_39",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "calidad",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "version",
+                      "expression": "`version`"
+                    },
+                    {
+                      "name": "particion",
+                      "expression": "`particion`"
+                    },
+                    {
+                      "name": "ciega",
+                      "expression": "`ciega`"
+                    },
+                    {
+                      "name": "vp",
+                      "expression": "`vp`"
+                    },
+                    {
+                      "name": "fp",
+                      "expression": "`fp`"
+                    },
+                    {
+                      "name": "fn",
+                      "expression": "`fn`"
+                    },
+                    {
+                      "name": "precision_ic95",
+                      "expression": "`precision_ic95`"
+                    },
+                    {
+                      "name": "recall_ic95",
+                      "expression": "`recall_ic95`"
+                    },
+                    {
+                      "name": "entidades",
+                      "expression": "`entidades`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "allowHTMLByDefault": false,
+              "condensed": true,
+              "withRowNumber": false,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "version",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Versión",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Versión"
+                  },
+                  {
+                    "fieldName": "particion",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "Partición",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Partición"
+                  },
+                  {
+                    "fieldName": "ciega",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Ciega",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Ciega"
+                  },
+                  {
+                    "fieldName": "vp",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "VP",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "VP",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "fp",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "FP",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "FP",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "fn",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "FN",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "FN",
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "precision_ic95",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100006,
+                    "title": "Precisión [IC 95 %]",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Precisión [IC 95 %]"
+                  },
+                  {
+                    "fieldName": "recall_ic95",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100007,
+                    "title": "Recall [IC 95 %]",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Recall [IC 95 %]"
+                  },
+                  {
+                    "fieldName": "entidades",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100008,
+                    "title": "Entidades",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "Entidades",
+                    "numberFormat": "0"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "frame": {
+                "showTitle": true,
+                "title": "Precisión y recall contra el set curado a mano",
+                "showDescription": true,
+                "description": "Wilson al 95 %. Solo la v1 se midió a ciegas; v2 y v2.1 miraron los errores del set completo."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 28,
+            "width": 6,
+            "height": 5
+          }
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}

@@ -27,6 +27,10 @@ La mitad de evaluación no es ciega para la v2 ni para la v2.1: sus errores se m
 
 Uso (desde la raíz del repo, después de correr la tarea `resolucion` con el código de la versión):
     .venv\\Scripts\\python.exe databricks\\resolucion\\calibracion\\calibrar.py --version v2
+    .venv\\Scripts\\python.exe databricks\\resolucion\\calibracion\\calibrar.py --publicar
+
+--publicar no recalibra: carga todos los resultados_<version>.json en ops.calidad_resolucion (tabla de
+Terraform), que lee el panel de salud del dashboard (fase 10).
 """
 
 import argparse
@@ -201,10 +205,51 @@ def evaluar(regs, pares, sen, p, us):
     return medir(contar(us, raices, gleif)), raices
 
 
+CIEGAS = {("v1", "evaluacion")}   # solo la v1 se midió sin mirar los errores (INFORME.md)
+
+
+def publicar() -> int:
+    """MERGE de los resultados_<version>.json en ops.calidad_resolucion: evaluación y set completo, con los
+    pesos iniciales (los que usa el job)."""
+    from databricks.sdk import WorkspaceClient
+    w = WorkspaceClient(profile=PERFIL)
+    wh = next(x.id for x in w.warehouses.list() if x.name == WAREHOUSE)
+    filas = []
+    for f in sorted(AQUI.glob("resultados_*.json")):
+        version = f.stem.removeprefix("resultados_")
+        d = json.loads(f.read_text(encoding="utf-8"))
+        cal, ev = d["calibracion_con_iniciales"], d["evaluacion_con_iniciales"]
+        todo = medir({k: cal[k] + ev[k] for k in ("vp", "fp", "fn")})
+        for particion, m in (("evaluacion", ev), ("set_completo", todo)):
+            filas.append("('{}', '{}', {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})".format(
+                version, particion, str((version, particion) in CIEGAS).lower(), m["vp"], m["fp"], m["fn"],
+                m["precision"], *m["precision_ic95"], m["recall"], *m["recall_ic95"],
+                d.get("entidades_con_iniciales", "null")))
+    consultar(w, wh, f"""
+        MERGE INTO entity360.ops.calidad_resolucion t
+        USING (SELECT * FROM VALUES {", ".join(filas)} AS s(version, particion, ciega, vp, fp, fn, precision,
+               precision_ic_inf, precision_ic_sup, recall, recall_ic_inf, recall_ic_sup, entidades)) s
+        ON t.version = s.version AND t.particion = s.particion
+        WHEN MATCHED THEN UPDATE SET ciega = s.ciega, vp = s.vp, fp = s.fp, fn = s.fn, precision = s.precision,
+            precision_ic_inf = s.precision_ic_inf, precision_ic_sup = s.precision_ic_sup, recall = s.recall,
+            recall_ic_inf = s.recall_ic_inf, recall_ic_sup = s.recall_ic_sup, entidades = s.entidades,
+            publicado_utc = current_timestamp()
+        WHEN NOT MATCHED THEN INSERT (version, particion, ciega, vp, fp, fn, precision, precision_ic_inf,
+            precision_ic_sup, recall, recall_ic_inf, recall_ic_sup, entidades, publicado_utc)
+          VALUES (s.version, s.particion, s.ciega, s.vp, s.fp, s.fn, s.precision, s.precision_ic_inf,
+            s.precision_ic_sup, s.recall, s.recall_ic_inf, s.recall_ic_sup, s.entidades, current_timestamp())""")
+    print(f"ops.calidad_resolucion: {len(filas)} filas publicadas")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", default="v2")
-    version = ap.parse_args().version
+    ap.add_argument("--publicar", action="store_true")
+    args = ap.parse_args()
+    if args.publicar:
+        return publicar()
+    version = args.version
     regs = I.preparar(registros_de_silver())
     pares_bl, resumen = I.pares_candidatos(regs)
     pares = set(pares_bl) | I.pares_por_identificador(regs)

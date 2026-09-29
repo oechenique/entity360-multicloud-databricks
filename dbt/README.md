@@ -42,4 +42,6 @@ $env:DBT_PROFILES_DIR = "."
 ..\dbt\.venv\Scripts\dbt docs generate; ..\dbt\.venv\Scripts\dbt docs serve   # documentación y lineage
 ```
 
-Primera corrida (2026-09-27): `dbt build` 24/24 (5 modelos, 19 tests) y frescura 7/7 en verde.
+Primera corrida (2026-09-27): `dbt build` 24/24 (5 modelos, 19 tests) y frescura 7/7 en verde. Desde la
+fase 10 cada invocación deja sus resultados en `ops.dbt_resultado` (hook `on-run-end`, ADR 0008): `dbt
+build` informa 25 nodos (el hook cuenta como uno).

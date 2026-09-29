@@ -1,0 +1,200 @@
+{
+  "_descripcion": "Fuente del espacio de Genie 'Entity 360' (fase 10, regla 12). genie.py lo convierte al serialized_space de la API: agrega ids deterministas, ordena las colecciones y suma a column_configs las descripciones de columnas de dbt/models/gold/gold.yml (la misma fuente que los comentarios de Unity Catalog).",
+  "titulo": "Entity 360",
+  "descripcion": "Preguntá en español sobre las empresas del golden record: quiénes son, de qué fuentes salen, qué dicen las noticias, si están en listas de riesgo y qué cambió en el legacy.",
+  "tablas": [
+    "entity360.gold.bridge_entity_source",
+    "entity360.gold.dim_entity",
+    "entity360.gold.fct_entity_changes",
+    "entity360.gold.fct_news_signal",
+    "entity360.gold.fct_risk_flags"
+  ],
+  "columnas": {
+    "entity360.gold.dim_entity": {
+      "nombre": {
+        "sinonimos": [
+          "empresa",
+          "razón social",
+          "compañía",
+          "entidad"
+        ],
+        "entity_matching": true
+      },
+      "pais": {
+        "sinonimos": [
+          "país",
+          "jurisdicción"
+        ],
+        "entity_matching": true
+      },
+      "ciudad": {
+        "entity_matching": true
+      },
+      "ticker": {
+        "sinonimos": [
+          "símbolo",
+          "acción"
+        ],
+        "entity_matching": true
+      },
+      "forma_juridica": {
+        "entity_matching": true
+      },
+      "sancionada": {
+        "sinonimos": [
+          "sanción",
+          "OFAC",
+          "lista negra"
+        ]
+      },
+      "duplicados_en_gleif": {
+        "sinonimos": [
+          "LEI duplicados",
+          "LEI anulados fusionados"
+        ]
+      },
+      "resuelto_utc": {
+        "format_assistance": true
+      }
+    },
+    "entity360.gold.bridge_entity_source": {
+      "fuente": {
+        "sinonimos": [
+          "origen",
+          "sistema"
+        ],
+        "entity_matching": true
+      },
+      "nombre_en_fuente": {
+        "entity_matching": true
+      }
+    },
+    "entity360.gold.fct_news_signal": {
+      "fecha": {
+        "format_assistance": true
+      },
+      "tono_promedio": {
+        "sinonimos": [
+          "sentimiento",
+          "tono"
+        ]
+      },
+      "menciones_negativas": {
+        "sinonimos": [
+          "noticias negativas",
+          "prensa negativa"
+        ]
+      }
+    },
+    "entity360.gold.fct_risk_flags": {
+      "nombre_en_lista": {
+        "entity_matching": true
+      },
+      "sancionada": {
+        "sinonimos": [
+          "sanción"
+        ]
+      },
+      "primera_vez": {
+        "format_assistance": true
+      },
+      "ultimo_cambio": {
+        "format_assistance": true
+      }
+    },
+    "entity360.gold.fct_entity_changes": {
+      "tabla_legacy": {
+        "entity_matching": true
+      },
+      "operacion": {
+        "entity_matching": true
+      },
+      "valido_desde": {
+        "sinonimos": [
+          "fecha del cambio"
+        ],
+        "format_assistance": true
+      },
+      "valido_hasta": {
+        "format_assistance": true
+      }
+    }
+  },
+  "instrucciones": [
+    "Respondé siempre en español rioplatense y mostrá el nombre de la empresa (dim_entity.nombre), nunca solo el entity_id.",
+    "",
+    "Modelo: dim_entity es el golden record, una fila por empresa real. Las otras cuatro tablas se unen a dim_entity por entity_id: bridge_entity_source (qué registros de qué fuentes forman la empresa), fct_news_signal (menciones en noticias de GDELT por día), fct_risk_flags (apariciones en listas de OpenSanctions) y fct_entity_changes (historial del ERP legacy capturado por CDC).",
+    "",
+    "Buscar una empresa por nombre: usá dim_entity.nombre con ILIKE '%texto%' (sin mayúsculas ni tildes obligatorias) y, si no aparece, bridge_entity_source.nombre_en_fuente, que tiene los nombres de todas las fuentes (por ejemplo 'Macro Bank Inc.' de la SEC). Si hay varias coincidencias, listalas con su país y cantidad de registros en vez de elegir una.",
+    "",
+    "País: pais es ISO 3166-1 alfa-2 ('AR' = Argentina, 'US' = Estados Unidos, 'MX' = México). 'Empresas argentinas' es pais = 'AR'.",
+    "",
+    "Riesgo: 'sancionada' significa que algún registro de OpenSanctions tiene una sanción o programa; 'en_listas_de_riesgo' incluye además PEP y listas de vigilancia sin sanción. fct_risk_flags.lei_coincide dice si el vínculo con la lista es por LEI (fuerte) o solo por nombre.",
+    "",
+    "Noticias: tono_promedio va de -100 a 100 y negativo significa cobertura negativa. Para 'la última semana' usá fecha >= date_sub(current_date(), 7). Al promediar el tono de varios días, ponderá por menciones.",
+    "",
+    "Cambios del legacy: operacion es insert, update o delete; vigente = true es la versión actual de la fila; clave_fila y detalle son JSON. Claves de detalle por tabla_legacy: entidad = nombre_legal, jurisdiccion, estado_entidad, estado_registro; direccion = tipo (LEGAL o SEDE), linea1, ciudad, region, pais, codigo_postal; nombre_alternativo = orden, nombre, tipo, idioma; relacion = lei_padre, tipo, estado_relacion, estado_registro. Extraelas con get_json_object(detalle, '$.<clave>'). 'Qué cambió' son las filas con operacion = 'update' o 'delete'. Para comparar con la versión anterior, calculá LAG sobre TODAS las versiones de la fila (PARTITION BY tabla_legacy, clave_fila ORDER BY lsn, seqval) y recién después filtrá los update: si filtrás antes, la versión anterior (el insert) desaparece.",
+    "",
+    "Duplicados: registros > 1 significa que la resolución de identidades unió varios registros en la empresa; duplicados_en_gleif cuenta LEI anulados o duplicados que se fusionaron.",
+    "",
+    "Atribución: si la respuesta usa fct_risk_flags, aclarar 'Datos: OpenSanctions (opensanctions.org), CC BY-NC 4.0'; si usa fct_news_signal, 'Datos: The GDELT Project'."
+  ],
+  "preguntas_de_ejemplo": [
+    "¿Qué empresas argentinas están sancionadas?",
+    "¿De qué fuentes sale Banco Macro y qué LEI tiene?",
+    "¿Qué empresas tuvieron más menciones negativas en las noticias de los últimos 30 días?",
+    "¿Qué empresas del legacy cambiaron de nombre o de dirección?",
+    "¿Cuántas empresas aparecen en más de una fuente?"
+  ],
+  "ejemplos_sql": [
+    {
+      "pregunta": "¿De qué fuentes sale Banco Macro y qué LEI tiene?",
+      "sql": "SELECT d.nombre, d.lei, d.cik, b.fuente, b.id_fuente, b.nombre_en_fuente, b.es_ancla\nFROM entity360.gold.dim_entity d\nJOIN entity360.gold.bridge_entity_source b ON b.entity_id = d.entity_id\nWHERE d.entity_id IN (\n  SELECT entity_id FROM entity360.gold.bridge_entity_source WHERE nombre_en_fuente ILIKE '%macro%'\n  UNION SELECT entity_id FROM entity360.gold.dim_entity WHERE nombre ILIKE '%macro%')\nORDER BY d.nombre, b.es_ancla DESC, b.fuente",
+      "uso": "Buscar una empresa por nombre y mostrar sus fuentes."
+    },
+    {
+      "pregunta": "¿Qué empresas argentinas están sancionadas?",
+      "sql": "SELECT d.nombre, r.nombre_en_lista, r.sanciones, array_join(r.datasets, ', ') AS listas,\n       CASE WHEN r.lei_coincide THEN 'LEI' ELSE 'nombre' END AS vinculo\nFROM entity360.gold.dim_entity d\nJOIN entity360.gold.fct_risk_flags r ON r.entity_id = d.entity_id\nWHERE d.pais = 'AR' AND r.sancionada\nORDER BY d.nombre",
+      "uso": "Riesgo por país: sanciones de OpenSanctions."
+    },
+    {
+      "pregunta": "¿Qué empresas tuvieron más menciones negativas en las noticias de los últimos 30 días?",
+      "sql": "SELECT d.nombre, sum(n.menciones) AS menciones, sum(n.menciones_negativas) AS negativas,\n       round(sum(n.tono_promedio * n.menciones) / sum(n.menciones), 2) AS tono\nFROM entity360.gold.fct_news_signal n\nJOIN entity360.gold.dim_entity d ON d.entity_id = n.entity_id\nWHERE n.fecha >= date_sub(current_date(), 30)\nGROUP BY d.nombre\nORDER BY negativas DESC, tono",
+      "uso": "Ranking de cobertura negativa; el tono se pondera por menciones."
+    },
+    {
+      "pregunta": "¿Qué empresas cambiaron de estado de registro del LEI en el legacy?",
+      "sql": "WITH versiones AS (\n  SELECT entity_id, lei, operacion, valido_desde,\n         get_json_object(detalle, '$.estado_registro') AS estado,\n         LAG(get_json_object(detalle, '$.estado_registro')) OVER (PARTITION BY tabla_legacy, clave_fila ORDER BY lsn, seqval) AS estado_anterior\n  FROM entity360.gold.fct_entity_changes WHERE tabla_legacy = 'entidad')\nSELECT d.nombre, v.lei, v.estado_anterior, v.estado, v.valido_desde\nFROM versiones v LEFT JOIN entity360.gold.dim_entity d ON d.entity_id = v.entity_id\nWHERE v.operacion = 'update' AND v.estado <> v.estado_anterior\nORDER BY v.valido_desde DESC",
+      "uso": "Comparar una versión del legacy con la anterior: LAG sobre todas las versiones y después filtrar."
+    }
+  ],
+  "joins": [
+    [
+      "entity360.gold.bridge_entity_source",
+      "entity_id",
+      "MANY_TO_ONE"
+    ],
+    [
+      "entity360.gold.fct_entity_changes",
+      "entity_id",
+      "MANY_TO_ONE"
+    ],
+    [
+      "entity360.gold.fct_news_signal",
+      "entity_id",
+      "MANY_TO_ONE"
+    ],
+    [
+      "entity360.gold.fct_risk_flags",
+      "entity_id",
+      "MANY_TO_ONE"
+    ]
+  ],
+  "pruebas": [
+    "¿Cuáles son las empresas argentinas sancionadas cuyo vínculo con la lista es por LEI?",
+    "¿De qué fuentes sale Telecom Argentina y cuál es su CIK?",
+    "¿Qué empresas tuvieron cobertura con tono negativo en septiembre de 2026 y cuántas menciones?",
+    "¿Qué empresas cambiaron de nombre en el legacy y cuál era el nombre anterior?",
+    "¿Cuántas empresas tienen LEI duplicados fusionados, por país?"
+  ]
+}

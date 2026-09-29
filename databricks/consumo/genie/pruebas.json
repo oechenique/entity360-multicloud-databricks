@@ -1,0 +1,164 @@
+{
+  "probado_utc": "2026-09-29T16:00:59+00:00",
+  "pruebas": [
+    {
+      "pregunta": "¿Cuáles son las empresas argentinas sancionadas cuyo vínculo con la lista es por LEI?",
+      "estado": "COMPLETED",
+      "texto": "La empresa argentina **華爲技術投資有限公司** está sancionada y su vínculo con la lista es por **LEI**. Aparece en las siguientes listas: Legal Entity Identifier (LEI) Reference Data, Taiwan Strategic High-Tech Commodities Entity List y US Trade Consolidated Screening List (CSL), con sanciones de la Entity List (EL) del Bureau of Industry and Security.\n\nDatos: OpenSanctions (opensanctions.org), CC BY-NC 4.0",
+      "sql": "SELECT d.nombre, r.nombre_en_lista, r.sanciones, array_join(r.datasets, ', ') AS listas, 'LEI' AS vinculo\nFROM entity360.gold.dim_entity d\nJOIN entity360.gold.fct_risk_flags r ON r.entity_id = d.entity_id\nWHERE d.pais = 'AR' AND r.sancionada AND r.lei_coincide\nORDER BY d.nombre",
+      "descripcion_sql": "Querés ver las empresas argentinas que están sancionadas y cuyo vínculo con la lista de sanciones es a través del mismo LEI.",
+      "columnas": [
+        "nombre",
+        "nombre_en_lista",
+        "sanciones",
+        "listas",
+        "vinculo"
+      ],
+      "filas": [
+        [
+          "華爲技術投資有限公司",
+          "華爲技術投資有限公司",
+          "Entity List (EL) - Bureau of Industry and Security - For all items subject to the EAR, see §§ 734.9(e)1 and 744.11 of the EAR2 - 2019-05-21;Entity List (EL) - Bureau of Industry and Security - For all items subject to the EAR, see §§ 734.9(e)1 and 744.11 of the EAR2 - 2019-08-21",
+          "Legal Entity Identifier (LEI) Reference Data, Taiwan Strategic High-Tech Commodities Entity List, US Trade Consolidated Screening List (CSL)",
+          "LEI"
+        ]
+      ],
+      "total_filas": 1,
+      "error": null
+    },
+    {
+      "pregunta": "¿De qué fuentes sale Telecom Argentina y cuál es su CIK?",
+      "estado": "COMPLETED",
+      "texto": "Telecom Argentina Sociedad Anónima aparece en cinco fuentes: GLEIF, GDELT, OpenSanctions, SEC EDGAR y Wikidata. Su CIK es **932470** en todas ellas. \n\nLas fuentes de origen incluyen:\n- **GLEIF** (nombre en fuente: Telecom Argentina Sociedad Anonima, ancla)\n- **GDELT** (nombre en fuente: Telecom Argentina)\n- **OpenSanctions** (nombre en fuente: Telecom Argentina)\n- **SEC EDGAR** (nombre en fuente: TELECOM ARGENTINA SA)\n- **Wikidata** (nombre en fuente: Telecom Argentina)",
+      "sql": "SELECT d.nombre, d.cik, b.fuente, b.id_fuente, b.nombre_en_fuente, b.es_ancla\nFROM entity360.gold.dim_entity d\nJOIN entity360.gold.bridge_entity_source b ON b.entity_id = d.entity_id\nWHERE d.entity_id IN (\n  SELECT entity_id FROM entity360.gold.bridge_entity_source WHERE nombre_en_fuente ILIKE '%telecom argentina%'\n  UNION SELECT entity_id FROM entity360.gold.dim_entity WHERE nombre ILIKE '%telecom argentina%')\nORDER BY d.nombre, b.es_ancla DESC, b.fuente",
+      "descripcion_sql": "Querés saber de qué fuentes provienen los registros que forman la empresa Telecom Argentina y cuál es su identificador CIK.",
+      "columnas": [
+        "nombre",
+        "cik",
+        "fuente",
+        "id_fuente",
+        "nombre_en_fuente",
+        "es_ancla"
+      ],
+      "filas": [
+        [
+          "Telecom Argentina Sociedad Anonima",
+          "932470",
+          "gleif",
+          "549300MKPIRSJD8SB782",
+          "Telecom Argentina Sociedad Anonima",
+          "true"
+        ],
+        [
+          "Telecom Argentina Sociedad Anonima",
+          "932470",
+          "gdelt",
+          "TEO",
+          "Telecom Argentina",
+          "false"
+        ],
+        [
+          "Telecom Argentina Sociedad Anonima",
+          "932470",
+          "opensanctions",
+          "ir-br-co-b793d3d7810d4c3863c1e12266492b5e3c45b081",
+          "Telecom Argentina",
+          "false"
+        ],
+        [
+          "Telecom Argentina Sociedad Anonima",
+          "932470",
+          "sec_edgar",
+          "932470",
+          "TELECOM ARGENTINA SA",
+          "false"
+        ],
+        [
+          "Telecom Argentina Sociedad Anonima",
+          "932470",
+          "wikidata",
+          "Q1544312",
+          "Telecom Argentina",
+          "false"
+        ]
+      ],
+      "total_filas": 5,
+      "error": null
+    },
+    {
+      "pregunta": "¿Qué empresas tuvieron cobertura con tono negativo en septiembre de 2026 y cuántas menciones?",
+      "estado": "COMPLETED",
+      "texto": "En septiembre de 2026, hubo **4 empresas** con cobertura de noticias de tono negativo. Las empresas y la cantidad de menciones son:\n- **Banco de Galicia y Buenos Aires**: 5 menciones\n- **BANCO MACRO SOCIEDAD ANONIMA**: 2 menciones\n- **MERCADOLIBRE, INC.**: 1 mención\n- **Transportadora de Gas del Sur S.A.**: 1 mención\n\nLa empresa con más menciones negativas fue Banco de Galicia y Buenos Aires. Datos: The GDELT Project.",
+      "sql": "SELECT d.nombre, SUM(n.menciones) AS menciones\nFROM entity360.gold.fct_news_signal n\nJOIN entity360.gold.dim_entity d ON d.entity_id = n.entity_id\nWHERE n.fecha >= '2026-09-01' AND n.fecha <= '2026-09-30'\n  AND n.tono_promedio < 0\n  AND d.nombre IS NOT NULL\n  AND n.menciones IS NOT NULL\nGROUP BY d.nombre\nORDER BY menciones DESC\n-- Datos: The GDELT Project",
+      "descripcion_sql": "Querés saber qué empresas tuvieron menciones en noticias con tono negativo durante septiembre de 2026 y cuántas menciones recibieron en total.",
+      "columnas": [
+        "nombre",
+        "menciones"
+      ],
+      "filas": [
+        [
+          "Banco de Galicia y Buenos Aires",
+          "5"
+        ],
+        [
+          "BANCO MACRO SOCIEDAD ANONIMA",
+          "2"
+        ],
+        [
+          "MERCADOLIBRE, INC.",
+          "1"
+        ],
+        [
+          "Transportadora de Gas del Sur S.A.",
+          "1"
+        ]
+      ],
+      "total_filas": 4,
+      "error": null
+    },
+    {
+      "pregunta": "¿Qué empresas cambiaron de nombre en el legacy y cuál era el nombre anterior?",
+      "estado": "COMPLETED",
+      "texto": "La empresa **VALCEREAL S. A.** (LEI 54930066XXEVSKMRD863) cambió su nombre legal de **VALCEREAL SA** a **VALCEREAL S. A.** el 26 de septiembre de 2026.\n\nSolo se observa un cambio de nombre legal en la muestra analizada.",
+      "sql": "WITH versiones AS (SELECT entity_id, lei, operacion, valido_desde, get_json_object(detalle, '$.nombre_legal') AS nombre_legal, LAG(get_json_object(detalle, '$.nombre_legal')) OVER (PARTITION BY tabla_legacy, clave_fila ORDER BY lsn, seqval) AS nombre_legal_anterior FROM entity360.gold.fct_entity_changes WHERE tabla_legacy = 'entidad') SELECT d.nombre, v.lei, v.nombre_legal_anterior, v.nombre_legal, v.valido_desde FROM versiones v LEFT JOIN entity360.gold.dim_entity d ON d.entity_id = v.entity_id WHERE v.operacion = 'update' AND v.nombre_legal <> v.nombre_legal_anterior AND v.nombre_legal IS NOT NULL AND v.nombre_legal_anterior IS NOT NULL ORDER BY v.valido_desde DESC",
+      "descripcion_sql": "Querés saber qué empresas cambiaron su estado de registro del LEI en el sistema legacy, mostrando el nombre de la empresa, el LEI, el estado anterior, el estado nuevo y la fecha del cambio.",
+      "columnas": [
+        "nombre",
+        "lei",
+        "nombre_legal_anterior",
+        "nombre_legal",
+        "valido_desde"
+      ],
+      "filas": [
+        [
+          "VALCEREAL S. A.",
+          "54930066XXEVSKMRD863",
+          "VALCEREAL SA",
+          "VALCEREAL S. A.",
+          "2026-09-26T22:14:38.800Z"
+        ]
+      ],
+      "total_filas": 1,
+      "error": null
+    },
+    {
+      "pregunta": "¿Cuántas empresas tienen LEI duplicados fusionados, por país?",
+      "estado": "COMPLETED",
+      "texto": "En Argentina (**AR**), hay **65 empresas** con LEI duplicados fusionados. Esta cifra corresponde únicamente a empresas argentinas según los datos consultados.",
+      "sql": "SELECT d.pais, COUNT(*) AS empresas_con_lei_duplicados\nFROM entity360.gold.dim_entity d\nWHERE d.duplicados_en_gleif > 0 AND d.pais IS NOT NULL AND d.duplicados_en_gleif IS NOT NULL\nGROUP BY d.pais\nORDER BY empresas_con_lei_duplicados DESC",
+      "descripcion_sql": "Querés saber cuántas empresas tienen LEI duplicados fusionados, agrupadas por país.",
+      "columnas": [
+        "pais",
+        "empresas_con_lei_duplicados"
+      ],
+      "filas": [
+        [
+          "AR",
+          "65"
+        ]
+      ],
+      "total_filas": 1,
+      "error": null
+    }
+  ]
+}

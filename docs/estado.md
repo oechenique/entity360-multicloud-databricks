@@ -3,7 +3,7 @@
 Última actualización: **2026-09-29, 15:45 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fases 6 a 8 cerradas; resolución v2.1 aplicada. En curso: fase 10 (consumo y observabilidad), adelantada a pedido de Gastón. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
+**Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón); sigue aligerar Airflow. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
@@ -26,6 +26,12 @@
 - **Fase 8 (regla 10):** Airflow 3.3 local en Docker (`airflow/`), DAG `entity360_convergencia` a las
   08:45: extractor CDC → sensores de llegada por fuente → contratos → job de Databricks → dbt con
   Cosmos → frescura. SP propio `entity360-orquestador` (ADR 0007). Primera corrida completa en verde.
+- **Fase 10 (regla 12), consumo y observabilidad:** dashboard AI/BI "Entity 360" (3 páginas: empresa,
+  panorama, salud de la plataforma) por Terraform; espacio de Genie "Entity 360" por
+  `databricks/consumo/genie.py`; resultados de dbt en `ops.dbt_resultado` (hook) y precisión/recall en
+  `ops.calidad_resolucion` (ADR 0008). 5 preguntas reales probadas: 5/5 correctas tras documentar el JSON
+  del CDC (la primera corrida falló la 4). Detalle: `databricks/consumo/README.md`. Falta del cierre:
+  README completo, capturas y video, destroy probado.
 - Tests: 3 en `tests/airflow`, 114 en `tests/medallion`, 38 en `tests/gcp_gdelt`, 19 en `tests/contracts` (entorno
   `contracts\.venv`).
 

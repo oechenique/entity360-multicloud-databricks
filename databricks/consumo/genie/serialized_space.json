@@ -1,0 +1,618 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {
+        "id": "1dca59fee5aa507141f3b8f458332430",
+        "question": [
+          "¿Cuántas empresas aparecen en más de una fuente?"
+        ]
+      },
+      {
+        "id": "2329ea79c81e2365e3fbb3241c100a72",
+        "question": [
+          "¿De qué fuentes sale Banco Macro y qué LEI tiene?"
+        ]
+      },
+      {
+        "id": "27395d93f0126c2548a145179edff4f3",
+        "question": [
+          "¿Qué empresas tuvieron más menciones negativas en las noticias de los últimos 30 días?"
+        ]
+      },
+      {
+        "id": "50632a6672915e2231f2c36392bb6d11",
+        "question": [
+          "¿Qué empresas del legacy cambiaron de nombre o de dirección?"
+        ]
+      },
+      {
+        "id": "f532dcf1e4abaea28c48cfe445e235b5",
+        "question": [
+          "¿Qué empresas argentinas están sancionadas?"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "entity360.gold.bridge_entity_source",
+        "description": [
+          "De qué registros de qué fuentes sale cada entidad (una fila por registro)."
+        ],
+        "column_configs": [
+          {
+            "column_name": "entity_id",
+            "description": [
+              "Entidad a la que pertenece el registro."
+            ]
+          },
+          {
+            "column_name": "es_ancla",
+            "description": [
+              "Es el registro que da nombre a la entidad."
+            ]
+          },
+          {
+            "column_name": "fuente",
+            "description": [
+              "Fuente del registro: gleif (el legacy), sec_edgar, opensanctions, wikidata o gdelt."
+            ],
+            "synonyms": [
+              "origen",
+              "sistema"
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "id_fuente",
+            "description": [
+              "Identificador en la fuente (LEI, CIK, id de OpenSanctions, QID, clave de GDELT)."
+            ]
+          },
+          {
+            "column_name": "nombre_en_fuente",
+            "description": [
+              "Nombre del registro tal como lo trae la fuente."
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "registro",
+            "description": [
+              "Clave <fuente>:<id> del registro (la misma del set de validación)."
+            ]
+          }
+        ]
+      },
+      {
+        "identifier": "entity360.gold.dim_entity",
+        "description": [
+          "Golden record: una fila por empresa. Consolida GLEIF (el legacy), SEC EDGAR, OpenSanctions, Wikidata y GDELT con la resolución de identidades; cada atributo sale de la fuente que gana por las reglas de supervivencia (procedencia dice de qué registro)."
+        ],
+        "column_configs": [
+          {
+            "column_name": "cik",
+            "description": [
+              "Central Index Key de la SEC, si la entidad presenta ante la SEC."
+            ]
+          },
+          {
+            "column_name": "ciudad",
+            "description": [
+              "Ciudad de la sede, normalizada."
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "duplicados_en_gleif",
+            "description": [
+              "Registros de GLEIF de más en la entidad (LEI anulados o duplicados que se fusionaron)."
+            ],
+            "synonyms": [
+              "LEI duplicados",
+              "LEI anulados fusionados"
+            ]
+          },
+          {
+            "column_name": "en_listas_de_riesgo",
+            "description": [
+              "La entidad aparece en OpenSanctions (sanciones, PEP o listas de riesgo)."
+            ]
+          },
+          {
+            "column_name": "entity_id",
+            "description": [
+              "Identificador estable de la entidad (se conserva entre corridas de la resolución)."
+            ]
+          },
+          {
+            "column_name": "estado_entidad",
+            "description": [
+              "Estado en GLEIF (ACTIVE, INACTIVE)."
+            ]
+          },
+          {
+            "column_name": "estado_registro",
+            "description": [
+              "Estado del registro LEI en GLEIF (ISSUED, LAPSED, RETIRED...)."
+            ]
+          },
+          {
+            "column_name": "forma_juridica",
+            "description": [
+              "Forma jurídica normalizada (SA, SRL, INC...)."
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "fuentes",
+            "description": [
+              "Fuentes de las que sale la entidad."
+            ]
+          },
+          {
+            "column_name": "lei",
+            "description": [
+              "Legal Entity Identifier vigente (ISO 17442). Nulo si la entidad no está en GLEIF."
+            ]
+          },
+          {
+            "column_name": "nombre",
+            "description": [
+              "Nombre legal (GLEIF primero; si no, SEC EDGAR, Wikidata, OpenSanctions, GDELT)."
+            ],
+            "synonyms": [
+              "empresa",
+              "razón social",
+              "compañía",
+              "entidad"
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "pais",
+            "description": [
+              "País ISO 3166-1 alfa-2 (jurisdicción en GLEIF)."
+            ],
+            "synonyms": [
+              "país",
+              "jurisdicción"
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "procedencia",
+            "description": [
+              "Atributo -> registro del que sobrevive."
+            ]
+          },
+          {
+            "column_name": "registro_ancla",
+            "description": [
+              "Registro que da nombre al cluster (<fuente>:<id>)."
+            ]
+          },
+          {
+            "column_name": "registros",
+            "description": [
+              "Cantidad de registros de todas las fuentes unidos en la entidad."
+            ]
+          },
+          {
+            "column_name": "resuelto_utc",
+            "description": [
+              "Corrida de la resolución que generó la fila."
+            ],
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "sancionada",
+            "description": [
+              "Algún registro de OpenSanctions de la entidad tiene sanción o programa."
+            ],
+            "synonyms": [
+              "sanción",
+              "OFAC",
+              "lista negra"
+            ]
+          },
+          {
+            "column_name": "sitio_web",
+            "description": [
+              "Sitio web oficial (SEC EDGAR o Wikidata)."
+            ]
+          },
+          {
+            "column_name": "ticker",
+            "description": [
+              "Símbolo bursátil (SEC EDGAR o Wikidata)."
+            ],
+            "synonyms": [
+              "símbolo",
+              "acción"
+            ],
+            "enable_entity_matching": true
+          }
+        ]
+      },
+      {
+        "identifier": "entity360.gold.fct_entity_changes",
+        "description": [
+          "Historial de cambios del legacy (SQL Server) capturados por CDC: una fila por versión de cada fila del ERP (entidad, dirección, nombre alternativo, relación)."
+        ],
+        "column_configs": [
+          {
+            "column_name": "clave_fila",
+            "description": [
+              "Clave natural de la fila del ERP, como JSON."
+            ]
+          },
+          {
+            "column_name": "detalle",
+            "description": [
+              "Atributos de la versión, como JSON."
+            ]
+          },
+          {
+            "column_name": "entity_id",
+            "description": [
+              "Nulo si el LEI ya no está en el legacy (la historia se conserva)."
+            ]
+          },
+          {
+            "column_name": "lei",
+            "description": [
+              "LEI de la fila del legacy (lei_hijo en relaciones)."
+            ]
+          },
+          {
+            "column_name": "lsn",
+            "description": [
+              "LSN del commit en el legacy (hexadecimal de ancho fijo)."
+            ]
+          },
+          {
+            "column_name": "operacion",
+            "description": [
+              "insert, update o delete (CDC de SQL Server)."
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "seqval",
+            "description": [
+              "Orden del cambio dentro del commit."
+            ]
+          },
+          {
+            "column_name": "tabla_legacy",
+            "description": [
+              "Tabla del ERP legacy: entidad, direccion, nombre_alternativo o relacion."
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "valido_desde",
+            "description": [
+              "Commit que abrió esta versión."
+            ],
+            "synonyms": [
+              "fecha del cambio"
+            ],
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "valido_hasta",
+            "description": [
+              "Nulo = versión vigente."
+            ],
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "vigente",
+            "description": [
+              "Es la versión vigente de la fila."
+            ]
+          }
+        ]
+      },
+      {
+        "identifier": "entity360.gold.fct_news_signal",
+        "description": [
+          "Menciones en noticias por entidad y día, con tono (GDELT GKG, cadencia de varias veces por día). Datos: The GDELT Project (https://www.gdeltproject.org/)."
+        ],
+        "column_configs": [
+          {
+            "column_name": "entity_id",
+            "description": [
+              "Entidad mencionada."
+            ]
+          },
+          {
+            "column_name": "fecha",
+            "description": [
+              "Día de la publicación (UTC)."
+            ],
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "medios",
+            "description": [
+              "Medios distintos que la mencionaron ese día."
+            ]
+          },
+          {
+            "column_name": "menciones",
+            "description": [
+              "Documentos que mencionan a la entidad ese día."
+            ]
+          },
+          {
+            "column_name": "menciones_negativas",
+            "description": [
+              "Documentos con tono negativo (menor que 0)."
+            ],
+            "synonyms": [
+              "noticias negativas",
+              "prensa negativa"
+            ]
+          },
+          {
+            "column_name": "tono_max",
+            "description": [
+              "Tono del documento más positivo del día."
+            ]
+          },
+          {
+            "column_name": "tono_min",
+            "description": [
+              "Tono del documento más negativo del día."
+            ]
+          },
+          {
+            "column_name": "tono_promedio",
+            "description": [
+              "Tono promedio (V2Tone de GDELT, de -100 a 100; negativo = cobertura negativa)."
+            ],
+            "synonyms": [
+              "sentimiento",
+              "tono"
+            ]
+          }
+        ]
+      },
+      {
+        "identifier": "entity360.gold.fct_risk_flags",
+        "description": [
+          "Coincidencias de entidades con listas de riesgo de OpenSanctions (sanciones, PEP, listas de vigilancia). Datos: OpenSanctions (opensanctions.org), CC BY-NC 4.0."
+        ],
+        "column_configs": [
+          {
+            "column_name": "datasets",
+            "description": [
+              "Listas de OpenSanctions en las que aparece."
+            ]
+          },
+          {
+            "column_name": "entity_id",
+            "description": [
+              "Entidad que aparece en la lista."
+            ]
+          },
+          {
+            "column_name": "esquema",
+            "description": [
+              "Tipo de entidad en OpenSanctions (Company, Organization, LegalEntity)."
+            ]
+          },
+          {
+            "column_name": "lei_coincide",
+            "description": [
+              "El registro de la lista trae el mismo LEI que el golden record (vínculo por identificador)."
+            ]
+          },
+          {
+            "column_name": "nombre_en_lista",
+            "description": [
+              "Nombre con el que figura en OpenSanctions."
+            ],
+            "enable_entity_matching": true
+          },
+          {
+            "column_name": "opensanctions_id",
+            "description": [
+              "Identificador de la entidad en OpenSanctions."
+            ]
+          },
+          {
+            "column_name": "paises",
+            "description": [
+              "Países asociados en OpenSanctions (ISO 3166-1 alfa-2)."
+            ]
+          },
+          {
+            "column_name": "primera_vez",
+            "description": [
+              "Primera vez que OpenSanctions vio a la entidad."
+            ],
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "sancionada",
+            "description": [
+              "Tiene sanción o programa de sanciones asociado."
+            ],
+            "synonyms": [
+              "sanción"
+            ]
+          },
+          {
+            "column_name": "sanciones",
+            "description": [
+              "Detalle de las sanciones según OpenSanctions."
+            ]
+          },
+          {
+            "column_name": "ultimo_cambio",
+            "description": [
+              "Último cambio del registro en OpenSanctions."
+            ],
+            "enable_format_assistance": true
+          }
+        ]
+      }
+    ]
+  },
+  "instructions": {
+    "text_instructions": [
+      {
+        "id": "c34f254f9859540ed29bf6fb14729904",
+        "content": [
+          "Respondé siempre en español rioplatense y mostrá el nombre de la empresa (dim_entity.nombre), nunca solo el entity_id.\n",
+          "\n",
+          "Modelo: dim_entity es el golden record, una fila por empresa real. Las otras cuatro tablas se unen a dim_entity por entity_id: bridge_entity_source (qué registros de qué fuentes forman la empresa), fct_news_signal (menciones en noticias de GDELT por día), fct_risk_flags (apariciones en listas de OpenSanctions) y fct_entity_changes (historial del ERP legacy capturado por CDC).\n",
+          "\n",
+          "Buscar una empresa por nombre: usá dim_entity.nombre con ILIKE '%texto%' (sin mayúsculas ni tildes obligatorias) y, si no aparece, bridge_entity_source.nombre_en_fuente, que tiene los nombres de todas las fuentes (por ejemplo 'Macro Bank Inc.' de la SEC). Si hay varias coincidencias, listalas con su país y cantidad de registros en vez de elegir una.\n",
+          "\n",
+          "País: pais es ISO 3166-1 alfa-2 ('AR' = Argentina, 'US' = Estados Unidos, 'MX' = México). 'Empresas argentinas' es pais = 'AR'.\n",
+          "\n",
+          "Riesgo: 'sancionada' significa que algún registro de OpenSanctions tiene una sanción o programa; 'en_listas_de_riesgo' incluye además PEP y listas de vigilancia sin sanción. fct_risk_flags.lei_coincide dice si el vínculo con la lista es por LEI (fuerte) o solo por nombre.\n",
+          "\n",
+          "Noticias: tono_promedio va de -100 a 100 y negativo significa cobertura negativa. Para 'la última semana' usá fecha >= date_sub(current_date(), 7). Al promediar el tono de varios días, ponderá por menciones.\n",
+          "\n",
+          "Cambios del legacy: operacion es insert, update o delete; vigente = true es la versión actual de la fila; clave_fila y detalle son JSON. Claves de detalle por tabla_legacy: entidad = nombre_legal, jurisdiccion, estado_entidad, estado_registro; direccion = tipo (LEGAL o SEDE), linea1, ciudad, region, pais, codigo_postal; nombre_alternativo = orden, nombre, tipo, idioma; relacion = lei_padre, tipo, estado_relacion, estado_registro. Extraelas con get_json_object(detalle, '$.<clave>'). 'Qué cambió' son las filas con operacion = 'update' o 'delete'. Para comparar con la versión anterior, calculá LAG sobre TODAS las versiones de la fila (PARTITION BY tabla_legacy, clave_fila ORDER BY lsn, seqval) y recién después filtrá los update: si filtrás antes, la versión anterior (el insert) desaparece.\n",
+          "\n",
+          "Duplicados: registros > 1 significa que la resolución de identidades unió varios registros en la empresa; duplicados_en_gleif cuenta LEI anulados o duplicados que se fusionaron.\n",
+          "\n",
+          "Atribución: si la respuesta usa fct_risk_flags, aclarar 'Datos: OpenSanctions (opensanctions.org), CC BY-NC 4.0'; si usa fct_news_signal, 'Datos: The GDELT Project'.\n"
+        ]
+      }
+    ],
+    "example_question_sqls": [
+      {
+        "id": "54dc3ec5c279ec765fea41beee2310e5",
+        "question": [
+          "¿De qué fuentes sale Banco Macro y qué LEI tiene?"
+        ],
+        "sql": [
+          "SELECT d.nombre, d.lei, d.cik, b.fuente, b.id_fuente, b.nombre_en_fuente, b.es_ancla\nFROM entity360.gold.dim_entity d\nJOIN entity360.gold.bridge_entity_source b ON b.entity_id = d.entity_id\nWHERE d.entity_id IN (\n  SELECT entity_id FROM entity360.gold.bridge_entity_source WHERE nombre_en_fuente ILIKE '%macro%'\n  UNION SELECT entity_id FROM entity360.gold.dim_entity WHERE nombre ILIKE '%macro%')\nORDER BY d.nombre, b.es_ancla DESC, b.fuente"
+        ],
+        "usage_guidance": [
+          "Buscar una empresa por nombre y mostrar sus fuentes."
+        ]
+      },
+      {
+        "id": "721fb9ad22d128849753916603da967c",
+        "question": [
+          "¿Qué empresas argentinas están sancionadas?"
+        ],
+        "sql": [
+          "SELECT d.nombre, r.nombre_en_lista, r.sanciones, array_join(r.datasets, ', ') AS listas,\n       CASE WHEN r.lei_coincide THEN 'LEI' ELSE 'nombre' END AS vinculo\nFROM entity360.gold.dim_entity d\nJOIN entity360.gold.fct_risk_flags r ON r.entity_id = d.entity_id\nWHERE d.pais = 'AR' AND r.sancionada\nORDER BY d.nombre"
+        ],
+        "usage_guidance": [
+          "Riesgo por país: sanciones de OpenSanctions."
+        ]
+      },
+      {
+        "id": "bfe3cea6093daa5e4ca6b2e285353fbb",
+        "question": [
+          "¿Qué empresas tuvieron más menciones negativas en las noticias de los últimos 30 días?"
+        ],
+        "sql": [
+          "SELECT d.nombre, sum(n.menciones) AS menciones, sum(n.menciones_negativas) AS negativas,\n       round(sum(n.tono_promedio * n.menciones) / sum(n.menciones), 2) AS tono\nFROM entity360.gold.fct_news_signal n\nJOIN entity360.gold.dim_entity d ON d.entity_id = n.entity_id\nWHERE n.fecha >= date_sub(current_date(), 30)\nGROUP BY d.nombre\nORDER BY negativas DESC, tono"
+        ],
+        "usage_guidance": [
+          "Ranking de cobertura negativa; el tono se pondera por menciones."
+        ]
+      },
+      {
+        "id": "de725477a0e9010210d14aa26b71cf1a",
+        "question": [
+          "¿Qué empresas cambiaron de estado de registro del LEI en el legacy?"
+        ],
+        "sql": [
+          "WITH versiones AS (\n  SELECT entity_id, lei, operacion, valido_desde,\n         get_json_object(detalle, '$.estado_registro') AS estado,\n         LAG(get_json_object(detalle, '$.estado_registro')) OVER (PARTITION BY tabla_legacy, clave_fila ORDER BY lsn, seqval) AS estado_anterior\n  FROM entity360.gold.fct_entity_changes WHERE tabla_legacy = 'entidad')\nSELECT d.nombre, v.lei, v.estado_anterior, v.estado, v.valido_desde\nFROM versiones v LEFT JOIN entity360.gold.dim_entity d ON d.entity_id = v.entity_id\nWHERE v.operacion = 'update' AND v.estado <> v.estado_anterior\nORDER BY v.valido_desde DESC"
+        ],
+        "usage_guidance": [
+          "Comparar una versión del legacy con la anterior: LAG sobre todas las versiones y después filtrar."
+        ]
+      }
+    ],
+    "join_specs": [
+      {
+        "id": "087d49e12cb12b496e8e115ab64d2989",
+        "left": {
+          "identifier": "entity360.gold.fct_news_signal",
+          "alias": "fct_news_signal"
+        },
+        "right": {
+          "identifier": "entity360.gold.dim_entity",
+          "alias": "dim_entity"
+        },
+        "sql": [
+          "`fct_news_signal`.`entity_id` = `dim_entity`.`entity_id`",
+          "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"
+        ],
+        "comment": [
+          "Cada fila de fct_news_signal pertenece a una empresa del golden record."
+        ]
+      },
+      {
+        "id": "091f627cd5495932a7070ea9166eab40",
+        "left": {
+          "identifier": "entity360.gold.bridge_entity_source",
+          "alias": "bridge_entity_source"
+        },
+        "right": {
+          "identifier": "entity360.gold.dim_entity",
+          "alias": "dim_entity"
+        },
+        "sql": [
+          "`bridge_entity_source`.`entity_id` = `dim_entity`.`entity_id`",
+          "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"
+        ],
+        "comment": [
+          "Cada fila de bridge_entity_source pertenece a una empresa del golden record."
+        ]
+      },
+      {
+        "id": "1c3816d90694ca11e186c9b87c1cfd19",
+        "left": {
+          "identifier": "entity360.gold.fct_entity_changes",
+          "alias": "fct_entity_changes"
+        },
+        "right": {
+          "identifier": "entity360.gold.dim_entity",
+          "alias": "dim_entity"
+        },
+        "sql": [
+          "`fct_entity_changes`.`entity_id` = `dim_entity`.`entity_id`",
+          "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"
+        ],
+        "comment": [
+          "Cada fila de fct_entity_changes pertenece a una empresa del golden record."
+        ]
+      },
+      {
+        "id": "f10a486cb4d46834f104932cc1ee02b5",
+        "left": {
+          "identifier": "entity360.gold.fct_risk_flags",
+          "alias": "fct_risk_flags"
+        },
+        "right": {
+          "identifier": "entity360.gold.dim_entity",
+          "alias": "dim_entity"
+        },
+        "sql": [
+          "`fct_risk_flags`.`entity_id` = `dim_entity`.`entity_id`",
+          "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"
+        ],
+        "comment": [
+          "Cada fila de fct_risk_flags pertenece a una empresa del golden record."
+        ]
+      }
+    ]
+  }
+}

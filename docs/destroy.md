@@ -16,6 +16,15 @@ No se toca:
 - Los secretos OAuth del SP: se borran solos con el SP (y vencen a la hora).
 
 ## 1. Databricks
+El espacio de Genie (fase 10) no es de Terraform: se manda a la papelera antes, por su título.
+```powershell
+$sid = (databricks genie list-spaces -p entity360-free -o json | ConvertFrom-Json).spaces |
+  Where-Object { $_.title -eq 'Entity 360' } | Select-Object -ExpandProperty space_id
+$sid                                               # revisar que sea uno solo
+databricks genie trash-space $sid -p entity360-free
+```
+El dashboard "Entity 360" y las tablas `ops.dbt_resultado` y `ops.calidad_resolucion` sí caen con el
+destroy (`infra/databricks/consumo.tf`).
 ```powershell
 cd infra\databricks
 terraform plan -destroy        # revisar la lista
