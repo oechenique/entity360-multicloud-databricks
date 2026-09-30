@@ -45,7 +45,7 @@
 - **Silver incremental (código, 2026-09-29):** cada fuente procesa solo los lotes de Bronze que Silver no
   procesó (`silver._lotes_procesados`); capa 3 por MERGE si el registro nuevo no es más viejo; tablas de
   nombres reemplazadas por padre; SCD2 sin cambios. Tests de equivalencia con el recálculo completo en
-  `tests/medallion/test_incremental.py`. **Sin desplegar:** la validación en el workspace está en
+  `tests/medallion/test_incremental.py`. **Desplegado el 2026-09-30** (pasos 1 a 4 en verde); la validación está en
   `databricks/evidencia/silver-incremental-validacion.md`.
 - **Fase 9 preparada, nada creado (2026-09-29):** `docs/fase9-plan.md` (validación del vending con el SP
   primero, Terraform de Snowflake, grants de Databricks, target y marts de dbt, Caminos A2 y B con el
@@ -125,7 +125,8 @@
    (`contracts/evidencia/cuarentena-punta-a-punta.txt`).
 4. ~~Borrar `gold.prueba_contrato`~~ **hecho** (2026-09-27).
 5. **Aligerar Airflow, lo que falta (cuando vuelva el warehouse):**
-   1. **Devolver Gold al SP** (OK de Gastón ya dado): dos `dbt build` locales del 2026-09-29 dejaron las
+   1. ~~**Devolver Gold al SP**~~ **hecho a mano por Gastón (2026-09-30):** las 5 tablas con owner el SP
+      `entity360-orquestador`, verificado en `information_schema`. Contexto: dos `dbt build` locales del 2026-09-29 dejaron las
       5 tablas a nombre del usuario y la corrida del DAG de ese día falló en dbt con `PERMISSION_DENIED`.
       ``ALTER TABLE entity360.gold.<tabla> OWNER TO `<application_id del SP>` `` en `dim_entity`,
       `bridge_entity_source`, `fct_news_signal`, `fct_risk_flags`, `fct_entity_changes`.
@@ -135,8 +136,9 @@
    3. Techo de 2 GB al SQL Server del legacy (`legacy/docker-compose.yml`) si aprieta la memoria durante
       la corrida. En reposo usa 1,25 GB.
    4. Informe de consumo final en `airflow/evidencia/consumo.md`.
-6. **Silver incremental:** desplegar y validar con las huellas de
-   `databricks/evidencia/silver-incremental-validacion.md` (pasos 1 a 5), cuando vuelva la cuota.
+6. **Silver incremental: desplegado (2026-09-30).** Pasos 1 a 4 de
+   `databricks/evidencia/silver-incremental-validacion.md` en verde: huellas iguales en las 12 tablas en las
+   dos corridas, y la segunda sin lotes nuevos (32 s contra 423 s). Falta el paso 5 (corrida del DAG).
 7. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
 
