@@ -17,3 +17,10 @@ frescura: dbt source freshness, success.
 ## Corrida 2: manual__2026-09-27T23:00:52 (con la corrección) -> success, 23 tareas, 0 reintentos
 extraer_cdc 0,1 min | contratos 0,2 min | medallion 8,2 min | dbt_gold.*.run 0,6–1,0 min | frescura 0,3 min
 total: 11,4 min
+
+# 2026-09-30: primera corrida con Silver incremental y Gold devuelto al SP entity360-orquestador
+## scheduled__2026-09-30T11:45:00+00:00 -> success (Gastón, desde la UI), dbt_gold y resultado incluidos
+total: ~36 min, de los cuales ~20 fueron espera del sensor.
+bypass: Gastón marcó llegada_sqlserver_cdc como success a mano. El último manifest del CDC era del 26/09
+  (umbral de 3 días): el SQL Server estuvo apagado, sin cambios CDC, y el productor no escribe manifest
+  sin cambios. Arreglo pendiente: manifest de latido (docs/estado.md, Pendiente 8).

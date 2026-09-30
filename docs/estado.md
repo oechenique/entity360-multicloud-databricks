@@ -130,7 +130,8 @@
       5 tablas a nombre del usuario y la corrida del DAG de ese día falló en dbt con `PERMISSION_DENIED`.
       ``ALTER TABLE entity360.gold.<tabla> OWNER TO `<application_id del SP>` `` en `dim_entity`,
       `bridge_entity_source`, `fct_news_signal`, `fct_risk_flags`, `fct_entity_changes`.
-   2. Reactivar el DAG (`airflow dags unpause entity360_convergencia`), correrlo y medirlo:
+   2. **Corrida del DAG: en verde (2026-09-30)**, `scheduled__2026-09-30T11:45`, 36 min (~20 de espera
+      del sensor), con un bypass manual en `llegada_sqlserver_cdc` (ver punto 8). Falta medirla:
       `python airflow\medir.py --minutos 90 --run-id <run_id> --salida airflow\evidencia\corrida-liviano.csv`.
       Esperado: 24/24.
    3. Techo de 2 GB al SQL Server del legacy (`legacy/docker-compose.yml`) si aprieta la memoria durante
@@ -138,17 +139,35 @@
    4. Informe de consumo final en `airflow/evidencia/consumo.md`.
 6. **Silver incremental: desplegado (2026-09-30).** Pasos 1 a 4 de
    `databricks/evidencia/silver-incremental-validacion.md` en verde: huellas iguales en las 12 tablas en las
-   dos corridas, y la segunda sin lotes nuevos (32 s contra 423 s). Falta el paso 5 (corrida del DAG).
+   dos corridas, y la segunda sin lotes nuevos (32 s contra 423 s). Paso 5: el DAG del 2026-09-30 terminó en verde; `lotes_nuevos` de esa corrida
+   sin revisar.
 7. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
+8. **Manifest de latido en el productor CDC (jueves 2026-10-01).** En la corrida del 2026-09-30 Gastón
+   marcó `llegada_sqlserver_cdc` como éxito a mano: el último manifest era del 26/09 (umbral de 3 días) y
+   el SQL Server estuvo apagado, así que no hubo cambios CDC y el productor no escribió manifest. Hay que
+   escribir un manifest en cada corrida, aunque no haya cambios (`sin_cambios: true` y el sha256
+   anterior), para que la frescura mida si el productor está vivo y no si hay datos nuevos.
+9. **Conteo de Gold en Databricks después del DAG del 2026-09-30:** sin hacer. Desde que el owner es el
+   SP, el usuario ya no tiene SELECT sobre Gold, y contar como el SP (leyendo su secreto del llavero)
+   quedó bloqueado por permisos en la sesión. Lo corre Gastón.
 
 ## Próximos pasos (fase 9)
 1. **Snowflake en el DAG:** rol `ENTITY360_SYNC` con mínimo privilegio para `REFRESH` y `GRANT` sobre
    `ENTITY360_UC` (sin ACCOUNTADMIN en Airflow); tareas refrescar → grants → dbt marts → tests antes de
    `resultado`; clave privada por archivo montado.
-2. **Verificar si los grants sobreviven al `CREATE OR REPLACE` de Gold.**
+2. **Grants frente al `CREATE OR REPLACE` de Gold (revisado el 2026-09-30, sin cerrar).** Los grants de
+   base, los de schema y los FUTURE de `ENTITY360_DBT`/`ENTITY360_MODELER` siguen en pie. Con
+   `USE SECONDARY ROLES NONE`, `ENTITY360_DBT` lee 4 tablas: `dim_entity` 1136, `fct_risk_flags` 52,
+   `fct_news_signal` 10 y `fct_entity_changes` 4036. Pero esas 4 son todavía las del 29/09 (metadata
+   vieja). `integracion.py refrescar` falla: el `CREATE OR REPLACE` de dbt cambia el UUID de la tabla y
+   Snowflake programa el DROP de la tabla vinculada (093680). `bridge_entity_source` ya desapareció de la
+   base. El catalog link está en `RUNNING`, con sincronización cada hora (`SYNC_S`). Falta ver si, al
+   redescubrirse, las tablas quedan legibles por los FUTURE; si no, `crear --reaplicar-grants`. Además,
+   `refrescar` no sirve con `CREATE OR REPLACE`: el camino es la resincronización del link, o que dbt deje
+   de reemplazar las tablas.
 
-Al cerrar (2026-09-29 20:50 UTC): `ENTITY360_WH` y `COMPUTE_WH` en `SUSPENDED` (verificado).
+Al cerrar (2026-09-30): `ENTITY360_WH` en `SUSPENDED` (verificado).
 
 ## Restricciones del proyecto
 - **Cuota diaria de cómputo serverless de Free Edition.** Cuando se agota, el SQL warehouse no arranca
