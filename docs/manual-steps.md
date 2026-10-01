@@ -191,8 +191,11 @@ Las cuarentenas de los contratos (y, desde la fase 8, las fuentes atrasadas) se 
 1. En Telegram, hablar con `@BotFather`, `/newbot`, y guardar el token.
 2. Mandarle un mensaje cualquiera al bot y leer el `chat.id` en
    `https://api.telegram.org/bot<TOKEN>/getUpdates`.
-3. Variables de entorno (en Airflow, en `airflow/.env`, fuera de git): `TELEGRAM_BOT_TOKEN` y
-   `TELEGRAM_CHAT_ID`. Sin ellas, las alertas van a stderr y nada se frena.
+3. Llavero de Windows, servicio `entity360-telegram`, claves `bot_token` y `chat_id`:
+   `python -c "import keyring; keyring.set_password('entity360-telegram', 'bot_token', input('token: '))"`
+   (igual para `chat_id`). `airflow\levantar.ps1` las pasa al container como `TELEGRAM_BOT_TOKEN` y
+   `TELEGRAM_CHAT_ID`. Sin las dos, las alertas van a stderr y nada se frena. Además de las alertas por
+   tarea, `resultado` manda el aviso de cierre de cada corrida (falla: callback del DAG).
 
 ### 11. dbt
 `dbt/profiles.yml` (ignorado por git) sale de `dbt/profiles.yml.example`: host, warehouse y token por

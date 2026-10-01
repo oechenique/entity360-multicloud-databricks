@@ -27,6 +27,8 @@ import keyring
 
 SERVICIO = "entity360-airflow"
 CLAVES = ["databricks_host", "databricks_client_id", "databricks_secret", "warehouse_http_path", "medallion_job_id"]
+SERVICIO_TELEGRAM = "entity360-telegram"          # opcional: bot_token y chat_id (docs/manual-steps.md §10)
+CLAVES_TELEGRAM = ["bot_token", "chat_id"]
 SERVICIO_CDC = "entity360-cdc-extractor"
 CLAVES_CDC = ["databricks_host", "databricks_client_id", "databricks_secret", "sql_password"]
 RAIZ = Path(__file__).resolve().parents[1]
@@ -75,6 +77,15 @@ def cuenta_snowflake(archivo: Path = Path.home() / ".snowflake" / "connections.t
     return tomllib.loads(archivo.read_text(encoding="utf-8")).get("entity360", {}).get("account", "")
 
 
+def telegram() -> dict[str, str]:
+    """TELEGRAM_* del llavero, solo si están las dos claves: sin bot, ninguna (las alertas van a stderr,
+    contracts/alertas.py). levantar.ps1 no puede cargar una variable vacía."""
+    t = {k: keyring.get_password(SERVICIO_TELEGRAM, k) for k in CLAVES_TELEGRAM}
+    if not all(t.values()):
+        return {}
+    return {"TELEGRAM_BOT_TOKEN": t["bot_token"], "TELEGRAM_CHAT_ID": t["chat_id"]}
+
+
 def entorno() -> int:
     """Una línea NOMBRE=valor por variable, para que levantar.ps1 las cargue en su proceso."""
     a = {k: keyring.get_password(SERVICIO, k) for k in CLAVES}
@@ -95,6 +106,7 @@ def entorno() -> int:
         # Fase 9: el account identifier vive solo en ~/.snowflake (no es un secreto, pero identifica).
         "E360_SNOWFLAKE_ACCOUNT": cuenta_snowflake(),
     }
+    variables.update(telegram())
     for k, v in variables.items():
         print(f"{k}={v}")
     return 0

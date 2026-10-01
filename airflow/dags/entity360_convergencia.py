@@ -13,7 +13,7 @@
    ENTITY360_UC) -> snowflake_grants (lectura de dbt y los modelers) -> dbt_marts -> dbt_marts_tests.
    Rol ENTITY360_SYNC (dueño de la base, sin ACCOUNTADMIN) para las dos primeras; ENTITY360_DBT para dbt.
    Gold es incremental con INSERT OVERWRITE: el UUID de las tablas no cambia y el refresco alcanza.
-8. resultado: la hoja del DAG. Corre solo si ni dbt_gold, ni frescura, ni las tareas de Snowflake
+8. resultado: la hoja del DAG; manda el aviso de cierre por Telegram (falla: callback del DAG). Corre solo si ni dbt_gold, ni frescura, ni las tareas de Snowflake
    fallaron; si no, queda upstream_failed y la corrida termina `failed`. Sin ella, la única hoja era
    frescura (all_done), y una corrida con dbt caído figuraba `success` (2026-09-29).
 
@@ -28,13 +28,13 @@ from pathlib import Path
 import pendulum
 from airflow.providers.databricks.operators.databricks import DatabricksRunNowOperator
 from airflow.providers.standard.operators.bash import BashOperator
-from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.standard.sensors.python import PythonSensor
 from airflow.sdk import DAG
 from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, RenderConfig
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from entity360 import landing  # noqa: E402
+from entity360 import landing, notificar  # noqa: E402
 
 RAIZ = Path(os.environ.get("E360_RAIZ", "/opt/entity360"))
 VENVS = Path("/opt/airflow/venvs")
@@ -60,6 +60,21 @@ def al_saltear(context) -> None:
             f"Sin lotes nuevos en más de {UMBRALES[fuente]} (warn_after de su frescura). El resto del DAG sigue.")
 
 
+def cierre_ok(**context) -> None:
+    dr = context["dag_run"]
+    alertar(*notificar.mensaje("ok", dr.dag_id, dr.run_id, dr.start_date))
+
+
+def cierre_falla(context) -> None:
+    """on_failure_callback del DAG: `resultado` no corre cuando algo falló."""
+    dr = context["dag_run"]
+    try:
+        fallidas = [ti.task_id for ti in dr.get_task_instances(state=["failed", "upstream_failed"])]
+    except Exception:          # noqa: BLE001 - sin acceso a la base desde el callback: mensaje sin lista
+        fallidas = None
+    alertar(*notificar.mensaje("falla", dr.dag_id, dr.run_id, dr.start_date, fallidas))
+
+
 def llego(fuente: str) -> bool:
     ultimo = landing.Landing().ultimo_manifest(fuente)
     print(f"{fuente}: último manifest {ultimo or '-'}; umbral {UMBRALES[fuente]}")
@@ -76,6 +91,7 @@ with DAG(
     dagrun_timeout=timedelta(hours=3),
     default_args={"retries": 1, "retry_delay": timedelta(minutes=5), "on_failure_callback": al_fallar},
     tags=["entity360"],
+    on_failure_callback=cierre_falla,
     doc_md=__doc__,
 ) as dag:
     extraer_cdc = BashOperator(
@@ -156,7 +172,9 @@ with DAG(
         for task_id, comando in (("dbt_marts", "run"), ("dbt_marts_tests", "test"))
     )
 
-    resultado = EmptyOperator(task_id="resultado", trigger_rule="none_failed")
+    # Hoja del DAG y aviso de cierre por Telegram (notificar.py): corre solo si no falló nada.
+    resultado = PythonOperator(task_id="resultado", python_callable=cierre_ok, trigger_rule="none_failed",
+                               retries=0)
 
     list(sensores.values()) >> contratos >> medallion >> dbt_gold >> frescura
     dbt_gold >> snowflake_refrescar >> snowflake_grants >> dbt_marts >> dbt_marts_tests
