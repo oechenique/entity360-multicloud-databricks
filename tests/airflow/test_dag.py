@@ -28,7 +28,12 @@ def test_snowflake_despues_de_gold_en_orden():
 
 def test_resultado_espera_los_tests_de_los_marts():
     assert ["[dbt_gold, frescura, dbt_marts_tests]", "resultado"] in cadenas()
-    assert 'EmptyOperator(task_id="resultado", trigger_rule="none_failed")' in CODIGO
+    assert 'PythonOperator(task_id="resultado", python_callable=cierre_ok, trigger_rule="none_failed"' in CODIGO
+
+
+def test_aviso_de_cierre_por_telegram():
+    assert "on_failure_callback=cierre_falla," in CODIGO        # resultado no corre si algo falló
+    assert "alertar(*notificar.mensaje(" in CODIGO
 
 
 def test_snowflake_sin_accountadmin():

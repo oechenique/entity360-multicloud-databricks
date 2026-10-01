@@ -172,8 +172,11 @@
    `ENTITY360_SYNC_SVC` OK. Falta: rebuild de Airflow (`levantar.ps1`) y la corrida desde la UI (Gastón).
    **SEC EDGAR (latido):** `apply` de `infra/aws/sec_edgar` pendiente, lo corre Gastón (el diff de
    `aws_iam_role_policy.scheduler` es la re-lectura de las mismas 2 sentencias).
-2. **Notificación de Telegram desde `resultado`** (bloque E del 2026-10-01): no llegó; queda para la
-   próxima. Gastón crea el bot con BotFather y deja el token en el llavero.
+2. **Notificación de Telegram desde `resultado`: código hecho (2026-10-01).** `resultado` pasa a
+   PythonOperator y manda "corrida OK"; el `on_failure_callback` del DAG manda "corrida FALLIDA" con las
+   tareas caídas (`airflow/dags/entity360/notificar.py`). Credenciales: llavero `entity360-telegram`
+   (`bot_token`, `chat_id`), opcionales (`credenciales.py telegram()`). Tests: `tests/airflow/test_notificar.py`
+   (4) y 1 en `test_dag.py`. Falta: Gastón crea el bot y carga las dos claves; `levantar.ps1` de nuevo.
 3. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a
    `incremental` con `insert_overwrite` sin particiones (`dbt_project.yml`): dbt hace `INSERT OVERWRITE` sobre
    la misma tabla y el UUID no cambia. Probado con dos `dbt build --select gold` como el SP (25/25 cada uno):
