@@ -5,8 +5,9 @@
 ## Dónde estamos
 **Stack técnico terminado (2026-10-01).** Fases 0 a 10 cerradas: el DAG corre de punta a punta en verde,
 con Snowflake (refresco, grants, marts y tests con `ENTITY360_SYNC`, sin ACCOUNTADMIN), latido en los 4
-productores y aviso de cierre por Telegram (probado en `manual__2026-10-01T15:03:49`). Queda: completar el
-`README.md`, capturas, video, revisión pre-público y ejecutar el destroy (`docs/destroy.md`, con OK).
+productores y aviso de cierre por Telegram (probado en `manual__2026-10-01T15:03:49`). `README.md` reescrito
+(2026-10-01) con placeholders de capturas en `docs/img/`; auditoría pre-público hecha (solo reporte, sin
+cambios). Queda: capturas, video, decidir qué hacer con el historial y ejecutar el destroy (`docs/destroy.md`, con OK).
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
