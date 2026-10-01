@@ -7,7 +7,7 @@ números completos: `resultados_v1.json` y `resultados_v2.json`.
 
 | Versión | Qué es | ¿Evaluación ciega? |
 |---|---|---|
-| **v1** | Resolución inicial (commit `51ee671`) | **Sí**: nadie miró los errores antes de medir |
+| **v1** | Resolución inicial (commit `df09b07`) | **Sí**: nadie miró los errores antes de medir |
 | **v2** | v1 + las 4 correcciones de abajo, con los mismos pesos | **No**: las correcciones salieron de mirar los errores de todo el set, incluida la mitad de evaluación |
 | **v2.1** | v2 + los 2 ajustes de la sección "v2.1" (token único raro por idf, país heredado en GDELT) | **No**: los ajustes y el umbral de idf salieron de mirar el set completo |
 

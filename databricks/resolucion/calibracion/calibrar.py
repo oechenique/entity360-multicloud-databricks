@@ -20,7 +20,7 @@ Unidades (se suman A y B):
 No cambia el job: escribe resultados_<version>.json; aplicar los pesos es un paso aparte. Las señales y
 el puntaje son identidades.senales / identidades.decidir: el mismo código que corre el job.
 
-Versiones: v1 = resolución inicial (commit 51ee671, medición ciega); v2 = con las correcciones de la
+Versiones: v1 = resolución inicial (commit df09b07, medición ciega); v2 = con las correcciones de la
 calibración (sin país supuesto en GDELT, alias genéricos, gemelo de LEI y empates a revisión,
 identificadores de Wikidata como señal); v2.1 = v2 + token único raro por idf y país heredado en GDELT.
 La mitad de evaluación no es ciega para la v2 ni para la v2.1: sus errores se miraron para diagnosticar.
