@@ -166,9 +166,12 @@
    con `COPY CURRENT GRANTS` (REFRESH y GRANT exigen OWNERSHIP; así no hace falta MANAGE GRANTS).
    `integracion.py grants --conexion entorno`: reaplica la lectura sin los FUTURE. Imagen de Airflow con
    dbt-snowflake; claves de `~/.snowflake/keys` montadas de solo lectura; account por `credenciales.py`.
-   Tests: `tests/snowflake/test_sync.py` (4), `tests/airflow/test_dag.py` (3). **Falta, con OK:**
-   `cuenta.py claves` (clave de SYNC) → `apply` de `infra/snowflake` (3 recursos + usuario) →
-   `integracion.py ceder` → rebuild de Airflow → corrida desde la UI.
+   Tests: `tests/snowflake/test_sync.py` (4), `tests/airflow/test_dag.py` (3). **Aplicado (2026-10-01):**
+   clave de SYNC, `apply` de `infra/snowflake` (5 recursos), `ceder` sin errores (respaldo previo y
+   resultado en `snowflake/evidencia/grants-antes-de-ceder.txt`); `refrescar` y `grants` con
+   `ENTITY360_SYNC_SVC` OK. Falta: rebuild de Airflow (`levantar.ps1`) y la corrida desde la UI (Gastón).
+   **SEC EDGAR (latido):** `apply` de `infra/aws/sec_edgar` pendiente, lo corre Gastón (el diff de
+   `aws_iam_role_policy.scheduler` es la re-lectura de las mismas 2 sentencias).
 2. **Notificación de Telegram desde `resultado`** (bloque E del 2026-10-01): no llegó; queda para la
    próxima. Gastón crea el bot con BotFather y deja el token en el llavero.
 3. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a

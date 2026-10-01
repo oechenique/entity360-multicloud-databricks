@@ -1,0 +1,48 @@
+# Grants de ENTITY360_UC antes de `integracion.py ceder` (2026-10-01 13:57 UTC).
+# Para restaurar: GRANT OWNERSHIP ... TO ROLE <dueño de abajo> COPY CURRENT GRANTS y los GRANT listados.
+# Columnas: privilege | granted_on | name | granted_to | grantee_name | grant_option
+
+## base: SHOW GRANTS ON DATABASE ENTITY360_UC
+OWNERSHIP | DATABASE | ENTITY360_UC | ROLE | ACCOUNTADMIN | true
+USAGE | DATABASE | ENTITY360_UC | ROLE | ENTITY360_DBT | false
+USAGE | DATABASE | ENTITY360_UC | ROLE | ENTITY360_MODELER | false
+
+## FUTURE de la base: SHOW FUTURE GRANTS IN DATABASE ENTITY360_UC
+SELECT | None | ENTITY360_UC.<ICEBERG_TABLE> | None | ENTITY360_DBT | false
+USAGE | None | ENTITY360_UC.<SCHEMA> | None | ENTITY360_DBT | false
+SELECT | None | ENTITY360_UC.<ICEBERG_TABLE> | None | ENTITY360_MODELER | false
+USAGE | None | ENTITY360_UC.<SCHEMA> | None | ENTITY360_MODELER | false
+
+## schema gold: SHOW GRANTS ON SCHEMA ENTITY360_UC."gold"
+OWNERSHIP | SCHEMA | ENTITY360_UC."gold" | ROLE | ACCOUNTADMIN | true
+USAGE | SCHEMA | ENTITY360_UC."gold" | ROLE | ENTITY360_DBT | false
+USAGE | SCHEMA | ENTITY360_UC."gold" | ROLE | ENTITY360_MODELER | false
+
+## tabla gold.bridge_entity_source: SHOW GRANTS ON ICEBERG TABLE ENTITY360_UC."gold"."bridge_entity_source"
+OWNERSHIP | ICEBERG_TABLE | ENTITY360_UC."gold"."bridge_entity_source" | ROLE | ACCOUNTADMIN | true
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."bridge_entity_source" | ROLE | ENTITY360_DBT | false
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."bridge_entity_source" | ROLE | ENTITY360_MODELER | false
+
+## tabla gold.dim_entity: SHOW GRANTS ON ICEBERG TABLE ENTITY360_UC."gold"."dim_entity"
+OWNERSHIP | ICEBERG_TABLE | ENTITY360_UC."gold"."dim_entity" | ROLE | ACCOUNTADMIN | true
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."dim_entity" | ROLE | ENTITY360_DBT | false
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."dim_entity" | ROLE | ENTITY360_MODELER | false
+
+## tabla gold.fct_entity_changes: SHOW GRANTS ON ICEBERG TABLE ENTITY360_UC."gold"."fct_entity_changes"
+OWNERSHIP | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_entity_changes" | ROLE | ACCOUNTADMIN | true
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_entity_changes" | ROLE | ENTITY360_DBT | false
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_entity_changes" | ROLE | ENTITY360_MODELER | false
+
+## tabla gold.fct_news_signal: SHOW GRANTS ON ICEBERG TABLE ENTITY360_UC."gold"."fct_news_signal"
+OWNERSHIP | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_news_signal" | ROLE | ACCOUNTADMIN | true
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_news_signal" | ROLE | ENTITY360_DBT | false
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_news_signal" | ROLE | ENTITY360_MODELER | false
+
+## tabla gold.fct_risk_flags: SHOW GRANTS ON ICEBERG TABLE ENTITY360_UC."gold"."fct_risk_flags"
+OWNERSHIP | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_risk_flags" | ROLE | ACCOUNTADMIN | true
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_risk_flags" | ROLE | ENTITY360_DBT | false
+SELECT | ICEBERG_TABLE | ENTITY360_UC."gold"."fct_risk_flags" | ROLE | ENTITY360_MODELER | false
+
+## Después (2026-10-01): `integracion.py ceder` sin errores (4 GRANT, COPY CURRENT GRANTS). Dueño de la base:
+## ENTITY360_SYNC. Con ENTITY360_SYNC_SVC (rol ENTITY360_SYNC, sin roles secundarios): `refrescar` 5/5 y
+## `grants` 6 GRANT. ENTITY360_DBT con USE SECONDARY ROLES NONE: 1136 / 1268 / 52 / 23 / 4036.
