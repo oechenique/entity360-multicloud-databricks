@@ -121,6 +121,24 @@ def guardar_checkpoint(manifest: dict, ruta_manifest: str) -> None:
 
 # --------------------------------------------------------------------------- SQL Server
 
+def manifest_latido(anterior: dict | None, lsn: str, ahora: datetime) -> dict:
+    """Manifest sin datos (Pendiente 8): el extractor corrió y no hubo cambios CDC. Conserva el lsn_hasta
+    y el sha256 del último lote; Bronze y los contratos parten de los .jsonl y no lo ven, el sensor del
+    DAG sí: la frescura mide si el productor está vivo, no si hubo cambios."""
+    anterior = anterior or {}
+    return {**anterior, "fuente": FUENTE, "archivo": None, "registros": 0, "sin_cambios": True,
+            "ultimo_archivo": anterior.get("ultimo_archivo") or anterior.get("archivo"),
+            "extraido_utc": ahora.isoformat(), "producer_version": VERSION,
+            "lsn_desde": lsn, "lsn_hasta": lsn, "por_tabla": {}, "por_operacion": {}}
+
+
+def latido(vol: "Volume", lsn: str) -> str:
+    ahora = datetime.now(timezone.utc)
+    ruta = f"{RAIZ_VOLUME}/ingest_date={ahora:%Y-%m-%d}/_manifest_{ahora:%Y%m%dT%H%M%SZ}.json"
+    vol.put(ruta, json.dumps(manifest_latido(vol.ultimo_manifest(), lsn, ahora), indent=2).encode("utf-8"))
+    return ruta
+
+
 def leer_cambios(cur, desde_ckpt: str | None) -> tuple[list[dict], str | None, str | None]:
     cur.execute("SELECT sys.fn_cdc_get_max_lsn()")
     hasta = cur.fetchone()[0]
@@ -186,11 +204,13 @@ def main() -> int:
         por_op[f["op"]] = por_op.get(f["op"], 0) + 1
     print(f"cambios: {len(filas)} | por tabla: {por_tabla} | por operación: {por_op} | rango {lsn_desde} -> {lsn_hasta}")
     if not filas:
-        print("sin cambios nuevos: no se empuja nada (idempotente).")
+        print("sin cambios nuevos: no se empujan datos (idempotente).")
         if desde_ckpt and not CHECKPOINT.exists() and not a.solo_leer:
             # Recuperado del volume: se vuelve a dejar el archivo local.
             guardar_checkpoint({"lsn_hasta": desde_ckpt}, origen)
             print(f"checkpoint local restaurado -> {desde_ckpt}")
+        if not a.solo_leer and desde_ckpt:
+            print(f"latido: {latido(vol, desde_ckpt)}")
         return 0
     if a.solo_leer:
         return 0

@@ -165,7 +165,20 @@ def test_misma_ventana_dos_veces_no_duplica(entorno):
     entorno.correr(13)          # la ventana de 3 h vuelve a ver las mismas menciones
     assert len(entorno.bq.respaldo) == 3
     assert [len(l) for l in entorno.vol.lotes()] == [3]
-    assert len(entorno.vol.manifests()) == 1
+    # Segunda corrida: latido (manifest sin datos) que conserva el estado del lote anterior.
+    lote, latido = entorno.vol.manifests()
+    assert latido["sin_cambios"] and latido["archivo"] is None and latido["registros"] == 0
+    assert latido["ultimo_archivo"] == lote["archivo"]
+    assert (latido["sha256"], latido["lote_hasta"]) == (lote["sha256"], lote["lote_hasta"])
+
+
+def test_latido_no_cambia_desde_donde_retoma(entorno):
+    entorno.bq.gkg = [mencion("20260926100000-1", "MELI", 10)]
+    entorno.correr(12)
+    entorno.correr(13)                                   # latido
+    entorno.bq.gkg.append(mencion("20260926130000-2", "GGAL", 13))
+    entorno.correr(14)                                   # retoma desde el lote_hasta que conservó el latido
+    assert [len(l) for l in entorno.vol.lotes()] == [1, 1]
 
 
 def test_ventanas_superpuestas_solo_suman_lo_nuevo(entorno):

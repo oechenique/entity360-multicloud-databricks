@@ -185,7 +185,9 @@ def main() -> int:
     hasta = anterior.get("lote_hasta") if anterior else None
     filas = pendientes(c, tabla, hasta) if hay_respaldo else []
     if not filas:
-        print(f"push: sin pendientes (último lote entregado: {hasta or '-'}) ({time.perf_counter() - t0:,.1f} s)")
+        latido = landing.latido(vol, FUENTE, VERSION, anterior) if anterior else "sin latido (no hay manifest previo)"
+        print(f"push: sin pendientes (último lote entregado: {hasta or '-'}); {latido} "
+              f"({time.perf_counter() - t0:,.1f} s)")
         return 0
     extra = {"lote_desde": filas[0]["lote_utc"], "lote_hasta": filas[-1]["lote_utc"],
              "ventana_horas": a.ventana_horas, "consulta": costo,

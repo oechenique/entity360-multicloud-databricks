@@ -143,11 +143,15 @@
    sin revisar.
 7. **Canal de alertas:** crear el bot de Telegram (`docs/manual-steps.md` §10). Sin él, las alertas van
    a stderr.
-8. **Manifest de latido en el productor CDC (jueves 2026-10-01).** En la corrida del 2026-09-30 Gastón
-   marcó `llegada_sqlserver_cdc` como éxito a mano: el último manifest era del 26/09 (umbral de 3 días) y
-   el SQL Server estuvo apagado, así que no hubo cambios CDC y el productor no escribió manifest. Hay que
-   escribir un manifest en cada corrida, aunque no haya cambios (`sin_cambios: true` y el sha256
-   anterior), para que la frescura mida si el productor está vivo y no si hay datos nuevos.
+8. **Manifest de latido: código hecho (2026-10-01).** Los 4 productores dejan un `_manifest_<ts>.json` sin
+   datos cuando no hay nada nuevo (`sin_cambios: true`, `archivo: null`, `registros: 0`, `ultimo_archivo`),
+   que conserva el estado del anterior (sha256, `lsn_hasta`, `lote_hasta`): la deduplicación y la
+   recuperación siguen iguales. Bronze (`*.jsonl`) y los contratos (parten de los datos) no lo ven; el
+   sensor sí. La entrega de SEC EDGAR sube solo el manifest. Tests: `tests/productores/test_latido.py` (6)
+   y un caso nuevo en `tests/gcp_gdelt`. Despliegue: CDC corre local (listo); GDELT y enriquecimiento por
+   imagen al hacer push; **SEC EDGAR sin desplegar**: el `plan` de `infra/aws/sec_edgar` trae, además de las
+   2 Lambdas, un cambio en `aws_iam_role_policy.scheduler` y una suscripción de mail a SNS nueva (deriva
+   sin revisar): espera OK. `airflow/apagar.ps1` (por proyecto, `-ConLegacy`), con 3 tests.
 9. ~~Conteo de Gold después del DAG del 2026-09-30~~ **hecho (2026-10-01):** grant `lector_gold`
    (`USE_SCHEMA` + `SELECT` en el schema gold, usuario en `terraform.tfvars`; `admins` es grupo local y UC
    no lo acepta). Conteos: `dim_entity` 1136, `bridge_entity_source` 1268, `fct_risk_flags` 52,

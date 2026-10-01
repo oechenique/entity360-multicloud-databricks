@@ -72,11 +72,15 @@ def lambda_handler(event, context):
         carpeta = clave_manifest.rsplit("/", 1)[0]                       # lotes/ingest_date=YYYY-MM-DD
         manifest_bytes = s3.get_object(Bucket=bucket, Key=clave_manifest)["Body"].read()
         manifest = json.loads(manifest_bytes)
+        destino = f"{os.environ['VOLUME_ROOT']}/{manifest['fuente']}/{carpeta.rsplit('/', 1)[1]}"
+        if manifest.get("sin_cambios"):                                   # latido: solo el manifest
+            r_man = subir(host, tk, f"{destino}/{clave_manifest.rsplit('/', 1)[1]}", manifest_bytes)
+            resultados.append({"latido": clave_manifest, "manifest": r_man, "destino": destino})
+            continue
         datos = s3.get_object(Bucket=bucket, Key=f"{carpeta}/{manifest['archivo']}")["Body"].read()
         if hashlib.sha256(datos).hexdigest() != manifest["sha256"]:
             raise RuntimeError(f"sha256 no coincide para {manifest['archivo']}")
 
-        destino = f"{os.environ['VOLUME_ROOT']}/{manifest['fuente']}/{carpeta.rsplit('/', 1)[1]}"
         r_datos = subir(host, tk, f"{destino}/{manifest['archivo']}", datos)                    # 1. datos
         r_man = subir(host, tk, f"{destino}/{clave_manifest.rsplit('/', 1)[1]}", manifest_bytes)  # 2. manifest
         resultados.append({"lote": manifest["archivo"], "registros": manifest["registros"],

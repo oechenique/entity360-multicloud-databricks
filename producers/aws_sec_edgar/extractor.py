@@ -58,6 +58,13 @@ def ultima_presentacion(d: dict) -> dict:
     return {"fecha": rec["filingDate"][0], "accession": rec["accessionNumber"][0], "form": rec["form"][0]}
 
 
+def manifest_latido(ahora: datetime) -> dict:
+    """Manifest sin datos: el extractor corrió y no hubo presentaciones nuevas. La entrega sube solo el
+    manifest; Bronze y los contratos parten de los .jsonl y no lo ven."""
+    return {"fuente": FUENTE, "archivo": None, "registros": 0, "sha256": None, "sin_cambios": True,
+            "extraido_utc": ahora.isoformat(), "producer_version": VERSION}
+
+
 def leer_estado(bucket: str) -> dict:
     try:
         return json.loads(s3.get_object(Bucket=bucket, Key=ESTADO)["Body"].read())
@@ -86,7 +93,11 @@ def lambda_handler(event, context):
 
     resumen = {"emisores": len(universo), "con_presentacion_nueva": len(lineas), "sin_cambios": sin_cambios}
     if not lineas:
-        print(json.dumps({**resumen, "resultado": "sin cambios: no se escribe lote"}))
+        # Latido (Pendiente 8): manifest sin datos para que el sensor del DAG vea al productor vivo.
+        clave = f"lotes/ingest_date={ahora:%Y-%m-%d}/_manifest_{ahora:%Y%m%dT%H%M%SZ}.json"
+        s3.put_object(Bucket=bucket, Key=clave, Body=json.dumps(manifest_latido(ahora), indent=2).encode("utf-8"),
+                      ContentType="application/json")
+        print(json.dumps({**resumen, "resultado": "sin cambios: no se escribe lote", "latido": clave}))
         return resumen
 
     ts = ahora.strftime("%Y%m%dT%H%M%SZ")

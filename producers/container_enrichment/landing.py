@@ -73,7 +73,7 @@ def publicar(vol: Volume | None, fuente: str, version: str, filas: list[dict], e
         return f"solo lectura: {len(filas)} registros, {len(datos):,} bytes, sha256 {sha[:12]}"
     anterior = vol.ultimo_manifest(fuente)
     if anterior and anterior.get("sha256") == sha:
-        return f"sin cambios (sha256 igual a {anterior['archivo']}): no se empuja nada"
+        return latido(vol, fuente, version, anterior)
 
     ahora = datetime.now(timezone.utc)
     ts = ahora.strftime("%Y%m%dT%H%M%SZ")
@@ -84,3 +84,21 @@ def publicar(vol: Volume | None, fuente: str, version: str, filas: list[dict], e
     vol.put(f"{carpeta}/{archivo}", datos)                                                   # 1. datos
     vol.put(f"{carpeta}/_manifest_{ts}.json", json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8"))  # 2. manifest
     return f"PUT {carpeta}/{archivo} ({len(filas)} registros, {len(datos):,} bytes) + manifest"
+
+
+def manifest_latido(anterior: dict, version: str, ahora: datetime) -> dict:
+    """Manifest sin datos: el productor corrió y no hubo nada nuevo. Conserva el estado del anterior
+    (sha256, lote_hasta, ...) para la deduplicación y la recuperación; Bronze y los contratos parten de los
+    .jsonl y no lo ven. El sensor del DAG sí: la frescura mide si el productor está vivo."""
+    return {**anterior, "archivo": None, "registros": 0, "sin_cambios": True,
+            "ultimo_archivo": anterior.get("ultimo_archivo") or anterior.get("archivo"),
+            "extraido_utc": ahora.isoformat(), "producer_version": version}
+
+
+def latido(vol: Volume, fuente: str, version: str, anterior: dict) -> str:
+    ahora = datetime.now(timezone.utc)
+    ts = ahora.strftime("%Y%m%dT%H%M%SZ")
+    ruta = f"{RAIZ}/{fuente}/ingest_date={ahora:%Y-%m-%d}/_manifest_{ts}.json"
+    m = manifest_latido(anterior, version, ahora)
+    vol.put(ruta, json.dumps(m, indent=2, ensure_ascii=False).encode("utf-8"))
+    return f"sin cambios (sha256 igual a {m['ultimo_archivo']}): latido {ruta}"
