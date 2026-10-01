@@ -140,13 +140,15 @@ usa placeholders (`<WORKSPACE_URL>`, `<AWS_ACCOUNT_ID>`, `<ORG>-<CUENTA>`).
 2. Para bajarlo todo: **[docs/destroy.md](docs/destroy.md)**.
 
 ## Costos
-| Plataforma | Costo |
-|---|---|
-| Databricks | Free Edition: USD 0. El límite es la cuota diaria serverless; una corrida usa 0,6–1,2 DBU ([evidencia](databricks/evidencia/pasos1-3-primeras-corridas.txt)) |
-| Snowflake | Trial Enterprise. Medido: 0,07 créditos acumulados hasta la primera corrida del DAG con Snowflake incluida; resource monitors de 20 y 25 créditos como techo ([consumo](snowflake/evidencia/consumo.md)) |
-| GCP | Sandbox de BigQuery, sin cuenta de facturación: costo imposible ([ADR 0003](docs/adr/0003-gcp-sin-facturacion.md)) |
-| AWS | Lambda, S3 y EventBridge a volumen mínimo; presupuestos de 50 y 100 USD como alarma |
-| Airflow, SQL Server | Locales, en Docker: USD 0 ([consumo de la PC](airflow/evidencia/consumo.md)) |
+Septiembre de 2026, el mes en que se construyó todo. Octubre está en curso y no se incluye.
+
+| Plataforma | Costo | Detalle |
+|---|---|---|
+| AWS | **USD 0,20** | Cost Explorer, `UnblendedCost` sin créditos: S3 0,124, Secrets Manager 0,066, Cost Explorer 0,010 (las propias consultas); Lambda, SNS, SQS, CloudWatch, Glue y KMS en 0. Presupuestos de 50 y 100 USD como alarma |
+| GCP | **USD 0** | Sandbox de BigQuery, sin cuenta de facturación ([ADR 0003](docs/adr/0003-gcp-sin-facturacion.md)) |
+| Databricks | **USD 0** | Free Edition. El límite es la cuota diaria serverless; una corrida usa 0,6–1,2 DBU ([evidencia](databricks/evidencia/pasos1-3-primeras-corridas.txt)) |
+| Snowflake | **~0,07 créditos** del trial | Trial Enterprise; acumulado hasta la primera corrida del DAG con Snowflake. Resource monitors de 20 y 25 créditos como techo ([consumo](snowflake/evidencia/consumo.md)) |
+| Airflow, SQL Server | **USD 0** | Locales, en Docker ([consumo de la PC](airflow/evidencia/consumo.md)) |
 
 ## Capturas
 Van en `docs/img/` con estos nombres:
