@@ -1,6 +1,6 @@
 # entity360-multicloud-databricks
 
-**La misma empresa aparece en cuatro sistemas, con nombres e identificadores distintos. Esta plataforma la
+**La misma empresa aparece en 5 fuentes, traídas por 4 productores, con nombres e identificadores distintos. Esta plataforma la
 convierte en un solo golden record explicable: cada atributo dice de qué fuente vino y cada unión dice por
 qué se hizo.**
 
@@ -10,7 +10,8 @@ Sexto proyecto del portfolio de Data Engineering de Gastón. Código, documentac
 
 ## El problema
 Una organización tiene sus datos repartidos entre un ERP legacy on-prem y varias nubes. Acá las entidades
-son **empresas reales** y las fuentes son **registros públicos reales** que se pisan entre sí:
+son **empresas reales** y las fuentes son **registros públicos reales** que se pisan entre sí.
+**4 productores · 5 fuentes:**
 
 | Sistema | Fuente | Aporta | Identificador |
 |---|---|---|---|
@@ -77,7 +78,7 @@ job de Databricks, construye Gold con dbt, refresca Snowflake, corre los marts y
 ## Decisiones y lo que aprendí
 - **Latido ≠ frescura.** Un productor sin novedades no dejaba nada y el sensor lo daba por caído. Ahora deja
   un `_manifest` vacío (`sin_cambios: true`) que conserva el estado: "estoy vivo" se separa de "hay datos
-  nuevos" ([corrida sin bypass](airflow/evidencia/corrida-2026-10-01.md), [tests](tests/productores/test_latido.py)).
+  nuevos" ([ADR 0014](docs/adr/0014-latido-separado-de-frescura.md), [corrida sin bypass](airflow/evidencia/corrida-2026-10-01.md)).
 - **Identidad estable de Gold.** `CREATE OR REPLACE` cambia el UUID de la tabla y rompe lo que Snowflake
   tenía vinculado. Gold pasó a `incremental` con `insert_overwrite`: misma tabla, mismo `table_id`
   ([`dbt_project.yml`](dbt/dbt_project.yml), [estado](docs/estado.md), Próximos pasos 3).
@@ -100,7 +101,7 @@ job de Databricks, construye Gold con dbt, refresca Snowflake, corre los marts y
   `resolution.revision`: unirla exigía suponer el país, la misma suposición que en v1 unía una matriz
   mexicana con su filial argentina ([informe](databricks/resolucion/calibracion/INFORME.md)).
 
-Todas las decisiones: [docs/adr/](docs/adr/) (0001–0013).
+Todas las decisiones: [docs/adr/](docs/adr/) (0001–0014).
 
 ## Stack por capa
 | Capa | Tecnología |
@@ -117,7 +118,7 @@ Todas las decisiones: [docs/adr/](docs/adr/) (0001–0013).
 ## Estructura del repo
 | Carpeta | Qué hay |
 |---|---|
-| `producers/` | Los cuatro productores (CDC, SEC EDGAR, GDELT, enriquecimiento), cada uno con su README |
+| `producers/` | Los 4 productores (CDC, SEC EDGAR, GDELT, enriquecimiento), cada uno con su README |
 | `legacy/` | SQL Server con el ERP de GLEIF y CDC |
 | `contracts/` | Contratos de Soda por fuente y alertas |
 | `databricks/` | Medallion, resolución, validación, consumo (dashboard y Genie) y evidencia |
