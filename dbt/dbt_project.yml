@@ -19,7 +19,13 @@ models:
   entity360:
     gold:
       +enabled: "{{ target.type == 'databricks' }}"
-      +materialized: table
+      # Incremental con insert_overwrite y sin particiones: cada corrida reescribe todo el contenido con
+      # INSERT OVERWRITE sobre la misma tabla. Con `table`, dbt hace CREATE OR REPLACE, el UUID de la tabla
+      # Iceberg cambia y Snowflake programa el DROP de la tabla vinculada (093680). Un cambio de columnas
+      # falla (on_schema_change) y pide --full-refresh, que sí recrea la tabla: re-vincular en Snowflake.
+      +materialized: incremental
+      +incremental_strategy: insert_overwrite
+      +on_schema_change: fail
       +table_format: iceberg     # Camino A de Snowflake (regla 11): Gold se lee por Iceberg REST
       +contract:
         enforced: true

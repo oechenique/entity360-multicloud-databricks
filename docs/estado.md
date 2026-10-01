@@ -157,16 +157,14 @@
 1. **Snowflake en el DAG:** rol `ENTITY360_SYNC` con mínimo privilegio para `REFRESH` y `GRANT` sobre
    `ENTITY360_UC` (sin ACCOUNTADMIN en Airflow); tareas refrescar → grants → dbt marts → tests antes de
    `resultado`; clave privada por archivo montado.
-2. **Grants frente al `CREATE OR REPLACE` de Gold (revisado el 2026-09-30, sin cerrar).** Los grants de
-   base, los de schema y los FUTURE de `ENTITY360_DBT`/`ENTITY360_MODELER` siguen en pie. Con
-   `USE SECONDARY ROLES NONE`, `ENTITY360_DBT` lee 4 tablas: `dim_entity` 1136, `fct_risk_flags` 52,
-   `fct_news_signal` 10 y `fct_entity_changes` 4036. Pero esas 4 son todavía las del 29/09 (metadata
-   vieja). `integracion.py refrescar` falla: el `CREATE OR REPLACE` de dbt cambia el UUID de la tabla y
-   Snowflake programa el DROP de la tabla vinculada (093680). `bridge_entity_source` ya desapareció de la
-   base. El catalog link está en `RUNNING`, con sincronización cada hora (`SYNC_S`). Falta ver si, al
-   redescubrirse, las tablas quedan legibles por los FUTURE; si no, `crear --reaplicar-grants`. Además,
-   `refrescar` no sirve con `CREATE OR REPLACE`: el camino es la resincronización del link, o que dbt deje
-   de reemplazar las tablas.
+2. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a
+   `incremental` con `insert_overwrite` sin particiones (`dbt_project.yml`): dbt hace `INSERT OVERWRITE` sobre
+   la misma tabla y el UUID no cambia. Probado con dos `dbt build --select gold` como el SP (25/25 cada uno):
+   cero `CREATE OR REPLACE` de tablas en el log, `table_id` iguales a los de antes, owner el SP. En Snowflake,
+   `integracion.py refrescar` ahora pasa en las 5 (`bridge_entity_source` ya redescubierta por el link) y
+   `ENTITY360_DBT` con `USE SECONDARY ROLES NONE` lee 1136 / 1268 / 52 / 23 / 4036, igual que Databricks;
+   no hizo falta `--reaplicar-grants`. Ojo: un cambio de columnas falla (`on_schema_change: fail`) y pide
+   `--full-refresh`, que recrea la tabla y obliga a re-vincular.
 
 Al cerrar (2026-09-30): `ENTITY360_WH` en `SUSPENDED` (verificado).
 
