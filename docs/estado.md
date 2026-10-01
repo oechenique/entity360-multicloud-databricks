@@ -1,9 +1,12 @@
 # Estado del proyecto
 
-Última actualización: **2026-10-01, 14:20 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-10-01, 15:30 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
-**Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
+**Stack técnico terminado (2026-10-01).** Fases 0 a 10 cerradas: el DAG corre de punta a punta en verde,
+con Snowflake (refresco, grants, marts y tests con `ENTITY360_SYNC`, sin ACCOUNTADMIN), latido en los 4
+productores y aviso de cierre por Telegram (probado en `manual__2026-10-01T15:03:49`). Queda: completar el
+`README.md`, capturas, video, revisión pre-público y ejecutar el destroy (`docs/destroy.md`, con OK).
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
@@ -149,9 +152,7 @@
    recuperación siguen iguales. Bronze (`*.jsonl`) y los contratos (parten de los datos) no lo ven; el
    sensor sí. La entrega de SEC EDGAR sube solo el manifest. Tests: `tests/productores/test_latido.py` (6)
    y un caso nuevo en `tests/gcp_gdelt`. Despliegue: CDC corre local (listo); GDELT y enriquecimiento por
-   imagen al hacer push; **SEC EDGAR sin desplegar**: el `plan` de `infra/aws/sec_edgar` trae, además de las
-   2 Lambdas, un cambio en `aws_iam_role_policy.scheduler` y una suscripción de mail a SNS nueva (deriva
-   sin revisar): espera OK. `airflow/apagar.ps1` (por proyecto, `-ConLegacy`), con 3 tests.
+   imagen al hacer push; SEC EDGAR desplegado el 2026-10-01. `airflow/apagar.ps1` (por proyecto, `-ConLegacy`), con 3 tests.
 9. ~~Conteo de Gold después del DAG del 2026-09-30~~ **hecho (2026-10-01):** grant `lector_gold`
    (`USE_SCHEMA` + `SELECT` en el schema gold, usuario en `terraform.tfvars`; `admins` es grupo local y UC
    no lo acepta). Conteos: `dim_entity` 1136, `bridge_entity_source` 1268, `fct_risk_flags` 52,
@@ -171,13 +172,13 @@
    resultado en `snowflake/evidencia/grants-antes-de-ceder.txt`); `refrescar` y `grants` con
    `ENTITY360_SYNC_SVC` OK. **Corrida `scheduled__2026-10-01T11:45` en verde** (28/28, 12 min 44 s; Snowflake 53 s; CDC pasó con el
    latido, sin bypass): `airflow/evidencia/corrida-2026-10-01.md`.
-   **SEC EDGAR (latido):** `apply` de `infra/aws/sec_edgar` pendiente, lo corre Gastón (el diff de
-   `aws_iam_role_policy.scheduler` es la re-lectura de las mismas 2 sentencias).
+   **SEC EDGAR (latido): desplegado** (apply de Gastón, 1 added / 2 changed / 0 destroyed; la policy del
+   scheduler no cambió). Confirmación de la suscripción SNS: sin informar.
 2. **Notificación de Telegram desde `resultado`: código hecho (2026-10-01).** `resultado` pasa a
    PythonOperator y manda "corrida OK"; el `on_failure_callback` del DAG manda "corrida FALLIDA" con las
    tareas caídas (`airflow/dags/entity360/notificar.py`). Credenciales: llavero `entity360-telegram`
    (`bot_token`, `chat_id`), opcionales (`credenciales.py telegram()`). Tests: `tests/airflow/test_notificar.py`
-   (4) y 1 en `test_dag.py`. Claves cargadas por Gastón (2026-10-01); unido a `main`. Falta: `levantar.ps1` y una corrida manual de prueba.
+   (4) y 1 en `test_dag.py`. Claves cargadas por Gastón (2026-10-01); unido a `main`. Probado: llegó "corrida OK" (`manual__2026-10-01T15:03:49`, 11 min).
 3. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a
    `incremental` con `insert_overwrite` sin particiones (`dbt_project.yml`): dbt hace `INSERT OVERWRITE` sobre
    la misma tabla y el UUID no cambia. Probado con dos `dbt build --select gold` como el SP (25/25 cada uno):
