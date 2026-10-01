@@ -14,3 +14,9 @@ variable "warehouse_name" {
   type        = string
   default     = "Serverless Starter Warehouse"
 }
+
+variable "lector_gold" {
+  description = "Usuario o grupo de cuenta con lectura de Gold (el dueño de las tablas es el SP del orquestador). Va en terraform.tfvars, nunca en el repo."
+  type        = string
+  default     = null
+}

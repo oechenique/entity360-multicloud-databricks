@@ -148,9 +148,10 @@
    el SQL Server estuvo apagado, así que no hubo cambios CDC y el productor no escribió manifest. Hay que
    escribir un manifest en cada corrida, aunque no haya cambios (`sin_cambios: true` y el sha256
    anterior), para que la frescura mida si el productor está vivo y no si hay datos nuevos.
-9. **Conteo de Gold en Databricks después del DAG del 2026-09-30:** sin hacer. Desde que el owner es el
-   SP, el usuario ya no tiene SELECT sobre Gold, y contar como el SP (leyendo su secreto del llavero)
-   quedó bloqueado por permisos en la sesión. Lo corre Gastón.
+9. ~~Conteo de Gold después del DAG del 2026-09-30~~ **hecho (2026-10-01):** grant `lector_gold`
+   (`USE_SCHEMA` + `SELECT` en el schema gold, usuario en `terraform.tfvars`; `admins` es grupo local y UC
+   no lo acepta). Conteos: `dim_entity` 1136, `bridge_entity_source` 1268, `fct_risk_flags` 52,
+   `fct_news_signal` 23 (10 → 23: menciones nuevas de GDELT), `fct_entity_changes` 4036.
 
 ## Próximos pasos (fase 9)
 1. **Snowflake en el DAG:** rol `ENTITY360_SYNC` con mínimo privilegio para `REFRESH` y `GRANT` sobre

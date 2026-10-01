@@ -53,6 +53,15 @@ resource "databricks_grant" "orquestador_gold" {
   privileges = ["USE_SCHEMA", "SELECT", "MODIFY", "CREATE_TABLE"]
 }
 
+# Desde que Gold es del SP, el usuario no lo lee: lectura a nivel schema para el humano que verifica
+# conteos. `admins` es un grupo local del workspace y Unity Catalog no lo acepta: va el usuario.
+resource "databricks_grant" "lector_gold" {
+  count      = var.lector_gold == null ? 0 : 1
+  schema     = databricks_schema.capa["gold"].id
+  principal  = var.lector_gold
+  privileges = ["USE_SCHEMA", "SELECT"]
+}
+
 # Autoritativo sobre el job: el dueño y `admins` los conserva el provider; se suma el SP.
 resource "databricks_permissions" "medallion" {
   job_id = databricks_job.medallion.id
