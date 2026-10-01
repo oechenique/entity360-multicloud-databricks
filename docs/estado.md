@@ -8,7 +8,7 @@ con Snowflake (refresco, grants, marts y tests con `ENTITY360_SYNC`, sin ACCOUNT
 productores y aviso de cierre por Telegram (probado en `manual__2026-10-01T15:03:49`). `README.md` reescrito
 (2026-10-01) con placeholders de capturas en `docs/img/`; historial reescrito con `git filter-repo` (identificadores
 reales → placeholders, autor → noreply; backup en `C:\Users\gasto\backups\`, fuera de OneDrive), ADR 0014.
-**Force-push pendiente de OK.** Queda: capturas, video, costo de AWS en el README y ejecutar el destroy (`docs/destroy.md`, con OK).
+Force-push hecho (2026-10-01), verificado con un clone limpio. Queda: capturas, video y ejecutar el destroy (`docs/destroy.md`, con OK).
 
 ## Hecho
 - **Fases 0 a 5** cerradas (spike, base de Databricks, legacy con CDC, SEC EDGAR, GDELT, enriquecimiento).
