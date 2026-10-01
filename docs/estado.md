@@ -169,14 +169,15 @@
    Tests: `tests/snowflake/test_sync.py` (4), `tests/airflow/test_dag.py` (3). **Aplicado (2026-10-01):**
    clave de SYNC, `apply` de `infra/snowflake` (5 recursos), `ceder` sin errores (respaldo previo y
    resultado en `snowflake/evidencia/grants-antes-de-ceder.txt`); `refrescar` y `grants` con
-   `ENTITY360_SYNC_SVC` OK. Falta: rebuild de Airflow (`levantar.ps1`) y la corrida desde la UI (Gastón).
+   `ENTITY360_SYNC_SVC` OK. **Corrida `scheduled__2026-10-01T11:45` en verde** (28/28, 12 min 44 s; Snowflake 53 s; CDC pasó con el
+   latido, sin bypass): `airflow/evidencia/corrida-2026-10-01.md`.
    **SEC EDGAR (latido):** `apply` de `infra/aws/sec_edgar` pendiente, lo corre Gastón (el diff de
    `aws_iam_role_policy.scheduler` es la re-lectura de las mismas 2 sentencias).
 2. **Notificación de Telegram desde `resultado`: código hecho (2026-10-01).** `resultado` pasa a
    PythonOperator y manda "corrida OK"; el `on_failure_callback` del DAG manda "corrida FALLIDA" con las
    tareas caídas (`airflow/dags/entity360/notificar.py`). Credenciales: llavero `entity360-telegram`
    (`bot_token`, `chat_id`), opcionales (`credenciales.py telegram()`). Tests: `tests/airflow/test_notificar.py`
-   (4) y 1 en `test_dag.py`. Falta: Gastón crea el bot y carga las dos claves; `levantar.ps1` de nuevo.
+   (4) y 1 en `test_dag.py`. Claves cargadas por Gastón (2026-10-01); unido a `main`. Falta: `levantar.ps1` y una corrida manual de prueba.
 3. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a
    `incremental` con `insert_overwrite` sin particiones (`dbt_project.yml`): dbt hace `INSERT OVERWRITE` sobre
    la misma tabla y el UUID no cambia. Probado con dos `dbt build --select gold` como el SP (25/25 cada uno):
