@@ -173,7 +173,7 @@ productores y aviso de cierre por Telegram (probado en `manual__2026-10-01T15:03
    `ENTITY360_SYNC_SVC` OK. **Corrida `scheduled__2026-10-01T11:45` en verde** (28/28, 12 min 44 s; Snowflake 53 s; CDC pasó con el
    latido, sin bypass): `airflow/evidencia/corrida-2026-10-01.md`.
    **SEC EDGAR (latido): desplegado** (apply de Gastón, 1 added / 2 changed / 0 destroyed; la policy del
-   scheduler no cambió). Confirmación de la suscripción SNS: sin informar.
+   scheduler no cambió). Suscripción SNS: confirmada por Gastón.
 2. **Notificación de Telegram desde `resultado`: código hecho (2026-10-01).** `resultado` pasa a
    PythonOperator y manda "corrida OK"; el `on_failure_callback` del DAG manda "corrida FALLIDA" con las
    tareas caídas (`airflow/dags/entity360/notificar.py`). Credenciales: llavero `entity360-telegram`
