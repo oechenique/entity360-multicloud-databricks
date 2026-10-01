@@ -29,6 +29,7 @@ Uso (desde la raíz del repo; conexión "entity360" de ~/.snowflake/connections.
 import argparse
 import json
 import logging
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -44,6 +45,7 @@ REFRESCO_S = 3600
 NAMESPACES = ("gold",)          # solo gold: en silver, bronze o landing el SP recibe 403
 SYNC_S = 3600                   # descubrimiento de schemas y tablas de la base (default de Snowflake: 30 s)
 ROLES_LECTURA = ("ENTITY360_DBT", "ENTITY360_MODELER")
+ROL_SYNC = "ENTITY360_SYNC"     # Airflow: dueño de la base, refresca y reaplica grants (infra/snowflake/sync.tf)
 RAIZ = Path(__file__).resolve().parents[1]
 PERFIL_DATABRICKS = "entity360-free"
 OCULTO = "***"
@@ -140,6 +142,22 @@ def sql_grants() -> list[str]:
                 f"GRANT SELECT ON ALL ICEBERG TABLES IN DATABASE {BASE} TO ROLE {rol}",
                 f"GRANT SELECT ON FUTURE ICEBERG TABLES IN DATABASE {BASE} TO ROLE {rol}"]
     return out
+
+
+def sql_ceder() -> list[str]:
+    """Una vez, con ACCOUNTADMIN: la base y lo que tiene pasan a ENTITY360_SYNC, que así refresca las tablas
+    y les da SELECT sin ACCOUNTADMIN ni MANAGE GRANTS. COPY CURRENT GRANTS conserva la lectura de dbt y
+    los modelers; los FUTURE de la base quedan como están."""
+    return [f"GRANT USAGE ON INTEGRATION {INTEGRACION} TO ROLE {ROL_SYNC}",
+            f"GRANT OWNERSHIP ON DATABASE {BASE} TO ROLE {ROL_SYNC} COPY CURRENT GRANTS",
+            f"GRANT OWNERSHIP ON ALL SCHEMAS IN DATABASE {BASE} TO ROLE {ROL_SYNC} COPY CURRENT GRANTS",
+            f"GRANT OWNERSHIP ON ALL ICEBERG TABLES IN DATABASE {BASE} TO ROLE {ROL_SYNC} COPY CURRENT GRANTS"]
+
+
+def sql_grants_dueno() -> list[str]:
+    """Los grants de lectura que puede reaplicar el dueño de la base en cada corrida del DAG: sin FUTURE a
+    nivel base, que exigen MANAGE GRANTS (los dejó `crear` con ACCOUNTADMIN y siguen en pie)."""
+    return [g for g in sql_grants() if " FUTURE " not in g]
 
 
 def diferencias(desc: list[tuple], cfg: Config) -> list[str]:
@@ -283,7 +301,15 @@ def conectar(conexion: str):
     import snowflake.connector
     # El conector loguea el texto de cada query en DEBUG: nunca por debajo de WARNING acá.
     logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
-    return snowflake.connector.connect(connection_name=conexion)
+    if conexion != "entorno":
+        return snowflake.connector.connect(connection_name=conexion)
+    # Airflow: ENTITY360_SYNC_SVC con la clave privada montada (docker-compose.yml). Sin roles
+    # secundarios: lo que corre, corre con los privilegios de ENTITY360_SYNC y nada más.
+    con = snowflake.connector.connect(
+        account=os.environ["SNOWFLAKE_ACCOUNT"], user=os.environ["SNOWFLAKE_SYNC_USER"],
+        private_key_file=os.environ["SNOWFLAKE_SYNC_KEY_PATH"], role=ROL_SYNC, warehouse="ENTITY360_WH")
+    con.cursor().execute("USE SECONDARY ROLES NONE")
+    return con
 
 
 def main() -> int:
@@ -301,7 +327,12 @@ def main() -> int:
     v = sub.add_parser("verificar")
     v.add_argument("--conexion", default="entity360")
     r = sub.add_parser("refrescar", help="refresca la metadata de las tablas de gold (después del DAG)")
-    r.add_argument("--conexion", default="entity360")
+    r.add_argument("--conexion", default="entity360", help="'entorno' en Airflow (ENTITY360_SYNC_SVC)")
+    gr = sub.add_parser("grants", help="reaplica la lectura de gold para dbt y los modelers (dueño de la base)")
+    gr.add_argument("--conexion", default="entity360", help="'entorno' en Airflow (ENTITY360_SYNC_SVC)")
+    ce = sub.add_parser("ceder", help="una vez, con ACCOUNTADMIN: la base pasa a ENTITY360_SYNC")
+    ce.add_argument("--conexion", default="entity360")
+    ce.add_argument("--simular", action="store_true", help="lista los GRANT sin ejecutarlos")
     a = ap.parse_args()
 
     if a.accion == "guardar-secreto":
@@ -314,6 +345,11 @@ def main() -> int:
             return 0
         if a.accion == "refrescar":
             refrescar(ejecutar)
+            return 0
+        if a.accion in ("grants", "ceder"):
+            for sql in (sql_grants_dueno() if a.accion == "grants" else sql_ceder()):
+                ejecutar(sql)
+                print(f"{'(simulado) ' if isinstance(ejecutar, Simulador) else ''}{sql}")
             return 0
         host, client_id, secreto = leer_llavero()
         try:

@@ -2,3 +2,4 @@
 *
 !dbt/requirements.txt
 !contracts/requirements.txt
+!dbt/requirements-snowflake.txt

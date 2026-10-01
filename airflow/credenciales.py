@@ -67,6 +67,14 @@ def verificar() -> int:
     return ok
 
 
+def cuenta_snowflake(archivo: Path = Path.home() / ".snowflake" / "connections.toml") -> str:
+    """Account identifier de la conexión `entity360` (snowflake/cuenta.py conexiones). Vacío si no hay."""
+    if not archivo.exists():
+        return ""
+    import tomllib
+    return tomllib.loads(archivo.read_text(encoding="utf-8")).get("entity360", {}).get("account", "")
+
+
 def entorno() -> int:
     """Una línea NOMBRE=valor por variable, para que levantar.ps1 las cargue en su proceso."""
     a = {k: keyring.get_password(SERVICIO, k) for k in CLAVES}
@@ -84,6 +92,8 @@ def entorno() -> int:
         "CDC_DATABRICKS_CLIENT_ID": c["databricks_client_id"],
         "CDC_DATABRICKS_SECRET": c["databricks_secret"],
         "CDC_SQL_PASSWORD": c["sql_password"],
+        # Fase 9: el account identifier vive solo en ~/.snowflake (no es un secreto, pero identifica).
+        "E360_SNOWFLAKE_ACCOUNT": cuenta_snowflake(),
     }
     for k, v in variables.items():
         print(f"{k}={v}")

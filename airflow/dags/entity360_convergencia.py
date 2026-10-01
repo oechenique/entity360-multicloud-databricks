@@ -9,10 +9,13 @@
 4. medallion: dispara el job entity360-medallion (bronze -> silver -> resolucion) y espera.
 5. dbt_gold: los modelos Gold con Cosmos, un task por modelo y sus tests después de cada uno.
 6. frescura: dbt source freshness (fuentes y resolución). Un `error` falla la tarea y alerta.
-7. resultado: la hoja del DAG. Corre solo si ni dbt_gold ni frescura fallaron; si no, queda
-   upstream_failed y la corrida termina `failed`. Sin ella, la única hoja era frescura (all_done), y una
-   corrida con dbt caído figuraba `success` (2026-09-29).
-La sincronización con Snowflake (paso 6 de la regla) se suma en la fase 9.
+7. Snowflake (fase 9, Camino A), después de dbt_gold: snowflake_refrescar (metadata de las tablas de
+   ENTITY360_UC) -> snowflake_grants (lectura de dbt y los modelers) -> dbt_marts -> dbt_marts_tests.
+   Rol ENTITY360_SYNC (dueño de la base, sin ACCOUNTADMIN) para las dos primeras; ENTITY360_DBT para dbt.
+   Gold es incremental con INSERT OVERWRITE: el UUID de las tablas no cambia y el refresco alcanza.
+8. resultado: la hoja del DAG. Corre solo si ni dbt_gold, ni frescura, ni las tareas de Snowflake
+   fallaron; si no, queda upstream_failed y la corrida termina `failed`. Sin ella, la única hoja era
+   frescura (all_done), y una corrida con dbt caído figuraba `success` (2026-09-29).
 
 Credenciales: variables de entorno del container (airflow/levantar.ps1, ADR 0007). Nada en el DAG.
 """
@@ -65,7 +68,7 @@ def llego(fuente: str) -> bool:
 
 with DAG(
     dag_id="entity360_convergencia",
-    description="CDC -> llegada por fuente -> contratos (Soda) -> job de Databricks -> dbt (Cosmos) -> frescura",
+    description="CDC -> llegada -> contratos (Soda) -> job de Databricks -> dbt (Cosmos) -> frescura y Snowflake",
     schedule="45 8 * * *",   # el horario del schedule del job, pausado desde el ADR 0006
     start_date=pendulum.datetime(2026, 9, 27, tz="America/Argentina/Buenos_Aires"),
     catchup=False,
@@ -137,7 +140,24 @@ with DAG(
         execution_timeout=timedelta(minutes=10),
     )
 
+    snowflake_refrescar, snowflake_grants = (
+        BashOperator(
+            task_id=f"snowflake_{accion}",
+            bash_command=f"{VENVS}/dbt/bin/python {RAIZ}/snowflake/integracion.py {accion} --conexion entorno",
+            execution_timeout=timedelta(minutes=10),
+        )
+        for accion in ("refrescar", "grants")
+    )
+    dbt_snowflake = (f"cd {RAIZ}/dbt && {VENVS}/dbt/bin/dbt {{}} --select marts --profiles-dir {PERFILES} "
+                     "--target snowflake --target-path /tmp/dbt-marts --log-path /tmp/dbt-marts")
+    dbt_marts, dbt_marts_tests = (
+        BashOperator(task_id=task_id, bash_command=dbt_snowflake.format(comando),
+                     execution_timeout=timedelta(minutes=15))
+        for task_id, comando in (("dbt_marts", "run"), ("dbt_marts_tests", "test"))
+    )
+
     resultado = EmptyOperator(task_id="resultado", trigger_rule="none_failed")
 
     list(sensores.values()) >> contratos >> medallion >> dbt_gold >> frescura
-    [dbt_gold, frescura] >> resultado
+    dbt_gold >> snowflake_refrescar >> snowflake_grants >> dbt_marts >> dbt_marts_tests
+    [dbt_gold, frescura, dbt_marts_tests] >> resultado

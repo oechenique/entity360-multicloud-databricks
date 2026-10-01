@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: **2026-09-29, 20:50 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-10-01, 14:20 UTC**. Se actualiza al cerrar cada sesión.
 
 ## Dónde estamos
 **Fases 6 a 8 cerradas; resolución v2.1 aplicada. Fase 10: consumo y observabilidad hechos (adelantada a pedido de Gastón). Aligerar Airflow a medias: falta la corrida 24/24 medida, bloqueada por la cuota diaria de Free Edition. La fase 9 (Snowflake) espera su OK (abre el trial de 30 días).**
@@ -158,10 +158,20 @@
    `fct_news_signal` 23 (10 → 23: menciones nuevas de GDELT), `fct_entity_changes` 4036.
 
 ## Próximos pasos (fase 9)
-1. **Snowflake en el DAG:** rol `ENTITY360_SYNC` con mínimo privilegio para `REFRESH` y `GRANT` sobre
-   `ENTITY360_UC` (sin ACCOUNTADMIN en Airflow); tareas refrescar → grants → dbt marts → tests antes de
-   `resultado`; clave privada por archivo montado.
-2. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a
+1. **Snowflake en el DAG: código hecho (2026-10-01), sin aplicar.** Tareas `snowflake_refrescar` →
+   `snowflake_grants` → `dbt_marts` → `dbt_marts_tests` después de `dbt_gold`; `resultado` espera los tests.
+   `infra/snowflake/sync.tf`: rol `ENTITY360_SYNC` (USAGE del warehouse, bajo SYSADMIN) y usuario
+   `ENTITY360_SYNC_SVC` con key pair (se crea cuando `sync_rsa_public_key` está en tfvars).
+   `integracion.py ceder` (una vez, ACCOUNTADMIN): ownership de `ENTITY360_UC`, schemas y tablas a SYNC
+   con `COPY CURRENT GRANTS` (REFRESH y GRANT exigen OWNERSHIP; así no hace falta MANAGE GRANTS).
+   `integracion.py grants --conexion entorno`: reaplica la lectura sin los FUTURE. Imagen de Airflow con
+   dbt-snowflake; claves de `~/.snowflake/keys` montadas de solo lectura; account por `credenciales.py`.
+   Tests: `tests/snowflake/test_sync.py` (4), `tests/airflow/test_dag.py` (3). **Falta, con OK:**
+   `cuenta.py claves` (clave de SYNC) → `apply` de `infra/snowflake` (3 recursos + usuario) →
+   `integracion.py ceder` → rebuild de Airflow → corrida desde la UI.
+2. **Notificación de Telegram desde `resultado`** (bloque E del 2026-10-01): no llegó; queda para la
+   próxima. Gastón crea el bot con BotFather y deja el token en el llavero.
+3. ~~Grants frente al `CREATE OR REPLACE` de Gold~~ **resuelto (2026-10-01):** Gold pasó de `table` a
    `incremental` con `insert_overwrite` sin particiones (`dbt_project.yml`): dbt hace `INSERT OVERWRITE` sobre
    la misma tabla y el UUID no cambia. Probado con dos `dbt build --select gold` como el SP (25/25 cada uno):
    cero `CREATE OR REPLACE` de tablas en el log, `table_id` iguales a los de antes, owner el SP. En Snowflake,

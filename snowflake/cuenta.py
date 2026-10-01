@@ -1,11 +1,13 @@
 """Claves y conexiones locales de Snowflake (fase 9, manual-steps §14). Nada de esto va al repo.
 
-Dos usuarios de servicio, con key pair y sin contraseña:
+Tres usuarios de servicio, con key pair y sin contraseña:
 - ENTITY360_TF: Terraform (infra/snowflake) e integracion.py. Rol ACCOUNTADMIN: crear un resource
   monitor y una catalog integration lo exigen. Lo crea Gastón en Snowsight con el SQL que imprime
   `claves` (lleva solo la clave PÚBLICA).
 - ENTITY360_DBT_SVC: dbt (marts). Lo crea Terraform con su clave pública (variable dbt_rsa_public_key):
   una clave pública no es un secreto.
+- ENTITY360_SYNC_SVC: tareas de Snowflake del DAG (rol ENTITY360_SYNC, sin ACCOUNTADMIN). Igual que dbt
+  (variable sync_rsa_public_key).
 
     claves        genera los dos pares en ~/.snowflake/keys (no pisa los que existen), restringe el acceso
                   al usuario de Windows e imprime el SQL de Snowsight y la línea de terraform.tfvars.
@@ -30,7 +32,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-USUARIOS = {"tf": "ENTITY360_TF", "dbt": "ENTITY360_DBT_SVC"}
+USUARIOS = {"tf": "ENTITY360_TF", "dbt": "ENTITY360_DBT_SVC", "sync": "ENTITY360_SYNC_SVC"}
 PERFIL = "entity360"
 
 
@@ -153,6 +155,7 @@ def claves() -> int:
     print(sql_bootstrap(publica(ruta_clave("tf"))))
     print("-- 2) infra/snowflake/terraform.tfvars (clave PÚBLICA del usuario de dbt; no es un secreto):\n")
     print(f'dbt_rsa_public_key = "{publica(ruta_clave("dbt"))}"')
+    print(f'sync_rsa_public_key = "{publica(ruta_clave("sync"))}"')
     return 0
 
 

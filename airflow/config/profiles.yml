@@ -13,3 +13,14 @@ entity360:
       client_id: "{{ env_var('DATABRICKS_CLIENT_ID') }}"
       client_secret: "{{ env_var('DATABRICKS_CLIENT_SECRET') }}"
       threads: 4
+    # Marts en Snowflake (fase 9): ENTITY360_DBT_SVC con la clave privada montada (docker-compose.yml).
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: ENTITY360_DBT_SVC
+      private_key_path: "{{ env_var('SNOWFLAKE_DBT_KEY_PATH') }}"
+      role: ENTITY360_DBT
+      warehouse: ENTITY360_WH
+      database: ENTITY360_MARTS
+      schema: MARTS
+      threads: 4

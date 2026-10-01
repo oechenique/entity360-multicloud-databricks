@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" \
       --constraint "${CONSTRAINTS}"
 
 # dbt y Soda en entornos propios: sus dependencias no se mezclan con las de Airflow.
-COPY --chown=airflow:root dbt/requirements.txt /tmp/req-dbt.txt
+COPY --chown=airflow:root dbt/requirements.txt dbt/requirements-snowflake.txt /tmp/
 COPY --chown=airflow:root contracts/requirements.txt /tmp/req-soda.txt
-RUN python -m venv /opt/airflow/venvs/dbt && /opt/airflow/venvs/dbt/bin/pip install --no-cache-dir -r /tmp/req-dbt.txt \
+RUN python -m venv /opt/airflow/venvs/dbt && /opt/airflow/venvs/dbt/bin/pip install --no-cache-dir -r /tmp/requirements-snowflake.txt \
  && python -m venv /opt/airflow/venvs/soda && /opt/airflow/venvs/soda/bin/pip install --no-cache-dir -r /tmp/req-soda.txt

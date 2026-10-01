@@ -56,6 +56,11 @@ x-airflow: &airflow
     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     E360_RAIZ: /opt/entity360
+    # Fase 9: tareas de Snowflake del DAG. Claves privadas de ~/.snowflake/keys, montadas de solo lectura.
+    SNOWFLAKE_ACCOUNT: ${E360_SNOWFLAKE_ACCOUNT:?correr airflow\levantar.ps1 (snowflake/cuenta.py conexiones)}
+    SNOWFLAKE_SYNC_USER: ENTITY360_SYNC_SVC
+    SNOWFLAKE_SYNC_KEY_PATH: /opt/entity360/snowflake_keys/entity360_sync_svc.p8
+    SNOWFLAKE_DBT_KEY_PATH: /opt/entity360/snowflake_keys/entity360_dbt_svc.p8
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -64,6 +69,8 @@ x-airflow: &airflow
     - ../contracts:/opt/entity360/contracts:ro
     # rw: el checkpoint del LSN (state/) es el mismo que usa el extractor corrido a mano en la PC.
     - ../producers/cdc_extractor:/opt/entity360/cdc_extractor
+    - ../snowflake:/opt/entity360/snowflake:ro
+    - ${USERPROFILE}/.snowflake/keys:/opt/entity360/snowflake_keys:ro
   # Tapa los entornos y artefactos de Windows que viven dentro de los proyectos montados: Cosmos hashea
   # la carpeta de dbt en cada parseo y el .venv tiene miles de archivos.
   tmpfs:

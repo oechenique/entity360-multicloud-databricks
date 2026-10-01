@@ -45,3 +45,9 @@ variable "creditos_cuenta" {
   type        = number
   default     = 25
 }
+
+variable "sync_rsa_public_key" {
+  description = "Clave pública de ENTITY360_SYNC_SVC (snowflake/cuenta.py claves). Sin ella no se crea el usuario."
+  type        = string
+  default     = null
+}
