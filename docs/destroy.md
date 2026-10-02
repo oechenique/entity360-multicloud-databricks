@@ -7,8 +7,24 @@ Principio 7: el destroy se escribe junto con la infra. **Todo con confirmación 
 - **Probado de punta a punta:** el destroy del spike (Databricks, AWS y SQL Server local; `spike/INFORME.md`,
   "Estado final"), con verificación después de cada paso. De ahí salen el orden y los aprendizajes de
   este documento (`force_destroy` en la external location, Genie a la papelera).
-- **Escrito junto con cada stack, sin ejecutar todavía sobre el proyecto:** todo lo de abajo. Ejecutarlo
-  es el último paso del cierre (regla 12) y necesita OK explícito.
+- **Ejecutado sobre el proyecto el 2026-10-02**, con OK de Gastón stack por stack (plan → resumen → OK →
+  apply del plan guardado → verificación con la CLI de cada plataforma, no solo con el state). Lo que
+  pasó de verdad, incluidos los pasos que fallaron o se hicieron a mano, está en
+  [Ejecución del 2026-10-02](#ejecución-del-2026-10-02). El resto del documento es el runbook original.
+
+## Ejecución del 2026-10-02
+Orden usado: cortar lo programado → Snowflake → Databricks → AWS → GCP → GitHub → local.
+
+| # | Plataforma | Qué se borró | Cómo se verificó | Incidencias |
+|---|---|---|---|---|
+| 0 | Programados | `gdelt-horario` y `enriquecimiento-diario` deshabilitados (después también los dos de imagen; los 4 quedan en el repo, `disabled_manually`) | `gh workflow list --all` | Airflow ya estaba apagado (Docker Desktop cerrado) y el DAG pausado desde el 29: no hizo falta pausarlo. El schedule de SEC se fue con su stack (paso 3) |
+| 1 | Snowflake | `ENTITY360_UC` y `ENTITY360_UNITY` por SQL con `ENTITY360_TF`; `infra/snowflake` 26 recursos (base de marts, `ENTITY360_WH`, los 2 monitores, 3 roles, `ENTITY360_DBT_SVC` y `ENTITY360_SYNC_SVC`, grants); `COMPUTE_WH` vuelve a `AUTO_SUSPEND = 300` | `SHOW DATABASES/INTEGRATIONS/WAREHOUSES/RESOURCE MONITORS/USERS/ROLES` | `ALTER ACCOUNT UNSET RESOURCE_MONITOR` lo hizo el revert de `monitor_de_cuenta`; no quedó ningún monitor. **A mano (Gastón, Snowsight):** `DROP USER ENTITY360_TF` (los otros dos `DROP USER` no hicieron falta) |
+| 2 | Databricks | `infra/databricks` 67 recursos: catálogo `entity360` (6 schemas, 2 volumes), 6 SP, job, dashboard, external location, storage credential, grants, tags, código | `catalogs`, `service-principals`, `jobs`, `lakeview`, `external-locations`, `storage-credentials list`; `/Shared` vacío | **Falló la external location** (88 tablas gestionadas y 2 volumes retenidos para `UNDROP`): con OK, `external-locations delete --force` + `state rm` + destroy del credential. **Genie: el clasificador bloqueó `trash-space`;** lo corrió Gastón. `/Shared/entity360` (vacía) borrada por CLI |
+| 2b | Databricks (otro proyecto) | Proyecto de taxis, sin state acá: 4 jobs (`medallion-pipeline-dev` ×2, `nyctaxi_pipeline` ×2, ninguno con schedule), catálogo `medallion_dev` (`--force`), `/Workspace/medallion-dev` (4 notebooks), 3 notebooks de `nyctaxi_pipeline` en la carpeta del usuario y una carpeta `entity360` vacía | `jobs list` vacío, `catalogs list` | `terraform state rm` de sus 5 recursos en `databricks-medallion-terraform` para dejarlo consistente. `gastigeo_prep` y `databrickscourse` intactos |
+| 3 | AWS | Buckets `entity360-sec-edgar-<ACC>` (13 objetos) y `entity360-uc-<ACC>` (11.471, ~136 MB; los datos que dejó la external location forzada) vaciados; `infra/aws/sec_edgar` 24 recursos y `infra/aws` 6; secreto con `--force-delete-without-recovery` | Por servicio en us-east-1 y us-east-2 (Lambda, Scheduler y grupos, SNS y suscripciones, SQS, Secrets incluidos los programados para borrar, alarmas, log groups, ECR, KMS del cliente), IAM, S3 y Tagging API `proyecto=entity360`: nada | El rol A2 nunca existió (Camino A). KMS: solo `aws/lambda` y `aws/secretsmanager`, de AWS. **Budgets quedan** (ver arriba) |
+| 4 | GCP | Tabla `menciones` (99 filas) y `infra/gcp` 12 recursos (dataset, pool y provider de WIF, SA, bindings); `sts` deshabilitada | `workload-identity-pools list` (pool en `DELETED`), `service-accounts list`, `bq ls`, IAM del proyecto | `bq` no arrancaba (buscaba `python3.14`): se corrió con `CLOUDSDK_PYTHON` = el Python de gcloud. `iamcredentials` no se pudo deshabilitar sola. **Gastón borró el proyecto entero** (ver arriba) |
+| 5 | GitHub | 9 secrets de Actions; paquetes `entity360-enrichment` y `entity360-gdelt` (4 versiones cada uno) | `gh secret list`/`variable list` vacíos; `user/packages` vacío y 404 por nombre | **A mano (Gastón):** `gh auth refresh -s read:packages,delete:packages`. GHCR los deja 30 días recuperables |
+| 6 | Local | Containers, volúmenes y redes de Airflow y legacy; imágenes `entity360-airflow`, `-gdelt`, `-enrichment`, `postgres:16`, `mssql/server:2022-latest`; 14 entradas del llavero; `~/.snowflake` entero; bundle previo al `filter-repo`; los 4 `.venv`, `spike/data`, `dbt/target`, `dbt/logs`, `airflow/logs`, checkpoint del CDC | `docker ps -a`/`volume ls`/`network ls`, `cmdkey /list` | **Quedan a propósito:** perfil `[entity360-free]` de `~/.databrickscfg` y `databricks-cli:entity360-free` en el llavero (el workspace Free sigue en uso). **Bloqueado por el clasificador, a mano (Gastón):** `*.tfstate*`, `*.tfplan`, `terraform.tfvars` y `.terraform/` de `infra/` (y tfstate/tfplan del spike); los 5 stacks tienen `terraform.tfvars.example` versionado |
 
 ## Orden completo
 Primero lo que usa las identidades de Databricks (los SP), después Databricks, después las nubes y al
@@ -26,10 +42,15 @@ final lo local. Cada paso tiene su sección más abajo.
 | 8 | Limpieza local | [Limpieza local](#limpieza-local) |
 
 No se toca (a propósito):
-- El flag del metastore `external_access_enabled` (`manual-steps.md` §4): se revierte solo si se
-  abandona el Camino A de Snowflake.
+- El flag del metastore `external_access_enabled` (`manual-steps.md` §4): **queda activado** después
+  del destroy (2026-10-02). No genera costo; se revierte a mano si se quiere.
 - Los presupuestos de AWS (50 y 100 USD, `manual-steps.md` §2): son de la cuenta, no del proyecto.
+  **Quedan después del destroy (2026-10-02, decisión de Gastón):** son gratis y son la alarma de gasto
+  de la cuenta.
 - El proyecto de GCP (sandbox, sin facturación): lo crea y lo borra el dueño de la cuenta.
+  **Borrado entero por Gastón el 2026-10-02** (`gcloud projects delete <PROJECT_ID>`; queda
+  `DELETE_REQUESTED`, recuperable 30 días). Con él se va `iamcredentials.googleapis.com`, que no se pudo
+  deshabilitar sola (depende de ella `iam.googleapis.com`).
 - Los secretos OAuth de los SP: se borran con los SP (y los M2M vencen a la hora).
 
 ## 1. Databricks

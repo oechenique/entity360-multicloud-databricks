@@ -1,8 +1,24 @@
 # Estado del proyecto
 
-Última actualización: **2026-10-01, 15:30 UTC**. Se actualiza al cerrar cada sesión.
+Última actualización: **2026-10-02**.
 
-## Dónde estamos
+## Proyecto cerrado y destruido (2026-10-02)
+Toda la infraestructura y los datos del proyecto están borrados en Snowflake, Databricks, AWS, GCP y GitHub,
+verificado con la CLI de cada plataforma. El repo queda público como está, como registro del trabajo.
+Los workflows de Actions están en el repo pero deshabilitados, y sin secrets. Detalle por plataforma,
+incidencias y pasos manuales: `docs/destroy.md`, [Ejecución del 2026-10-02](destroy.md#ejecución-del-2026-10-02).
+
+Lo que queda a propósito, ninguno con costo:
+- **AWS:** los budgets de 50 y 100 USD, alarma de gasto de la cuenta.
+- **Databricks:** el flag `external_access_enabled` del metastore, el perfil `[entity360-free]` y su
+  token en el llavero (el workspace Free se sigue usando para otros catálogos).
+- **Snowflake:** el trial, sin objetos del proyecto; se suspende solo al vencer.
+- **Recuperables por un tiempo, después se purgan solos:** el proyecto de GCP (`DELETE_REQUESTED`, 30
+  días), los paquetes de GHCR (30 días) y las bases de Snowflake (Time Travel, 1 día).
+
+Lo que sigue es el historial del proyecto hasta el cierre: ya no describe recursos vivos.
+
+## Dónde estábamos (antes del destroy)
 **Stack técnico terminado (2026-10-01).** Fases 0 a 10 cerradas: el DAG corre de punta a punta en verde,
 con Snowflake (refresco, grants, marts y tests con `ENTITY360_SYNC`, sin ACCOUNTADMIN), latido en los 4
 productores y aviso de cierre por Telegram (probado en `manual__2026-10-01T15:03:49`). `README.md` reescrito
@@ -201,7 +217,7 @@ Al cerrar (2026-09-30): `ENTITY360_WH` en `SUSPENDED` (verificado).
   diaria del DAG como el consumo principal. Silver incremental (reprocesa todo aunque Bronze no traiga
   nada) es la primera optimización.
 
-## Estado del entorno al cerrar
+## Estado del entorno al cerrar (2026-09-29, antes del destroy; ya no aplica)
 - `dbt source freshness` (2026-09-29 15:32 UTC): GDELT (43 h) y OpenSanctions (49 h) en warn. No es un
   productor caído: Airflow está apagado desde el 27, Bronze no corrió y `ops.ingestion_log` no registró
   los lotes nuevos del landing.
