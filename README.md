@@ -103,6 +103,16 @@ job de Databricks, construye Gold con dbt, refresca Snowflake, corre los marts y
 
 Todas las decisiones: [docs/adr/](docs/adr/) (0001–0014).
 
+## Límites y lo que haría en un caso real
+- **Supervivencia:** hoy es prioridad fija por fuente (`identidades.SUPERVIVENCIA`). En producción sería una
+  política del negocio, configurable por atributo, que pese recencia, completitud y confianza.
+- **Corrección de matches:** `resolution.revision` existe, pero nadie la gestiona. Faltaría una tabla de
+  overrides humanos (forzar o deshacer uniones) que retroalimente la resolución.
+- **Write-back:** es un MDM de consolidación analítico; no devuelve el golden record a los sistemas operacionales.
+- **Stewardship:** faltan dueños de dato y un flujo de revisión.
+- **Gobierno de acceso:** hay mínimo privilegio técnico (UC, 403 probado); falta la capa de negocio (dueños,
+  enmascaramiento, filas por rol).
+
 ## Stack por capa
 | Capa | Tecnología |
 |---|---|
